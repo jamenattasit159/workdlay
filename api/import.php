@@ -1,0 +1,280 @@
+<?php
+/**
+ * Import API - Handle Excel/CSV file uploads and import data
+ */
+
+header('Content-Type: application/json; charset=utf-8');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    exit(0);
+}
+
+include_once 'db.php';
+
+// Check if PhpSpreadsheet is available, otherwise use simple CSV parsing
+$usePhpSpreadsheet = file_exists(__DIR__ . '/../vendor/autoload.php');
+if ($usePhpSpreadsheet) {
+    require __DIR__ . '/../vendor/autoload.php';
+}
+
+function parseCSV($filePath)
+{
+    $data = [];
+    if (($handle = fopen($filePath, "r")) !== FALSE) {
+        $headers = fgetcsv($handle, 1000, ",");
+        // Clean BOM from first header if present
+        if (!empty($headers[0])) {
+            $headers[0] = preg_replace('/^\xEF\xBB\xBF/', '', $headers[0]);
+        }
+        while (($row = fgetcsv($handle, 1000, ",")) !== FALSE) {
+            if (count($row) >= count($headers)) {
+                $data[] = array_combine($headers, array_slice($row, 0, count($headers)));
+            }
+        }
+        fclose($handle);
+    }
+    return $data;
+}
+
+function parseExcel($filePath)
+{
+    global $usePhpSpreadsheet;
+
+    if (!$usePhpSpreadsheet) {
+        // Fallback: Try to read as CSV if no PhpSpreadsheet
+        return parseCSV($filePath);
+    }
+
+    $data = [];
+    try {
+        $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($filePath);
+        $worksheet = $spreadsheet->getActiveSheet();
+        $rows = $worksheet->toArray();
+
+        if (count($rows) > 0) {
+            $headers = array_shift($rows);
+            foreach ($rows as $row) {
+                if (!empty(array_filter($row))) {
+                    $data[] = array_combine($headers, $row);
+                }
+            }
+        }
+    } catch (Exception $e) {
+        throw new Exception("Cannot read Excel file: " . $e->getMessage());
+    }
+
+    return $data;
+}
+
+function calculateProgressType($receivedDate)
+{
+    if (empty($receivedDate))
+        return 1;
+
+    try {
+        $received = new DateTime($receivedDate);
+        $today = new DateTime();
+        $diff = $today->diff($received)->days;
+
+        // If older than 30 days, set as งานค้าง (type 4)
+        return ($diff > 30) ? 4 : 1;
+    } catch (Exception $e) {
+        return 1;
+    }
+}
+
+function normalizeDate($dateStr)
+{
+    if (empty($dateStr))
+        return null;
+
+    // Try various date formats
+    $formats = ['Y-m-d', 'd/m/Y', 'm/d/Y', 'd-m-Y', 'Y/m/d'];
+    foreach ($formats as $format) {
+        $date = DateTime::createFromFormat($format, trim($dateStr));
+        if ($date) {
+            return $date->format('Y-m-d');
+        }
+    }
+
+    // Try Excel serial date (if numeric)
+    if (is_numeric($dateStr)) {
+        $unix = ($dateStr - 25569) * 86400;
+        if ($unix > 0) {
+            return date('Y-m-d', $unix);
+        }
+    }
+
+    return null;
+}
+
+function generateSeqNo($workType, $conn, $tableName)
+{
+    $seqColumns = [
+        'survey' => 'received_seq',
+        'registration' => 'seq_no',
+        'academic' => 'seq_no'
+    ];
+
+    $prefixes = [
+        'survey' => 'SRV',
+        'registration' => 'REG',
+        'academic' => 'ACD'
+    ];
+
+    $seqCol = $seqColumns[$workType];
+    $prefix = $prefixes[$workType];
+
+    // Get current max ID from table to generate next sequence
+    $stmt = $conn->query("SELECT COUNT(*) + 1 as next_num FROM $tableName");
+    $nextNum = $stmt->fetchColumn();
+
+    return $prefix . '-' . str_pad($nextNum, 4, '0', STR_PAD_LEFT);
+}
+
+// Main handler
+try {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        throw new Exception('Method not allowed');
+    }
+
+    $workType = $_POST['work_type'] ?? null;
+
+    if (!$workType || !in_array($workType, ['survey', 'registration', 'academic'])) {
+        throw new Exception('Invalid work type');
+    }
+
+    if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
+        throw new Exception('No file uploaded or upload error');
+    }
+
+    $file = $_FILES['file'];
+    $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+
+    if (!in_array($ext, ['csv', 'xlsx', 'xls'])) {
+        throw new Exception('Invalid file type. Only CSV and Excel files are allowed.');
+    }
+
+    // Parse file
+    $data = ($ext === 'csv') ? parseCSV($file['tmp_name']) : parseExcel($file['tmp_name']);
+
+    if (empty($data)) {
+        throw new Exception('No data found in file');
+    }
+
+    // Column mapping based on work type
+    $columnMaps = [
+        'survey' => [
+            'วันที่รับ' => 'received_date',
+            'ประเภทรังวัด' => 'survey_type',
+            'ผู้ขอ' => 'applicant',
+            'สรุปเรื่อง' => 'summary',
+            'สาเหตุค้าง' => 'status_cause',
+            'คนคุมเรื่อง' => 'men'
+        ],
+        'registration' => [
+            'วันที่รับ' => 'received_date',
+            'เรื่อง' => 'subject',
+            'ผู้เกี่ยวข้อง' => 'related_person',
+            'สรุปเรื่อง' => 'summary',
+            'สาเหตุค้าง' => 'status_cause',
+            'ผู้รับผิดชอบ' => 'responsible_person'
+        ],
+        'academic' => [
+            'วันที่รับ' => 'received_date',
+            'เรื่อง' => 'subject',
+            'ผู้เกี่ยวข้อง' => 'related_person',
+            'สรุปเรื่อง' => 'summary',
+            'สาเหตุค้าง' => 'status_cause',
+            'ผู้รับผิดชอบ' => 'responsible_person'
+        ]
+    ];
+
+    $tableNames = [
+        'survey' => 'survey_works',
+        'registration' => 'registration_works',
+        'academic' => 'academic_works'
+    ];
+
+    $columnMap = $columnMaps[$workType];
+    $tableName = $tableNames[$workType];
+
+    // Process and insert data
+    $inserted = 0;
+    $errors = [];
+
+    $conn->beginTransaction();
+
+    foreach ($data as $idx => $row) {
+        try {
+            $mappedRow = [];
+            foreach ($columnMap as $thaiCol => $dbCol) {
+                $value = null;
+                foreach ($row as $key => $val) {
+                    if (trim($key) === $thaiCol) {
+                        $value = trim($val);
+                        break;
+                    }
+                }
+                $mappedRow[$dbCol] = $value;
+            }
+
+            // Normalize date
+            if (!empty($mappedRow['received_date'])) {
+                $mappedRow['received_date'] = normalizeDate($mappedRow['received_date']);
+            }
+
+            // Calculate progress_type based on age
+            $mappedRow['progress_type'] = calculateProgressType($mappedRow['received_date']);
+
+            // Auto-generate sequence number
+            $seqColumns = [
+                'survey' => 'received_seq',
+                'registration' => 'seq_no',
+                'academic' => 'seq_no'
+            ];
+            $seqCol = $seqColumns[$workType];
+            $mappedRow[$seqCol] = generateSeqNo($workType, $conn, $tableName);
+
+            // Build insert query
+            $columns = array_keys($mappedRow);
+            $placeholders = array_map(fn($c) => ":$c", $columns);
+
+            $sql = "INSERT INTO $tableName (" . implode(', ', $columns) . ") VALUES (" . implode(', ', $placeholders) . ")";
+            $stmt = $conn->prepare($sql);
+
+            foreach ($mappedRow as $col => $val) {
+                $stmt->bindValue(":$col", $val);
+            }
+
+            $stmt->execute();
+            $inserted++;
+
+        } catch (Exception $e) {
+            $errors[] = "Row " . ($idx + 2) . ": " . $e->getMessage();
+        }
+    }
+
+    $conn->commit();
+
+    echo json_encode([
+        'status' => 'success',
+        'inserted' => $inserted,
+        'total' => count($data),
+        'errors' => $errors
+    ]);
+
+} catch (Exception $e) {
+    if (isset($conn) && $conn->inTransaction()) {
+        $conn->rollBack();
+    }
+    http_response_code(400);
+    echo json_encode([
+        'status' => 'error',
+        'message' => $e->getMessage()
+    ]);
+}
+?>
