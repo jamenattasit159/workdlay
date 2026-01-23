@@ -79,6 +79,24 @@ try {
             echo json_encode(['status' => 'success', 'message' => 'ลบประวัติสำเร็จ']);
             break;
 
+        case 'PUT':
+            // Update a history entry
+            $data = json_decode(file_get_contents('php://input'), true);
+            $id = $data['id'] ?? null;
+            $actionType = $data['action_type'] ?? null;
+            $note = $data['note'] ?? null;
+
+            if (!$id) {
+                echo json_encode(['error' => 'id is required']);
+                exit;
+            }
+
+            $stmt = $conn->prepare("UPDATE status_history SET action_type = ?, note = ? WHERE id = ?");
+            $stmt->execute([$actionType, $note, $id]);
+
+            echo json_encode(['status' => 'success', 'message' => 'แก้ไขประวัติสำเร็จ']);
+            break;
+
         default:
             echo json_encode(['error' => 'Method not allowed']);
             break;

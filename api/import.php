@@ -208,6 +208,8 @@ try {
 
     $conn->beginTransaction();
 
+    $isCompletedFlag = isset($_POST['is_completed']) && $_POST['is_completed'] === '1';
+
     foreach ($data as $idx => $row) {
         try {
             $mappedRow = [];
@@ -227,8 +229,21 @@ try {
                 $mappedRow['received_date'] = normalizeDate($mappedRow['received_date']);
             }
 
-            // Calculate progress_type based on age
-            $mappedRow['progress_type'] = calculateProgressType($mappedRow['received_date']);
+            // If it's a bulk completed import - use today as completion date (like "เสร็จสิ้นวันนี้" button)
+            if ($isCompletedFlag) {
+                $mappedRow['completion_date'] = date('Y-m-d'); // ใช้วันที่ปัจจุบัน
+                // ใช้ประเภทงานที่ส่งมาจาก Modal (ปกติ/สุดขั้นตอน/ศาล)
+                $mappedRow['progress_type'] = isset($_POST['progress_type']) ? (int) $_POST['progress_type'] : 1;
+                if (empty($mappedRow['status_cause'])) {
+                    $mappedRow['status_cause'] = 'เสร็จสิ้น';
+                }
+            } elseif (isset($_POST['progress_type'])) {
+                // ถ้าส่ง progress_type มา (เช่น งานสุดขั้นตอน/งานศาล) ให้ใช้ค่านั้น
+                $mappedRow['progress_type'] = (int) $_POST['progress_type'];
+            } else {
+                // Calculate progress_type based on age (for normal import)
+                $mappedRow['progress_type'] = calculateProgressType($mappedRow['received_date']);
+            }
 
             // Auto-generate sequence number
             $seqColumns = [

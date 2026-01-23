@@ -17,7 +17,13 @@ window.app = {
     registrationStatusView: 'pending',
     academicStatusView: 'pending',
 
+    // Progress Type Filter State (all, 1, 2, 3)
+    surveyProgressFilter: 'all',
+    registrationProgressFilter: 'all',
+    academicProgressFilter: 'all',
+
     init() {
+        console.log('App initialized v2.0');
         this.checkSession();
         this.updateDate();
         if (this.currentUser) {
@@ -35,6 +41,9 @@ window.app = {
 
         // Add Work Button Listener
         document.getElementById('btn-save-work')?.addEventListener('click', () => this.handleSaveWork());
+
+        // Completed Work Button Listener (งานเสร็จทันที)
+        document.getElementById('btn-save-completed-work')?.addEventListener('click', () => this.handleSaveCompletedWork());
     },
 
     checkSession() {
@@ -130,9 +139,30 @@ window.app = {
 
         // Define which elements to hide for each department
         const menuMappings = {
-            'survey': ['nav-registration_list', 'nav-academic_list', 'nav-report', 'nav-import-registration', 'nav-import-academic'],
-            'registration': ['nav-survey_list', 'nav-academic_list', 'nav-report', 'nav-import-survey', 'nav-import-academic'],
-            'academic': ['nav-survey_list', 'nav-registration_list', 'nav-report', 'nav-import-survey', 'nav-import-registration']
+            'survey': [
+                'nav-registration_list', 'nav-academic_list', 'nav-report',
+                'nav-add-registration', 'nav-add-academic',
+                'nav-import-registration', 'nav-import-academic',
+                'nav-sameday-registration', 'nav-sameday-academic',
+                'nav-import-completed-registration', 'nav-import-completed-academic',
+                'nav-completed-registration', 'nav-completed-academic'
+            ],
+            'registration': [
+                'nav-survey_list', 'nav-academic_list', 'nav-report',
+                'nav-add-survey', 'nav-add-academic',
+                'nav-import-survey', 'nav-import-academic',
+                'nav-sameday-survey', 'nav-sameday-academic',
+                'nav-import-completed-survey', 'nav-import-completed-academic',
+                'nav-completed-survey', 'nav-completed-academic'
+            ],
+            'academic': [
+                'nav-survey_list', 'nav-registration_list', 'nav-report',
+                'nav-add-survey', 'nav-add-registration',
+                'nav-import-survey', 'nav-import-registration',
+                'nav-sameday-survey', 'nav-sameday-registration',
+                'nav-import-completed-survey', 'nav-import-completed-registration',
+                'nav-completed-survey', 'nav-completed-registration'
+            ]
         };
 
         // Show all menus first (reset)
@@ -416,7 +446,7 @@ window.app = {
             title.innerText = 'ภาพรวมการดำเนินงาน';
             content.innerHTML = await UI.renderDashboard(userDept);
         } else if (page === 'report') {
-            title.innerText = 'รายงานสรุปงาน';
+            title.innerText = 'รายงาน KPI รายเดือน';
             content.innerHTML = await UI.renderReport();
         } else if (page === 'survey_list') {
             title.innerText = 'งานฝ่ายรังวัด';
@@ -540,6 +570,9 @@ window.app = {
         const content = document.getElementById('app-content');
         const listContainer = document.getElementById('academic-list-container');
 
+        // Destroy existing DataTable before re-render
+        UI.destroyDataTable('academic-datatable');
+
         let items = await DataManager.getAcademicItems();
 
         // 0. Filter by Status View (Pending/Completed) - Use DataManager helper functions for consistent logic
@@ -547,6 +580,12 @@ window.app = {
             items = items.filter(item => DataManager.isPending(item));
         } else {
             items = items.filter(item => DataManager.isCompleted(item));
+        }
+
+        // 0.5. Filter by Progress Type (1=ปกติ, 2=สุดขั้นตอน, 3=งานศาล)
+        if (this.academicProgressFilter && this.academicProgressFilter !== 'all') {
+            const pType = parseInt(this.academicProgressFilter, 10);
+            items = items.filter(item => parseInt(item.progress_type, 10) === pType);
         }
 
         if (this.academicSearchTerm) {
@@ -593,21 +632,30 @@ window.app = {
             setTimeout(() => AOS.refresh(), 100);
         }
 
-        // Initialize DataTables
-        setTimeout(() => {
-            if (typeof $ !== 'undefined' && $.fn.DataTable) {
-                UI.initDataTable('academic-datatable', {
-                    order: [[1, 'desc']],
-                    columnDefs: [
-                        { orderable: false, targets: [5] }
-                    ]
-                });
-            }
-        }, 150);
+        // Initialize DataTables after DOM is fully rendered
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                const tableEl = document.getElementById('academic-datatable');
+                if (typeof $ !== 'undefined' && $.fn.DataTable && tableEl) {
+                    UI.initDataTable('academic-datatable', {
+                        order: [[1, 'desc']],
+                        columnDefs: [
+                            { orderable: false, targets: [5] }
+                        ]
+                    });
+                }
+            }, 100);
+        });
     },
 
     async filterAcademicSubject(subject) {
         this.currentAcademicSubject = subject;
+        this.currentAcademicPage = 1;
+        this.refreshAcademicList();
+    },
+
+    async filterAcademicProgress(progressType) {
+        this.academicProgressFilter = progressType;
         this.currentAcademicPage = 1;
         this.refreshAcademicList();
     },
@@ -636,9 +684,18 @@ window.app = {
         this.refreshRegistrationList();
     },
 
+    async filterRegistrationProgress(progressType) {
+        this.registrationProgressFilter = progressType;
+        this.currentRegistrationPage = 1;
+        this.refreshRegistrationList();
+    },
+
     async refreshRegistrationList() {
         const content = document.getElementById('app-content');
         const listContainer = document.getElementById('registration-list-container');
+
+        // Destroy existing DataTable before re-render
+        UI.destroyDataTable('registration-datatable');
 
         // Data Fetching
         let items = await DataManager.getRegistrationItems();
@@ -648,6 +705,12 @@ window.app = {
             items = items.filter(item => DataManager.isPending(item));
         } else {
             items = items.filter(item => DataManager.isCompleted(item));
+        }
+
+        // Filter by Progress Type (1=ปกติ, 2=สุดขั้นตอน, 3=งานศาล)
+        if (this.registrationProgressFilter && this.registrationProgressFilter !== 'all') {
+            const pType = parseInt(this.registrationProgressFilter, 10);
+            items = items.filter(item => parseInt(item.progress_type, 10) === pType);
         }
 
         if (listContainer) {
@@ -688,17 +751,20 @@ window.app = {
             setTimeout(() => AOS.refresh(), 100);
         }
 
-        // Initialize DataTables
-        setTimeout(() => {
-            if (typeof $ !== 'undefined' && $.fn.DataTable) {
-                UI.initDataTable('registration-datatable', {
-                    order: [[1, 'desc']],
-                    columnDefs: [
-                        { orderable: false, targets: [7] }
-                    ]
-                });
-            }
-        }, 150);
+        // Initialize DataTables after DOM is fully rendered
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                const tableEl = document.getElementById('registration-datatable');
+                if (typeof $ !== 'undefined' && $.fn.DataTable && tableEl) {
+                    UI.initDataTable('registration-datatable', {
+                        order: [[1, 'desc']],
+                        columnDefs: [
+                            { orderable: false, targets: [7] }
+                        ]
+                    });
+                }
+            }, 100);
+        });
     },
 
     async filterSurveyList(type) {
@@ -732,6 +798,12 @@ window.app = {
         this.refreshSurveyList();
     },
 
+    async filterSurveyProgress(progressType) {
+        this.surveyProgressFilter = progressType;
+        this.currentSurveyPage = 1;
+        this.refreshSurveyList();
+    },
+
     async goToSurveyPage(page) {
         this.currentSurveyPage = page;
         this.refreshSurveyList();
@@ -741,6 +813,9 @@ window.app = {
         const content = document.getElementById('app-content');
         const listContainer = document.getElementById('survey-list-container');
 
+        // Destroy existing DataTable before re-render
+        UI.destroyDataTable('survey-datatable');
+
         // Get all items
         let items = await DataManager.getSurveyItems();
 
@@ -749,6 +824,12 @@ window.app = {
             items = items.filter(item => DataManager.isPending(item));
         } else {
             items = items.filter(item => DataManager.isCompleted(item));
+        }
+
+        // 0.5. Filter by Progress Type (1=ปกติ, 2=สุดขั้นตอน, 3=งานศาล)
+        if (this.surveyProgressFilter && this.surveyProgressFilter !== 'all') {
+            const pType = parseInt(this.surveyProgressFilter, 10);
+            items = items.filter(item => parseInt(item.progress_type, 10) === pType);
         }
 
         // 1. Filter by Type
@@ -820,17 +901,20 @@ window.app = {
             setTimeout(() => AOS.refresh(), 100);
         }
 
-        // Initialize DataTables (after DOM is ready)
-        setTimeout(() => {
-            if (typeof $ !== 'undefined' && $.fn.DataTable) {
-                UI.initDataTable('survey-datatable', {
-                    order: [[1, 'desc']],
-                    columnDefs: [
-                        { orderable: false, targets: [0, 8] }
-                    ]
-                });
-            }
-        }, 150);
+        // Initialize DataTables after DOM is fully rendered
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                const tableEl = document.getElementById('survey-datatable');
+                if (typeof $ !== 'undefined' && $.fn.DataTable && tableEl) {
+                    UI.initDataTable('survey-datatable', {
+                        order: [[1, 'desc']],
+                        columnDefs: [
+                            { orderable: false, targets: [0, 8] }
+                        ]
+                    });
+                }
+            }, 100);
+        });
     },
 
 
@@ -928,6 +1012,119 @@ window.app = {
                 if (this.currentAddType === 'survey') this.refreshSurveyList();
                 else if (this.currentAddType === 'registration') this.refreshRegistrationList();
                 else if (this.currentAddType === 'academic') this.refreshAcademicList();
+
+            } else {
+                Swal.fire('Error', result.message || 'เกิดข้อผิดพลาด', 'error');
+            }
+        } catch (error) {
+            console.error(error);
+            Swal.fire('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์', 'error');
+        }
+    },
+
+    // === Completed Work Modal Functions ===
+    currentCompletedType: null,
+
+    showCompletedWorkModal(type = null) {
+        const modalTitle = document.getElementById('completed-modal-title');
+        const formContainer = document.getElementById('completed-work-form');
+
+        // ถ้ามี type ที่ระบุมา (จาก department-specific button)
+        this.currentCompletedType = type;
+
+        const titles = {
+            'survey': 'บันทึกงานเสร็จ - ฝ่ายรังวัด',
+            'registration': 'บันทึกงานเสร็จ - ฝ่ายทะเบียน',
+            'academic': 'บันทึกงานเสร็จ - กลุ่มงานวิชาการ'
+        };
+
+        // ถ้าไม่ได้ระบุ type แต่ user เป็น staff ของแผนกเฉพาะ ให้ตั้งเป็นแผนกนั้น
+        const userDept = this.currentUser?.department;
+        if (!type && userDept && userDept !== 'all') {
+            type = userDept;
+            this.currentCompletedType = type;
+        }
+
+        if (modalTitle) {
+            modalTitle.innerHTML = `<i class="fas fa-check-circle mr-3"></i> ${titles[type] || 'บันทึกงานเสร็จ'}`;
+        }
+
+        if (formContainer && UI.renderCompletedAddForm) {
+            formContainer.innerHTML = UI.renderCompletedAddForm(type);
+            document.getElementById('completed-work-modal').classList.remove('hidden');
+        }
+    },
+
+    updateCompletedFormFields(type) {
+        this.currentCompletedType = type;
+        const formContainer = document.getElementById('completed-work-form');
+        const modalTitle = document.getElementById('completed-modal-title');
+
+        const titles = {
+            'survey': 'บันทึกงานเสร็จ - ฝ่ายรังวัด',
+            'registration': 'บันทึกงานเสร็จ - ฝ่ายทะเบียน',
+            'academic': 'บันทึกงานเสร็จ - กลุ่มงานวิชาการ'
+        };
+
+        if (modalTitle) {
+            modalTitle.innerHTML = `<i class="fas fa-check-circle mr-3"></i> ${titles[type] || 'บันทึกงานเสร็จ'}`;
+        }
+
+        if (formContainer && UI.renderCompletedAddForm) {
+            formContainer.innerHTML = UI.renderCompletedAddForm(type);
+        }
+    },
+
+    async handleSaveCompletedWork() {
+        const deptSelect = document.getElementById('completed-dept-select');
+        const type = deptSelect?.value || this.currentCompletedType;
+
+        if (!type) {
+            Swal.fire('กรุณาเลือกฝ่าย', 'โปรดเลือกฝ่าย/กลุ่มงานก่อนบันทึก', 'warning');
+            return;
+        }
+
+        const form = document.getElementById('completed-work-form');
+        const formData = new FormData(form);
+        formData.append('type', type);
+        formData.append('is_completed', '1'); // Flag ให้ backend รู้ว่าเป็นงานเสร็จ
+
+        // Basic validation
+        let isValid = true;
+        form.querySelectorAll('[required]').forEach(input => {
+            if (!input.value) {
+                isValid = false;
+                input.classList.add('border-red-500');
+            } else {
+                input.classList.remove('border-red-500');
+            }
+        });
+
+        if (!isValid) {
+            Swal.fire('กรุณากรอกข้อมูล', 'โปรดระบุข้อมูลในช่องที่จำเป็น', 'warning');
+            return;
+        }
+
+        try {
+            const response = await fetch('api/save_work.php', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                document.getElementById('completed-work-modal').classList.add('hidden');
+                Swal.fire({
+                    icon: 'success',
+                    title: 'บันทึกงานเสร็จสำเร็จ!',
+                    text: 'งานถูกบันทึกและนับว่าเสร็จสิ้นแล้ว',
+                    confirmButtonColor: '#10B981'
+                });
+
+                // Refresh list ตามแผนก
+                if (type === 'survey') this.refreshSurveyList();
+                else if (type === 'registration') this.refreshRegistrationList();
+                else if (type === 'academic') this.refreshAcademicList();
 
             } else {
                 Swal.fire('Error', result.message || 'เกิดข้อผิดพลาด', 'error');
@@ -1524,10 +1721,127 @@ window.app = {
         });
     },
 
+    // Edit a history entry
+    async editHistory(historyId, currentActionType, currentNote, workType, workId) {
+        const { value: formValues } = await Swal.fire({
+            title: '<i class="fas fa-edit text-blue-500 mr-2"></i> แก้ไขประวัติ',
+            html: `
+                <div class="text-left space-y-4">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">ประเภทการดำเนินการ</label>
+                        <select id="edit-action-type" class="w-full border rounded-lg p-2 text-sm">
+                            <option value="อัปเดตสถานะ" ${currentActionType === 'อัปเดตสถานะ' ? 'selected' : ''}>อัปเดตสถานะ</option>
+                            <option value="ติดต่อคู่กรณี" ${currentActionType === 'ติดต่อคู่กรณี' ? 'selected' : ''}>ติดต่อคู่กรณี</option>
+                            <option value="ส่งหนังสือ" ${currentActionType === 'ส่งหนังสือ' ? 'selected' : ''}>ส่งหนังสือ</option>
+                            <option value="รอเอกสาร" ${currentActionType === 'รอเอกสาร' ? 'selected' : ''}>รอเอกสาร</option>
+                            <option value="ประชุม/หารือ" ${currentActionType === 'ประชุม/หารือ' ? 'selected' : ''}>ประชุม/หารือ</option>
+                            <option value="รอดำเนินการศาล" ${currentActionType === 'รอดำเนินการศาล' ? 'selected' : ''}>รอดำเนินการศาล</option>
+                            <option value="เพิ่มหมายเหตุ" ${currentActionType === 'เพิ่มหมายเหตุ' ? 'selected' : ''}>เพิ่มหมายเหตุ</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">หมายเหตุ / รายละเอียด</label>
+                        <textarea id="edit-note" rows="3" class="w-full border rounded-lg p-2 text-sm" 
+                            placeholder="รายละเอียดเพิ่มเติม...">${currentNote}</textarea>
+                    </div>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: '<i class="fas fa-save mr-2"></i> บันทึก',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#3B82F6',
+            preConfirm: () => {
+                return {
+                    actionType: document.getElementById('edit-action-type').value,
+                    note: document.getElementById('edit-note').value
+                };
+            }
+        });
+
+        if (formValues) {
+            try {
+                const response = await fetch('api/status_history.php', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: historyId,
+                        action_type: formValues.actionType,
+                        note: formValues.note
+                    })
+                });
+
+                if (!response.ok) throw new Error('Failed to update history');
+
+                // Reload history
+                await this.loadStatusHistory(workId, workType);
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'แก้ไขประวัติแล้ว!',
+                    timer: 1500,
+                    showConfirmButton: false,
+                    toast: true,
+                    position: 'top-end'
+                });
+            } catch (error) {
+                console.error('Edit history error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'เกิดข้อผิดพลาด',
+                    text: error.message || 'ไม่สามารถแก้ไขประวัติได้'
+                });
+            }
+        }
+    },
+
+    // Delete a history entry
+    async deleteHistory(historyId, workType, workId) {
+        const result = await Swal.fire({
+            title: '<i class="fas fa-trash text-red-500 mr-2"></i> ลบประวัติ?',
+            text: 'คุณต้องการลบรายการประวัตินี้หรือไม่?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: '<i class="fas fa-trash mr-2"></i> ลบ',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#EF4444'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const response = await fetch('api/status_history.php', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: historyId })
+                });
+
+                if (!response.ok) throw new Error('Failed to delete history');
+
+                // Reload history
+                await this.loadStatusHistory(workId, workType);
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ลบประวัติแล้ว!',
+                    timer: 1500,
+                    showConfirmButton: false,
+                    toast: true,
+                    position: 'top-end'
+                });
+            } catch (error) {
+                console.error('Delete history error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'เกิดข้อผิดพลาด',
+                    text: error.message || 'ไม่สามารถลบประวัติได้'
+                });
+            }
+        }
+    },
+
     // ==================== EXCEL/CSV IMPORT ====================
 
     // Show import modal
-    showImportModal(workType) {
+    showImportModal(workType, isCompleted = false) {
         const typeLabels = {
             'survey': 'งานฝ่ายรังวัด',
             'registration': 'งานฝ่ายทะเบียน',
@@ -1540,10 +1854,12 @@ window.app = {
             'academic': 'orange'
         };
 
-        const color = typeColors[workType] || 'emerald';
+        const color = isCompleted ? 'green' : (typeColors[workType] || 'emerald');
+        const title = isCompleted ? `นำเข้างานที่เสร็จแล้ว (${typeLabels[workType]})` : `นำเข้าข้อมูล${typeLabels[workType]}`;
+        const icon = isCompleted ? 'fa-check-double' : 'fa-file-upload';
 
         Swal.fire({
-            title: `<i class="fas fa-file-upload text-${color}-500 mr-2"></i> นำเข้าข้อมูล${typeLabels[workType]}`,
+            title: `<h3 class="text-xl font-bold flex items-center justify-center"><i class="fas ${icon} text-${color}-600 mr-2"></i> ${title}</h3>`,
             html: `
                 <div class="text-left space-y-4">
                     <!-- Download Template Section -->
@@ -1572,16 +1888,32 @@ window.app = {
                         >
                     </div>
 
+                    ${isCompleted ? `
+                    <div class="bg-blue-50 p-4 rounded-xl border border-blue-200">
+                        <h4 class="font-bold text-gray-700 mb-2 text-sm"><i class="fas fa-tasks mr-2 text-blue-500"></i>3. ระบุประเภทงาน</h4>
+                        <select id="import-progress-type" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm border p-2">
+                            <option value="1">งานปกติ / เสร็จสิ้น</option>
+                            <option value="2">งานสุดขั้นตอน</option>
+                            <option value="3">งานศาล</option>
+                        </select>
+                    </div>
+                    ` : ''}
+
                     <!-- Info -->
                     <div class="text-xs text-gray-400">
-                        <p><i class="fas fa-info-circle mr-1"></i> งานที่รับเรื่องเกิน 30 วัน จะถูกตั้งค่าเป็น "งานค้าง" อัตโนมัติ</p>
+                        ${isCompleted ? `
+                            <p class="text-green-600 font-bold"><i class="fas fa-check-circle mr-1"></i> รายการทั้งหมดจะถูกตั้งสถานะเป็น "เสร็จสิ้น" ทันที</p>
+                            <p class="text-green-600 font-bold"><i class="fas fa-calendar-alt mr-1"></i> วันที่เสร็จจะเท่ากับวันที่รับเรื่องในไฟล์</p>
+                        ` : `
+                            <p><i class="fas fa-info-circle mr-1"></i> งานที่รับเรื่องเกิน 30 วัน จะถูกตั้งค่าเป็น "งานค้าง" อัตโนมัติ</p>
+                        `}
                     </div>
                 </div>
             `,
             showCancelButton: true,
             confirmButtonText: '<i class="fas fa-upload mr-2"></i> นำเข้าข้อมูล',
             cancelButtonText: 'ยกเลิก',
-            confirmButtonColor: color === 'indigo' ? '#6366F1' : color === 'blue' ? '#3B82F6' : '#F97316',
+            confirmButtonColor: isCompleted ? '#10B981' : (color === 'indigo' ? '#6366F1' : color === 'blue' ? '#3B82F6' : '#F97316'),
             showLoaderOnConfirm: true,
             preConfirm: async () => {
                 const fileInput = document.getElementById('import-file');
@@ -1589,17 +1921,32 @@ window.app = {
                     Swal.showValidationMessage('กรุณาเลือกไฟล์');
                     return false;
                 }
-                return this.processImport(workType, fileInput.files[0]);
+                const progressType = document.getElementById('import-progress-type')?.value || '1';
+                return this.processImport(workType, fileInput.files[0], isCompleted, progressType);
             },
             allowOutsideClick: () => !Swal.isLoading()
         });
     },
 
     // Process import file
-    async processImport(workType, file) {
+    async processImport(workType, file, isCompleted = false, progressType = '1') {
         const formData = new FormData();
         formData.append('work_type', workType);
         formData.append('file', file);
+
+        // สำหรับการนำเข้างานที่เสร็จแล้ว
+        if (isCompleted) {
+            const pType = parseInt(progressType, 10);
+            if (pType === 1) {
+                // งานปกติ/เสร็จสิ้น = งานเสร็จจริงๆ → ใส่ completion_date
+                formData.append('is_completed', '1');
+                formData.append('progress_type', '1');
+            } else if (pType === 2 || pType === 3) {
+                // งานสุดขั้นตอน/งานศาล = ยังไม่เสร็จ แค่แยกหมวดหมู่
+                // ไม่ใส่ completion_date, แค่ตั้ง progress_type
+                formData.append('progress_type', progressType);
+            }
+        }
 
         try {
             const response = await fetch('api/import.php', {
@@ -1647,6 +1994,602 @@ window.app = {
     // Download template file
     downloadTemplate(workType, format) {
         window.location.href = `api/template.php?type=${workType}&format=${format}`;
+    },
+
+    // ==================== KPI ACTION PLAN ====================
+
+    // Load KPI data from API
+    async loadKPIData(date = null) {
+        try {
+            const today = new Date();
+            // Use provided date or current month
+            const yearMonth = date
+                ? date.slice(0, 7) // YYYY-MM if full date provided
+                : today.toISOString().slice(0, 7);
+
+            console.log('Loading KPI Data for:', yearMonth); // Debug
+
+            const response = await fetch(`api/kpi_report.php?years_month=${yearMonth}&department=all`);
+            if (!response.ok) throw new Error('Failed to load KPI data');
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error loading KPI data:', error);
+            return {
+                autoData: {
+                    oldWork: { baseline: 0, completed: 0, pending: 0, monthlyCompleted: [] },
+                    newWork: { total: 0, completed: 0, pending: 0 }
+                },
+                savedData: {},
+                breakdown: {}
+            };
+        }
+    },
+
+    // Save KPI Note
+    async saveKPINote(yearMonth, dept, note) {
+        try {
+            const response = await fetch('api/kpi_report.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    years_month: yearMonth,
+                    department: dept,
+                    notes: note,
+                    created_by: 'ผู้ดูแลระบบ'
+                })
+            });
+
+            if (!response.ok) throw new Error('Failed to save note');
+
+            // Visual feedback
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 2000,
+                timerProgressBar: true
+            });
+
+            Toast.fire({
+                icon: 'success',
+                title: 'บันทึกหมายเหตุเรียบร้อยแล้ว'
+            });
+        } catch (error) {
+            console.error('Error saving KPI note:', error);
+            Swal.fire('Error', 'ไม่สามารถบันทึกหมายเหตุได้', 'error');
+        }
+    },
+
+    // Show modal to save manually completed work today
+    async showKPISaveCompletionModal(defaultDept = 'survey') {
+        Swal.fire({
+            title: 'บันทึกงานเสร็จวันนี้',
+            html: `
+                <div class="space-y-4 py-4">
+                    <div class="flex flex-col gap-1 text-left">
+                        <label class="text-sm font-bold text-gray-700">เลือกฝ่าย</label>
+                        <select id="swal-dept" class="w-full p-2 border rounded-lg">
+                            <option value="survey" ${defaultDept === 'survey' ? 'selected' : ''}>รังวัด</option>
+                            <option value="registration" ${defaultDept === 'registration' ? 'selected' : ''}>ทะเบียน</option>
+                            <option value="academic" ${defaultDept === 'academic' ? 'selected' : ''}>วิชาการ</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col gap-1 text-left">
+                        <label class="text-sm font-bold text-gray-700">จำนวนงานที่เสร็จ (เรื่อง)</label>
+                        <input type="number" id="swal-count" class="w-full p-2 border rounded-lg" value="1" min="1">
+                    </div>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'บันทึก',
+            cancelButtonText: 'ยกเลิก',
+            preConfirm: () => {
+                return {
+                    dept: document.getElementById('swal-dept').value,
+                    count: document.getElementById('swal-count').value
+                };
+            }
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                const monthInput = document.getElementById('kpi-report-month');
+                const yearMonth = monthInput ? monthInput.value : new Date().toISOString().slice(0, 7);
+
+                try {
+                    const response = await fetch('api/kpi_report.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            years_month: yearMonth,
+                            department: result.value.dept,
+                            completed_within_30: parseInt(result.value.count, 10),
+                            created_by: this.currentUser?.name || 'ผู้ดูแลระบบ'
+                        })
+                    });
+
+                    if (!response.ok) throw new Error('Failed to save completion data');
+
+                    Swal.fire({
+                        title: 'บันทึกสำเร็จ!',
+                        text: 'บันทึกข้อมูลงานเสร็จเรียบร้อยแล้ว',
+                        icon: 'success',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        this.updateKPIReport(yearMonth + '-01');
+                    });
+                } catch (error) {
+                    console.error('Error saving KPI completion:', error);
+                    Swal.fire('Error', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
+                }
+            }
+        });
+    },
+
+    // Update KPI Report View based on date selection
+    async updateKPIReport(date) {
+        try {
+            // Show loading state
+            const contentDiv = document.getElementById('content-area') || document.getElementById('main-content'); // Adjust selector as needed
+            if (contentDiv) {
+                // If we are just updating the content inside the report container, we might specifically target that if possible
+                // But generally we re-render the whole report view
+                // Actually, renderReport in UI returns the HTML string.
+                // We need to fetch data first, then call UI.renderKPIActionPlan?
+                // Wait, UI.renderReport does the fetching AND returning HTML? No, renderReport calls DataManager (now app.loadKPIData).
+
+                // Let's rely on UI.renderReport to fetch data if we pass the date?
+                // In UI.js: renderReport(reportDate) calls fetch.
+
+                // So here we should just re-render the page content
+                const html = await UI.renderReport(date);
+                contentDiv.innerHTML = html;
+
+                // Re-initialize AOS or other plugins if needed
+                if (typeof AOS !== 'undefined') AOS.refresh();
+            }
+        } catch (error) {
+            console.error('Error updating KPI report:', error);
+            Swal.fire('Error', 'ไม่สามารถโหลดรายงานได้', 'error');
+        }
+    },
+
+    // Save KPI Action Plan data
+    async saveKPIActionPlan() {
+        try {
+            const today = new Date();
+            const yearMonth = today.toISOString().slice(0, 7); // YYYY-MM
+
+            const data = {
+                years_month: yearMonth,
+                department: 'all',
+                new_work_received: 0, // Calculated automatically in backend or UI, not saved directly from here usually unless we want to override
+                new_work_completed: parseInt(document.getElementById('kpi-new-completed')?.value || 0),
+                completed_within_30: parseInt(document.getElementById('kpi-within-30')?.value || 0),
+                completed_within_60: parseInt(document.getElementById('kpi-within-60')?.value || 0),
+                completed_over_60: parseInt(document.getElementById('kpi-over-60')?.value || 0),
+                notes: document.getElementById('kpi-notes')?.value || '',
+                created_by: this.currentUser?.name || 'ผู้ดูแลระบบ'
+            };
+
+            const response = await fetch('api/kpi_report.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'บันทึกสำเร็จ!',
+                    text: 'บันทึกข้อมูล KPI เรียบร้อยแล้ว',
+                    timer: 2000,
+                    showConfirmButton: false,
+                    toast: true,
+                    position: 'top-end'
+                });
+            } else {
+                throw new Error(result.error || 'Unknown error');
+            }
+        } catch (error) {
+            console.error('Error saving KPI data:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'เกิดข้อผิดพลาด',
+                text: error.message || 'ไม่สามารถบันทึกข้อมูลได้'
+            });
+        }
+    },
+
+    // ==================== SAME-DAY COMPLETION ====================
+
+    // Show modal for recording same-day completions (งานเกิดเสร็จวันเดียว)
+    async showSameDayCompletionModal(workType) {
+        const deptNames = {
+            survey: 'ฝ่ายรังวัด',
+            registration: 'ฝ่ายทะเบียน',
+            academic: 'กลุ่มงานวิชาการ'
+        };
+        const deptName = deptNames[workType] || workType;
+
+        const today = new Date();
+        const yearMonth = today.toISOString().slice(0, 7);
+        const monthName = today.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
+
+        const canManage = this.canManageSameDayLogs(workType);
+
+        const result = await Swal.fire({
+            title: `<i class="fas fa-check-double text-emerald-500 mr-2"></i>งานเกิดเสร็จวันเดียว`,
+            html: `
+                <div class="text-left">
+                    <p class="text-sm text-gray-600 mb-4">
+                        บันทึกจำนวนงานที่เกิดและเสร็จในวันเดียว (ไม่นับเป็นงานค้าง)<br>
+                        <strong>${deptName}</strong>
+                    </p>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">จำนวนงาน (เรื่อง)</label>
+                        <input type="number" id="sameday-count" min="0" value="0"
+                            class="w-full px-4 py-3 text-xl text-center font-bold border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-calendar-alt mr-1 text-gray-400"></i>วันที่บันทึก 
+                            <span class="text-xs text-gray-400">(ไม่บังคับ - ถ้าย้อนหลัง)</span>
+                        </label>
+                        <input type="date" id="sameday-date" value="${today.toISOString().split('T')[0]}"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                    </div>
+                    <div class="bg-emerald-50 p-3 rounded-lg text-sm text-emerald-700">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        งานเหล่านี้จะนับเป็น "งานเสร็จ" ในรายงาน KPI แต่ไม่สร้างรายการใหม่ในฐานข้อมูล
+                    </div>
+                    ${canManage ? `
+                    <div class="mt-4">
+                        <button type="button" onclick="app.openSameDayLogsManager('${workType}')"
+                            class="w-full px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 font-bold hover:bg-gray-50 transition flex items-center justify-center">
+                            <i class="fas fa-pen-to-square mr-2 text-gray-500"></i> แก้ไข/ลบรายการของฝ่าย
+                        </button>
+                        <p class="text-xs text-gray-400 mt-2 text-center">
+                            แก้ไขได้เฉพาะรายการของฝ่ายตนเอง
+                        </p>
+                    </div>
+                    ` : ``}
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: '<i class="fas fa-save mr-2"></i>บันทึก',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#10B981',
+            focusConfirm: false,
+            preConfirm: () => {
+                const count = parseInt(document.getElementById('sameday-count').value || 0);
+                const dateInput = document.getElementById('sameday-date').value;
+                const recordDate = dateInput || today.toISOString().split('T')[0];
+
+                if (count <= 0) {
+                    Swal.showValidationMessage('จำนวนต้องมากกว่า 0');
+                    return false;
+                }
+                return { count, workType, recordDate };
+            }
+        });
+
+        if (result.isConfirmed) {
+            await this.saveSameDayCompletion(result.value);
+        }
+    },
+
+    canManageSameDayLogs(workType) {
+        const dept = this.currentUser?.department || null;
+        const role = this.currentUser?.role || null;
+        if (!dept) return false;
+        if (role === 'superadmin' || dept === 'all') return true;
+        return dept === workType;
+    },
+
+    async openSameDayLogsManager(workType, forcedYearMonth = null) {
+        try {
+            // Resolve department: staff can only manage their own dept
+            const userDept = this.currentUser?.department || null;
+            const dept = (userDept && userDept !== 'all') ? userDept : workType;
+
+            if (!this.canManageSameDayLogs(dept)) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'ไม่มีสิทธิ์เข้าถึง',
+                    text: 'คุณสามารถจัดการได้เฉพาะรายการของฝ่ายตนเอง',
+                    confirmButtonColor: '#F97316'
+                });
+                return;
+            }
+
+            const dateEl = document.getElementById('sameday-date');
+            const dateVal = dateEl?.value || new Date().toISOString().slice(0, 10);
+            const yearMonth = forcedYearMonth || dateVal.slice(0, 7);
+
+            Swal.fire({
+                title: '<i class="fas fa-list-check text-emerald-600 mr-2"></i>จัดการรายการงานเกิดเสร็จวันเดียว',
+                html: `<div class="text-sm text-gray-500">กำลังโหลดข้อมูล...</div>`,
+                width: 820,
+                showConfirmButton: false,
+                showCancelButton: true,
+                cancelButtonText: 'ปิด'
+            });
+
+            const data = await this.fetchSameDayLogs(dept, yearMonth);
+            const logs = data?.logs || [];
+            this._sameDayLogsCache = (this._sameDayLogsCache || {});
+            logs.forEach(l => { this._sameDayLogsCache[l.id] = l; });
+
+            const deptNames = {
+                survey: 'ฝ่ายรังวัด',
+                registration: 'ฝ่ายทะเบียน',
+                academic: 'กลุ่มงานวิชาการ'
+            };
+
+            const rows = logs.length > 0
+                ? logs.map((l, idx) => `
+                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                        <td class="px-3 py-2 text-sm text-gray-500 text-center">${idx + 1}</td>
+                        <td class="px-3 py-2 text-sm text-gray-700">${l.record_date || '-'}</td>
+                        <td class="px-3 py-2 text-sm text-gray-900 font-bold text-center">${l.count || 0}</td>
+                        <td class="px-3 py-2 text-sm text-gray-600">${l.notes ? String(l.notes).replace(/</g, '&lt;') : '-'}</td>
+                        <td class="px-3 py-2 text-sm text-right whitespace-nowrap">
+                            <button class="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 font-bold hover:bg-blue-100 transition"
+                                onclick="app.openEditSameDayLog(${l.id}, '${dept}', '${yearMonth}')">
+                                <i class="fas fa-pen mr-1"></i>แก้ไข
+                            </button>
+                            <button class="ml-2 px-3 py-1.5 rounded-lg bg-red-50 text-red-700 font-bold hover:bg-red-100 transition"
+                                onclick="app.confirmDeleteSameDayLog(${l.id}, '${dept}', '${yearMonth}')">
+                                <i class="fas fa-trash mr-1"></i>ลบ
+                            </button>
+                        </td>
+                    </tr>
+                `).join('')
+                : `
+                    <tr>
+                        <td colspan="5" class="px-3 py-10 text-center text-gray-500">
+                            ไม่พบรายการในเดือนนี้
+                        </td>
+                    </tr>
+                `;
+
+            Swal.fire({
+                title: '<i class="fas fa-list-check text-emerald-600 mr-2"></i>จัดการรายการงานเกิดเสร็จวันเดียว',
+                width: 820,
+                showConfirmButton: false,
+                showCancelButton: true,
+                cancelButtonText: 'ปิด',
+                html: `
+                    <div class="text-left">
+                        <div class="mb-3 flex items-center justify-between gap-3">
+                            <div class="text-sm text-gray-600">
+                                <span class="font-bold">${deptNames[dept] || dept}</span>
+                                <span class="text-gray-400">•</span>
+                                <span class="font-medium">${yearMonth}</span>
+                            </div>
+                            <button class="px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 font-bold hover:bg-gray-50 transition"
+                                onclick="app.openSameDayLogsManager('${dept}', '${yearMonth}')">
+                                <i class="fas fa-rotate-right mr-2 text-gray-400"></i>รีเฟรช
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto border border-gray-200 rounded-xl">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-3 py-2 text-xs font-bold text-gray-600 uppercase w-12 text-center">#</th>
+                                        <th class="px-3 py-2 text-xs font-bold text-gray-600 uppercase w-36">วันที่</th>
+                                        <th class="px-3 py-2 text-xs font-bold text-gray-600 uppercase w-24 text-center">จำนวน</th>
+                                        <th class="px-3 py-2 text-xs font-bold text-gray-600 uppercase">หมายเหตุ</th>
+                                        <th class="px-3 py-2 text-xs font-bold text-gray-600 uppercase w-56 text-right">จัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${rows}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mt-3 text-xs text-gray-400">
+                            หมายเหตุ: การแก้ไข/ลบ จะปรับยอดในรายงาน KPI ของเดือนนั้นอัตโนมัติ
+                        </div>
+                    </div>
+                `
+            });
+        } catch (error) {
+            console.error('openSameDayLogsManager error:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'เกิดข้อผิดพลาด',
+                text: error.message || 'ไม่สามารถโหลดรายการได้'
+            });
+        }
+    },
+
+    async fetchSameDayLogs(department, yearMonth) {
+        const params = new URLSearchParams();
+        if (department) params.set('department', department);
+        if (yearMonth) params.set('year_month', yearMonth);
+
+        const res = await fetch(`api/sameday_logs.php?${params.toString()}`);
+        const data = await res.json();
+        if (!res.ok || data.status !== 'success') {
+            throw new Error(data.error || 'Failed to load logs');
+        }
+        return data;
+    },
+
+    async openEditSameDayLog(id, dept, yearMonth) {
+        const log = this._sameDayLogsCache?.[id];
+        if (!log) {
+            Swal.fire({ icon: 'error', title: 'ไม่พบข้อมูล', text: 'ไม่พบรายการที่ต้องการแก้ไข' });
+            return;
+        }
+
+        const result = await Swal.fire({
+            title: '<i class="fas fa-pen text-blue-600 mr-2"></i>แก้ไขรายการ',
+            html: `
+                <div class="text-left space-y-4">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">วันที่บันทึก</label>
+                        <input type="date" id="edit-sd-date" class="w-full px-3 py-2 border rounded-xl"
+                            value="${log.record_date || ''}">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">จำนวนงาน (เรื่อง)</label>
+                        <input type="number" id="edit-sd-count" min="1" class="w-full px-3 py-2 border rounded-xl text-center font-bold"
+                            value="${log.count || 1}">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">หมายเหตุ (ถ้ามี)</label>
+                        <textarea id="edit-sd-notes" rows="2" class="w-full px-3 py-2 border rounded-xl"
+                            placeholder="ระบุหมายเหตุ...">${log.notes || ''}</textarea>
+                    </div>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'บันทึก',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#2563EB',
+            preConfirm: () => {
+                const record_date = document.getElementById('edit-sd-date').value;
+                const count = parseInt(document.getElementById('edit-sd-count').value || 0, 10);
+                const notes = document.getElementById('edit-sd-notes').value || null;
+                if (!record_date) {
+                    Swal.showValidationMessage('กรุณาระบุวันที่');
+                    return false;
+                }
+                if (!count || count <= 0) {
+                    Swal.showValidationMessage('จำนวนต้องมากกว่า 0');
+                    return false;
+                }
+                return { record_date, count, notes };
+            }
+        });
+
+        if (!result.isConfirmed) return;
+
+        try {
+            const res = await fetch('api/sameday_logs.php', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id,
+                    record_date: result.value.record_date,
+                    department: dept,
+                    count: result.value.count,
+                    notes: result.value.notes,
+                    created_by: this.currentUser?.name || 'ผู้ใช้งาน'
+                })
+            });
+
+            const data = await res.json();
+            if (!res.ok || data.status !== 'success') {
+                throw new Error(data.error || 'Update failed');
+            }
+
+            Swal.fire({
+                icon: 'success',
+                title: 'บันทึกการแก้ไขแล้ว',
+                timer: 1200,
+                showConfirmButton: false,
+                toast: true,
+                position: 'top-end'
+            });
+
+            // Refresh manager view
+            this.openSameDayLogsManager(dept, yearMonth);
+        } catch (e) {
+            console.error('openEditSameDayLog error:', e);
+            Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: e.message || 'ไม่สามารถแก้ไขได้' });
+        }
+    },
+
+    async confirmDeleteSameDayLog(id, dept, yearMonth) {
+        const log = this._sameDayLogsCache?.[id];
+        const dateText = log?.record_date || '-';
+        const countText = log?.count || 0;
+
+        const result = await Swal.fire({
+            icon: 'warning',
+            title: 'ยืนยันการลบ?',
+            html: `<div class="text-sm text-gray-600">ต้องการลบรายการวันที่ <b>${dateText}</b> จำนวน <b>${countText}</b> เรื่อง ใช่หรือไม่</div>`,
+            showCancelButton: true,
+            confirmButtonText: 'ลบ',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#EF4444'
+        });
+
+        if (!result.isConfirmed) return;
+
+        try {
+            const res = await fetch('api/sameday_logs.php', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id })
+            });
+            const data = await res.json();
+            if (!res.ok || data.status !== 'success') {
+                throw new Error(data.error || 'Delete failed');
+            }
+
+            Swal.fire({
+                icon: 'success',
+                title: 'ลบรายการแล้ว',
+                timer: 1200,
+                showConfirmButton: false,
+                toast: true,
+                position: 'top-end'
+            });
+
+            // Refresh manager view
+            this.openSameDayLogsManager(dept, yearMonth);
+        } catch (e) {
+            console.error('confirmDeleteSameDayLog error:', e);
+            Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: e.message || 'ไม่สามารถลบได้' });
+        }
+    },
+
+    // Save same-day completion count - บันทึกเป็นแต่ละรายการ
+    async saveSameDayCompletion(data) {
+        try {
+            // บันทึกเป็น log แยกแต่ละรายการ (ไม่ใช่อัปเดตรวม)
+            const response = await fetch('api/sameday_logs.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    record_date: data.recordDate, // วันที่บันทึกจริง
+                    department: data.workType,
+                    count: data.count,
+                    notes: data.notes || null,
+                    created_by: this.currentUser?.name || 'ผู้ดูแลระบบ'
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'บันทึกสำเร็จ!',
+                    text: `บันทึกงานเกิดเสร็จวันเดียว ${data.count} เรื่อง`,
+                    timer: 2000,
+                    showConfirmButton: false,
+                    toast: true,
+                    position: 'top-end'
+                });
+            } else {
+                throw new Error(result.error || 'Unknown error');
+            }
+        } catch (error) {
+            console.error('Error saving same-day completion:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'เกิดข้อผิดพลาด',
+                text: error.message || 'ไม่สามารถบันทึกข้อมูลได้'
+            });
+        }
     }
 };
 
