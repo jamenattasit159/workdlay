@@ -459,7 +459,7 @@
 
 
             <a href="report.html"
-                class="nav-item w-full flex items-center p-3 rounded-lg hover:bg-emerald-50 hover:text-emerald-600 transition-all duration-300 text-left group"
+                class="nav-item w-full flex items-center p-3 rounded-lg hover:bg-emerald-50 hover:text-emerald-600 transition-all duration-300 text-left group hidden"
                 id="nav-report">
                 <div
                     class="p-2 bg-gray-100 rounded-lg group-hover:bg-emerald-100 mr-3 transition-colors text-gray-500 group-hover:text-emerald-600">
@@ -469,7 +469,27 @@
                         </path>
                     </svg>
                 </div>
-                <span class="font-medium">รายงาน (Report)</span>
+                <span class="font-medium">รายงาน KPI</span>
+            </a>
+
+            <a href="old_backlog_report.html"
+                class="nav-item w-full flex items-center p-3 rounded-lg hover:bg-orange-50 hover:text-orange-600 transition-all duration-300 text-left group hidden"
+                id="nav-old-backlog">
+                <div
+                    class="p-2 bg-gray-100 rounded-lg group-hover:bg-orange-100 mr-3 transition-colors text-gray-500 group-hover:text-orange-600">
+                    <i class="fas fa-clock-rotate-left w-5 h-5 flex items-center justify-center"></i>
+                </div>
+                <span class="font-medium">รายงานงานค้างเก่า</span>
+            </a>
+
+            <a href="sameday_report.html"
+                class="nav-item w-full flex items-center p-3 rounded-lg hover:bg-teal-50 hover:text-teal-600 transition-all duration-300 text-left group hidden"
+                id="nav-sameday-report">
+                <div
+                    class="p-2 bg-gray-100 rounded-lg group-hover:bg-teal-100 mr-3 transition-colors text-gray-500 group-hover:text-teal-600">
+                    <i class="fas fa-clipboard-check w-5 h-5 flex items-center justify-center"></i>
+                </div>
+                <span class="font-medium">รายงานงานเกิดเสร็จวันเดียว</span>
             </a>
 
 
@@ -509,7 +529,7 @@
                     <h2 id="page-title" class="text-2xl font-bold text-gray-800 tracking-tight" data-aos="fade-down">
                         ภาพรวม</h2>
                     <p class="text-sm text-gray-400 mt-1" data-aos="fade-down" data-aos-delay="100">
-                        ระบบบริหารจัดการงานค้างเพื่อการติดตามและรายงานผล</p>
+                        ระบบบริหารจัดการงานค้างเพื่อการติดตามและรายงานผล หาพบปัญหาให้ตะโกนเรียก Admin ดังๆ</p>
                 </div>
                 <div class="px-4 py-2 bg-emerald-50 text-emerald-700 rounded-full text-sm font-medium border border-emerald-100 shadow-sm"
                     id="current-date" data-aos="fade-left"></div>
@@ -595,8 +615,17 @@
                 <span class="text-[10px] font-medium">วิชาการ</span>
             </button>
 
-            <a href="report.html"
-                class="mobile-nav-item flex flex-1 flex-col items-center justify-center h-full text-gray-400 hover:text-emerald-600 transition-colors group"
+            <a href="sameday_report.html" id="mobile-nav-sameday-report"
+                class="mobile-nav-item flex flex-1 flex-col items-center justify-center h-full text-gray-400 hover:text-teal-600 transition-colors group hidden"
+                data-page="sameday-report">
+                <div class="p-1 rounded-full group-hover:bg-teal-50 transition-colors mb-1">
+                    <i class="fas fa-clipboard-check text-xl"></i>
+                </div>
+                <span class="text-[10px] font-medium">เกิดเสร็จ</span>
+            </a>
+
+            <a href="report.html" id="mobile-nav-report"
+                class="mobile-nav-item flex flex-1 flex-col items-center justify-center h-full text-gray-400 hover:text-emerald-600 transition-colors group hidden"
                 data-page="report">
                 <div class="p-1 rounded-full group-hover:bg-emerald-50 transition-colors mb-1">
                     <i class="fas fa-chart-pie text-xl"></i>

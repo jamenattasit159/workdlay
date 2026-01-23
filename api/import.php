@@ -204,11 +204,14 @@ try {
 
     // Process and insert data
     $inserted = 0;
+    $updated = 0;
+    $skipped = 0;
     $errors = [];
 
     $conn->beginTransaction();
 
     $isCompletedFlag = isset($_POST['is_completed']) && $_POST['is_completed'] === '1';
+    $isUpdateMode = isset($_POST['import_mode']) && $_POST['import_mode'] === 'update';
 
     foreach ($data as $idx => $row) {
         try {
@@ -228,6 +231,82 @@ try {
             if (!empty($mappedRow['received_date'])) {
                 $mappedRow['received_date'] = normalizeDate($mappedRow['received_date']);
             }
+
+            // --- UPDATE MODE LOGIC ---
+            if ($isUpdateMode) {
+                // Find existing record for matching
+                // Criteria: Date + Type + Applicant
+                $matchSql = "";
+                $matchParams = [];
+
+                if ($workType === 'survey') {
+                    $matchSql = "SELECT id, status_cause FROM survey_works 
+                                WHERE received_date = :received_date 
+                                AND survey_type = :survey_type 
+                                AND applicant = :applicant 
+                                ORDER BY id DESC LIMIT 1";
+                    $matchParams = [
+                        ':received_date' => $mappedRow['received_date'],
+                        ':survey_type' => $mappedRow['survey_type'],
+                        ':applicant' => $mappedRow['applicant']
+                    ];
+                } else {
+                    // registration or academic
+                    $matchSql = "SELECT id, status_cause FROM $tableName 
+                                WHERE received_date = :received_date 
+                                AND subject = :subject 
+                                AND related_person = :related_person 
+                                ORDER BY id DESC LIMIT 1";
+                    $matchParams = [
+                        ':received_date' => $mappedRow['received_date'],
+                        ':subject' => $mappedRow['subject'],
+                        ':related_person' => $mappedRow['related_person']
+                    ];
+                }
+
+                $matchStmt = $conn->prepare($matchSql);
+                $matchStmt->execute($matchParams);
+                $existing = $matchStmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($existing) {
+                    $oldStatus = $existing['status_cause'] ?? '';
+                    $newStatus = $mappedRow['status_cause'] ?? '';
+
+                    // Only update if status is different
+                    if ($oldStatus !== $newStatus && !empty($newStatus)) {
+                        // Update status
+                        $updateSql = "UPDATE $tableName SET status_cause = :new_status WHERE id = :id";
+                        $updateStmt = $conn->prepare($updateSql);
+                        $updateStmt->execute([
+                            ':new_status' => $newStatus,
+                            ':id' => $existing['id']
+                        ]);
+
+                        // Log history
+                        $historySql = "INSERT INTO status_history (work_type, work_id, action_type, old_value, new_value, note, changed_by) 
+                                      VALUES (?, ?, ?, ?, ?, ?, ?)";
+                        $historyStmt = $conn->prepare($historySql);
+                        $historyStmt->execute([
+                            $workType,
+                            $existing['id'],
+                            'อัปเดตผ่านการนำเข้าไฟล์',
+                            $oldStatus,
+                            $newStatus,
+                            'อัปเดตแบบกลุ่มจากไฟล์ Excel/CSV',
+                            'ระบบกึ่งอัตโนมัติ'
+                        ]);
+
+                        $updated++;
+                    } else {
+                        $skipped++;
+                    }
+                    continue; // Skip to next row, don't insert
+                } else {
+                    // Not found in update mode -> Skip or Error? Let's skip and report in errors
+                    throw new Exception('ไม่พบข้อมูลงานเดิมเพื่ออัปเดต (ตรวจสอบ วันที่/ประเภท/ผู้ขอ)');
+                }
+            }
+            // --- END UPDATE MODE LOGIC ---
 
             // If it's a bulk completed import - use today as completion date (like "เสร็จสิ้นวันนี้" button)
             if ($isCompletedFlag) {
@@ -278,6 +357,8 @@ try {
     echo json_encode([
         'status' => 'success',
         'inserted' => $inserted,
+        'updated' => $updated,
+        'skipped' => $skipped,
         'total' => count($data),
         'errors' => $errors
     ]);

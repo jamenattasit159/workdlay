@@ -448,7 +448,7 @@ window.UI = {
 
             <!-- Quick Stats Row -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8" data-aos="fade-up" data-aos-delay="450">
-                <div class="bg-white rounded-xl p-4 shadow-lg border border-gray-100 text-center hover:shadow-xl transition-shadow">
+                <div class="bg-white rounded-xl p-4 shadow-lg border border-gray-100 text-center hover:shadow-xl transition-shadow cursor-pointer" onclick="app.navigate('report')">
                     <div class="text-3xl mb-2">📊</div>
                     <div class="text-2xl font-black text-gray-700">${Math.round((stats.completed / (stats.total || 1)) * 100)}%</div>
                     <div class="text-xs text-gray-500 mt-1">อัตราเสร็จสิ้น</div>
@@ -458,11 +458,19 @@ window.UI = {
                     <div class="text-2xl font-black text-gray-700">${stats.pending}</div>
                     <div class="text-xs text-gray-500 mt-1">รอดำเนินการ</div>
                 </div>
+                ${(window.app?.currentUser?.role === 'superadmin' || window.app?.currentUser?.role === 'admin') ? `
+                <a href="sameday_report.html" class="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl p-4 shadow-lg border border-emerald-400 text-center hover:shadow-xl transition-all hover:scale-105 group">
+                    <div class="text-3xl mb-2 group-hover:scale-110 transition-transform text-white">📋</div>
+                    <div class="text-lg font-bold text-white tracking-tight">งานเกิดเสร็จวันเดียว</div>
+                    <div class="text-[10px] text-emerald-100 mt-1 uppercase font-bold tracking-widest">เปิดรายงาน</div>
+                </a>
+                ` : `
                 <div class="bg-white rounded-xl p-4 shadow-lg border border-gray-100 text-center hover:shadow-xl transition-shadow">
                     <div class="text-3xl mb-2">🏢</div>
                     <div class="text-2xl font-black text-gray-700">${Object.keys(stats.pendingByDept || {}).length}</div>
                     <div class="text-xs text-gray-500 mt-1">จำนวนฝ่าย</div>
                 </div>
+                `}
                 <div class="bg-white rounded-xl p-4 shadow-lg border border-gray-100 text-center hover:shadow-xl transition-shadow">
                     <div class="text-3xl mb-2">${stats.over60 > 0 ? '🔥' : '✅'}</div>
                     <div class="text-2xl font-black ${stats.over60 > 0 ? 'text-red-600' : 'text-emerald-600'}">${stats.over60 > 0 ? stats.over60 : 'OK'}</div>
@@ -822,11 +830,11 @@ window.UI = {
                 </h3>
                 
                 <div class="flex flex-wrap gap-2 w-full md:w-auto justify-end items-center">
-                    <!-- Tab Switcher -->
+                    <!-- Tab Switcher (งานคงค้าง/งานเสร็จ) -->
                     <div class="flex bg-gray-100 p-1 rounded-xl mr-2">
                         <button onclick="app.setSurveyStatusView('pending')" 
                             class="px-4 py-2 rounded-lg text-sm font-bold transition-all ${statusView === 'pending' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}">
-                            งานคงค้าง
+                            งานค้าง
                         </button>
                         <button onclick="app.setSurveyStatusView('completed')" 
                             class="px-4 py-2 rounded-lg text-sm font-bold transition-all ${statusView === 'completed' ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}">
@@ -840,12 +848,12 @@ window.UI = {
                         ${surveyTypes.map(t => `<option value="${t}" ${filterType === t ? 'selected' : ''}>${t}</option>`).join('')}
                     </select>
 
-                    <!-- Filter by Progress Type -->
+                    <!-- Progress Type Filter -->
                     <select onchange="app.filterSurveyProgress(this.value)" class="py-2 pl-3 pr-8 rounded-lg border border-purple-200 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer bg-purple-50">
-                        <option value="all" ${app.surveyProgressFilter === 'all' ? 'selected' : ''}>-- ทุกสถานะ --</option>
-                        <option value="1" ${app.surveyProgressFilter === '1' ? 'selected' : ''}>ปกติ</option>
+                        <option value="all" ${app.surveyProgressFilter === 'all' || !app.surveyProgressFilter ? 'selected' : ''}>-- ทุกสถานะ --</option>
                         <option value="2" ${app.surveyProgressFilter === '2' ? 'selected' : ''}>สุดขั้นตอน</option>
                         <option value="3" ${app.surveyProgressFilter === '3' ? 'selected' : ''}>งานศาล</option>
+                        <option value="4" ${app.surveyProgressFilter === '4' ? 'selected' : ''}>งานค้าง</option>
                     </select>
 
                     <button onclick="app.openAddModal('survey')" class="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg hover:shadow-indigo-500/30 transform hover:-translate-y-0.5 flex items-center justify-center whitespace-nowrap">
@@ -876,7 +884,7 @@ window.UI = {
         //Update List Items
         const container = document.getElementById('survey-list-container');
         if (container) {
-            container.innerHTML = this.renderSurveyItems(currentItems, page, totalPages, totalItems, start, limit);
+            container.innerHTML = this.renderSurveyItems(allItems, page, totalPages, totalItems, start, limit);
         }
     },
 
@@ -1172,10 +1180,10 @@ window.UI = {
 
                     <!-- Progress Type Filter -->
                     <select onchange="app.filterRegistrationProgress(this.value)" class="py-2 pl-3 pr-8 rounded-lg border border-cyan-200 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer bg-cyan-50">
-                        <option value="all" ${app.registrationProgressFilter === 'all' ? 'selected' : ''}>-- ทุกสถานะ --</option>
-                        <option value="1" ${app.registrationProgressFilter === '1' ? 'selected' : ''}>ปกติ</option>
+                        <option value="all" ${app.registrationProgressFilter === 'all' || !app.registrationProgressFilter ? 'selected' : ''}>-- ทุกสถานะ --</option>
                         <option value="2" ${app.registrationProgressFilter === '2' ? 'selected' : ''}>สุดขั้นตอน</option>
                         <option value="3" ${app.registrationProgressFilter === '3' ? 'selected' : ''}>งานศาล</option>
+                        <option value="4" ${app.registrationProgressFilter === '4' ? 'selected' : ''}>งานค้าง</option>
                     </select>
 
                     <button onclick="app.openAddModal('registration')" class="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg hover:shadow-blue-500/30 transform hover:-translate-y-0.5 flex items-center justify-center whitespace-nowrap">
@@ -1210,7 +1218,7 @@ window.UI = {
         //Update List Items
         const container = document.getElementById('registration-list-container');
         if (container) {
-            container.innerHTML = this.renderRegistrationItems(currentItems, page, totalPages, totalItems, start, limit);
+            container.innerHTML = this.renderRegistrationItems(displayItems, page, totalPages, totalItems, start, limit);
         }
     },
 
@@ -1381,10 +1389,10 @@ window.UI = {
 
                     <!-- Progress Type Filter -->
                     <select onchange="app.filterAcademicProgress(this.value)" class="py-2 pl-3 pr-8 rounded-lg border border-red-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 cursor-pointer bg-red-50">
-                        <option value="all" ${app.academicProgressFilter === 'all' ? 'selected' : ''}>-- ทุกสถานะ --</option>
-                        <option value="1" ${app.academicProgressFilter === '1' ? 'selected' : ''}>ปกติ</option>
+                        <option value="all" ${app.academicProgressFilter === 'all' || !app.academicProgressFilter ? 'selected' : ''}>-- ทุกสถานะ --</option>
                         <option value="2" ${app.academicProgressFilter === '2' ? 'selected' : ''}>สุดขั้นตอน</option>
                         <option value="3" ${app.academicProgressFilter === '3' ? 'selected' : ''}>งานศาล</option>
+                        <option value="4" ${app.academicProgressFilter === '4' ? 'selected' : ''}>งานค้าง</option>
                     </select>
 
                     <button onclick="app.openAddModal('academic')" class="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg hover:shadow-orange-500/30 transform hover:-translate-y-0.5 flex items-center justify-center whitespace-nowrap">
@@ -1418,7 +1426,7 @@ window.UI = {
         //Update List Items
         const container = document.getElementById('academic-list-container');
         if (container) {
-            container.innerHTML = this.renderAcademicItems(currentItems, page, totalPages, totalItems, start, limit);
+            container.innerHTML = this.renderAcademicItems(displayItems, page, totalPages, totalItems, start, limit);
         }
     },
 

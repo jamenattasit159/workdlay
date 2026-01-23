@@ -14,6 +14,13 @@ window.reportApp = {
      * Initialize the report page
      */
     init() {
+        // Permission check
+        const user = JSON.parse(localStorage.getItem('dol_user'));
+        if (!user || (user.role !== 'superadmin' && user.role !== 'admin')) {
+            window.location.href = 'index.html';
+            return;
+        }
+
         // Initialize AOS animations
         AOS.init({
             duration: 600,
@@ -157,13 +164,7 @@ window.reportApp = {
         let html = `<div class="space-y-8">`;
 
         // Header
-        html += `
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h2 class="text-2xl font-black text-gray-800 tracking-tight">รายงานสรุปผลการดำเนินงาน KPI</h2>
-                <p class="text-gray-500 flex items-center mt-1">
-                    <i class="fas fa-calendar-alt mr-2 text-blue-500"></i> สรุปผลงานรายเดือน (Action Plan)
-                </p>
-            </div>`;
+
 
         // Iterate months
         trend.forEach((monthItem, index) => {
@@ -247,6 +248,7 @@ window.reportApp = {
                         </table>
                     </div>
                 </div>
+                การตรวจสอบและยืนยันจาก............................ เจ้าพนักงานที่ดิน
             `;
         });
 
@@ -430,8 +432,8 @@ window.reportApp = {
                     </style>
                 </head>
                 <body>
-                    <h2>รายงานสรุปผลการดำเนินงาน KPI</h2>
-                    <p>สำนักงานที่ดินจังหวัดอ่างทอง</p>
+                    <h2>รายงานสรุปผลการดำเนินงานตามโครงการงานค้างและงานกิดใหม่ สำนักงานที่ดินจังหวัดอ่างทอง</h2>
+                    <br>
                     ${printContent}
                 </body>
                 </html>

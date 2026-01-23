@@ -136,11 +136,13 @@ window.app = {
     updateMenuVisibility() {
         const userDept = this.currentUser?.department || 'all';
         const userRole = this.currentUser?.role || 'staff';
+        const isAdmin = userRole === 'superadmin' || userRole === 'admin';
 
         // Define which elements to hide for each department
         const menuMappings = {
             'survey': [
-                'nav-registration_list', 'nav-academic_list', 'nav-report',
+                'nav-registration_list', 'nav-academic_list', 'nav-report', 'nav-old-backlog', 'nav-sameday-report',
+                'mobile-nav-report', 'mobile-nav-sameday-report',
                 'nav-add-registration', 'nav-add-academic',
                 'nav-import-registration', 'nav-import-academic',
                 'nav-sameday-registration', 'nav-sameday-academic',
@@ -148,7 +150,8 @@ window.app = {
                 'nav-completed-registration', 'nav-completed-academic'
             ],
             'registration': [
-                'nav-survey_list', 'nav-academic_list', 'nav-report',
+                'nav-survey_list', 'nav-academic_list', 'nav-report', 'nav-old-backlog', 'nav-sameday-report',
+                'mobile-nav-report', 'mobile-nav-sameday-report',
                 'nav-add-survey', 'nav-add-academic',
                 'nav-import-survey', 'nav-import-academic',
                 'nav-sameday-survey', 'nav-sameday-academic',
@@ -156,25 +159,34 @@ window.app = {
                 'nav-completed-survey', 'nav-completed-academic'
             ],
             'academic': [
-                'nav-survey_list', 'nav-registration_list', 'nav-report',
+                'nav-survey_list', 'nav-registration_list', 'nav-report', 'nav-old-backlog', 'nav-sameday-report',
+                'mobile-nav-report', 'mobile-nav-sameday-report',
                 'nav-add-survey', 'nav-add-registration',
                 'nav-import-survey', 'nav-import-registration',
-                'nav-sameday-survey', 'nav-sameday-registration',
+                'nav-sameday-survey', 'nav-sameday_registration',
                 'nav-import-completed-survey', 'nav-import-completed-registration',
                 'nav-completed-survey', 'nav-completed-registration'
             ]
         };
 
         // Show all menus first (reset)
-        document.querySelectorAll('.nav-item, .nav-import-btn').forEach(el => {
-            el.style.display = '';
+        document.querySelectorAll('.nav-item, .nav-import-btn, .mobile-nav-item').forEach(el => {
+            el.classList.remove('hidden');
         });
+
+        // Hide reports for non-admins
+        if (!isAdmin) {
+            ['nav-report', 'nav-old-backlog', 'nav-sameday-report', 'mobile-nav-report', 'mobile-nav-sameday-report'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.add('hidden');
+            });
+        }
 
         // If department-specific user, hide other department menus
         if (userDept !== 'all' && menuMappings[userDept]) {
             menuMappings[userDept].forEach(menuId => {
                 const el = document.getElementById(menuId);
-                if (el) el.style.display = 'none';
+                if (el) el.classList.add('hidden');
             });
         }
     },
@@ -597,6 +609,12 @@ window.app = {
             );
         }
 
+        // Auto-reset page if current page becomes empty after refresh
+        const maxPage = Math.ceil(items.length / this.academicItemsPerPage) || 1;
+        if (this.currentAcademicPage > maxPage) {
+            this.currentAcademicPage = maxPage;
+        }
+
         // Sorting (Default to date desc)
         items.sort((a, b) => new Date(b.received_date) - new Date(a.received_date));
 
@@ -711,6 +729,12 @@ window.app = {
         if (this.registrationProgressFilter && this.registrationProgressFilter !== 'all') {
             const pType = parseInt(this.registrationProgressFilter, 10);
             items = items.filter(item => parseInt(item.progress_type, 10) === pType);
+        }
+
+        // Auto-reset page if current page becomes empty after refresh
+        const maxPage = Math.ceil(items.length / this.registrationItemsPerPage) || 1;
+        if (this.currentRegistrationPage > maxPage) {
+            this.currentRegistrationPage = maxPage;
         }
 
         if (listContainer) {
@@ -845,6 +869,12 @@ window.app = {
                 (item.plot_no && item.plot_no.toLowerCase().includes(lowerTerm)) ||
                 (item.received_seq && item.received_seq.toLowerCase().includes(lowerTerm))
             );
+        }
+
+        // Auto-reset page if current page becomes empty after refresh
+        const maxPage = Math.ceil(items.length / this.surveyItemsPerPage) || 1;
+        if (this.currentSurveyPage > maxPage) {
+            this.currentSurveyPage = maxPage;
         }
 
         // 3. Sort
@@ -1234,28 +1264,31 @@ window.app = {
         }
     },
 
-    setSurveyStatusView(view) {
+    async setSurveyStatusView(view) {
         this.surveyStatusView = view;
         this.currentSurveyPage = 1;
-        // Force full render by clearing content (so the tab buttons get updated)
-        document.getElementById('app-content').innerHTML = '';
-        this.refreshSurveyList();
+        // Show loading indicator while switching
+        const content = document.getElementById('app-content');
+        content.innerHTML = '<div class="flex items-center justify-center h-64"><i class="fas fa-spinner fa-spin text-4xl text-indigo-500"></i></div>';
+        await this.refreshSurveyList();
     },
 
-    setRegistrationStatusView(view) {
+    async setRegistrationStatusView(view) {
         this.registrationStatusView = view;
         this.currentRegistrationPage = 1;
-        // Force full render by clearing content (so the tab buttons get updated)
-        document.getElementById('app-content').innerHTML = '';
-        this.refreshRegistrationList();
+        // Show loading indicator while switching
+        const content = document.getElementById('app-content');
+        content.innerHTML = '<div class="flex items-center justify-center h-64"><i class="fas fa-spinner fa-spin text-4xl text-emerald-500"></i></div>';
+        await this.refreshRegistrationList();
     },
 
-    setAcademicStatusView(view) {
+    async setAcademicStatusView(view) {
         this.academicStatusView = view;
         this.currentAcademicPage = 1;
-        // Force full render by clearing content (so the tab buttons get updated)
-        document.getElementById('app-content').innerHTML = '';
-        this.refreshAcademicList();
+        // Show loading indicator while switching
+        const content = document.getElementById('app-content');
+        content.innerHTML = '<div class="flex items-center justify-center h-64"><i class="fas fa-spinner fa-spin text-4xl text-amber-500"></i></div>';
+        await this.refreshAcademicList();
     },
 
     // KPI Report Date Handler
@@ -1582,6 +1615,9 @@ window.app = {
                 this.viewAcademicDetail(itemId);
             }
 
+            // Refresh the main list in background (Real-time update)
+            this.refreshLists(workType);
+
             Swal.fire({
                 icon: 'success',
                 title: 'อัปเดตหมวดหมู่แล้ว!',
@@ -1899,6 +1935,18 @@ window.app = {
                     </div>
                     ` : ''}
 
+                    <!-- Mode Selection -->
+                    <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                        <label class="flex items-center cursor-pointer group">
+                            <div class="relative">
+                                <input type="checkbox" id="import-mode-update" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-${color}-600"></div>
+                            </div>
+                            <span class="ml-3 text-sm font-bold text-gray-700 group-hover:text-${color}-600 transition-colors">โหมดอัปเดตสาเหตุค้าง (Update Mode)</span>
+                        </label>
+                        <p class="text-[10px] text-gray-400 mt-2 ml-14"><i class="fas fa-info-circle mr-1"></i> ใช้เพื่ออัปเดตงานที่มีอยู่แล้วในระบบ โดยเช็คจาก วันที่รับ, ประเภทงาน และชื่อผู้ขอ</p>
+                    </div>
+
                     <!-- Info -->
                     <div class="text-xs text-gray-400">
                         ${isCompleted ? `
@@ -1922,17 +1970,22 @@ window.app = {
                     return false;
                 }
                 const progressType = document.getElementById('import-progress-type')?.value || '1';
-                return this.processImport(workType, fileInput.files[0], isCompleted, progressType);
+                const isUpdateMode = document.getElementById('import-mode-update')?.checked || false;
+                return this.processImport(workType, fileInput.files[0], isCompleted, progressType, isUpdateMode);
             },
             allowOutsideClick: () => !Swal.isLoading()
         });
     },
 
     // Process import file
-    async processImport(workType, file, isCompleted = false, progressType = '1') {
+    async processImport(workType, file, isCompleted = false, progressType = '1', isUpdateMode = false) {
         const formData = new FormData();
         formData.append('work_type', workType);
         formData.append('file', file);
+
+        if (isUpdateMode) {
+            formData.append('import_mode', 'update');
+        }
 
         // สำหรับการนำเข้างานที่เสร็จแล้ว
         if (isCompleted) {
@@ -1962,8 +2015,12 @@ window.app = {
                     title: 'นำเข้าข้อมูลสำเร็จ!',
                     html: `
                         <div class="text-center">
-                            <p class="text-2xl font-bold text-emerald-600">${result.inserted} รายการ</p>
-                            <p class="text-sm text-gray-500">จากทั้งหมด ${result.total} รายการ</p>
+                            <p class="text-2xl font-bold text-emerald-600">${result.inserted || 0} รายการ</p>
+                            <p class="text-sm text-gray-500 mb-2">จากทั้งหมด ${result.total} รายการ</p>
+                            
+                            ${result.updated ? `<p class="text-xs font-bold text-blue-600"><i class="fas fa-edit mr-1"></i> อัปเดต: ${result.updated} รายการ</p>` : ''}
+                            ${result.skipped ? `<p class="text-xs font-bold text-amber-500"><i class="fas fa-forward mr-1"></i> ข้าม: ${result.skipped} รายการ</p>` : ''}
+                            
                             ${result.errors.length > 0 ? `
                                 <div class="mt-3 text-left bg-red-50 p-3 rounded-lg max-h-32 overflow-y-auto">
                                     <p class="text-xs text-red-600 font-bold mb-1">รายการที่มีปัญหา:</p>
