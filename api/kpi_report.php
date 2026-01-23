@@ -39,12 +39,35 @@ try {
                 $startMonth = $yearMonth . '-01';
                 $endMonth = date('Y-m-t', strtotime($startMonth));
 
-                // Get Saved Data (from manual entries)
-                $saved = [];
+                // Get Saved Data (Aggregated if duplicates exist)
+                $saved = [
+                    'old_work_baseline' => 0,
+                    'new_work_received' => 0,
+                    'new_work_completed' => 0,
+                    'completed_within_30' => 0,
+                    'completed_within_60' => 0,
+                    'completed_over_60' => 0,
+                    'notes' => ''
+                ];
                 if ($yearMonth) {
-                    $stmt = $conn->prepare("SELECT * FROM monthly_kpi_reports WHERE years_month = ? AND department = ?");
+                    $stmt = $conn->prepare("
+                        SELECT 
+                            SUM(old_work_baseline) as old_work_baseline,
+                            SUM(new_work_received) as new_work_received,
+                            SUM(new_work_completed) as new_work_completed,
+                            SUM(completed_within_30) as completed_within_30,
+                            SUM(completed_within_60) as completed_within_60,
+                            SUM(completed_over_60) as completed_over_60,
+                            MAX(notes) as notes
+                        FROM monthly_kpi_reports 
+                        WHERE years_month = ? AND department = ?
+                        GROUP BY years_month, department
+                    ");
                     $stmt->execute([$yearMonth, $dept]);
-                    $saved = $stmt->fetch(PDO::FETCH_ASSOC);
+                    $fetched = $stmt->fetch(PDO::FETCH_ASSOC);
+                    if ($fetched) {
+                        $saved = $fetched;
+                    }
                 }
 
                 $tableMap = [
@@ -137,9 +160,19 @@ try {
                 $maxMonth = $requestedMonth;
             }
 
-            // Pre-fetch all saved manual KPI data for the year in one query
+            // Pre-fetch all saved manual KPI data for the year in one query (Aggregated)
             $savedDataByMonthDept = [];
-            $savedStmt = $conn->prepare("SELECT * FROM monthly_kpi_reports WHERE years_month LIKE ? AND department IN ('survey', 'registration', 'academic')");
+            $savedStmt = $conn->prepare("
+                SELECT 
+                    years_month, 
+                    department,
+                    SUM(completed_within_30) as completed_within_30,
+                    SUM(completed_within_60) as completed_within_60,
+                    MAX(notes) as notes
+                FROM monthly_kpi_reports 
+                WHERE years_month LIKE ? AND department IN ('survey', 'registration', 'academic')
+                GROUP BY years_month, department
+            ");
             $savedStmt->execute([$requestedYear . '-%']);
             while ($row = $savedStmt->fetch(PDO::FETCH_ASSOC)) {
                 $savedDataByMonthDept[$row['years_month']][$row['department']] = $row;

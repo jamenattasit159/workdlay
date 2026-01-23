@@ -298,187 +298,274 @@ window.UI = {
             };
         }
 
-        // Dashboard (more formal tone)
+        // Dashboard (Ultimate SaaS Premium Look)
+        const completionRate = Math.round((stats.completed / (stats.total || 1)) * 100);
+        const userName = window.app?.currentUser?.name || window.app?.currentUser?.username || 'ผู้ใช้งาน';
+
         return `
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- Dashboard Header & Greeting -->
+            <div class="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6" data-aos="fade-down">
+                <div>
+                    <h2 class="text-4xl font-black text-gray-800 tracking-tight">
+                        สวัสดีคุณ <span class="text-gradient-indigo">${userName}</span> 👋
+                    </h2>
+                    <p class="text-gray-500 mt-2 font-medium flex items-center">
+                        <i class="fas fa-calendar-day mr-2 text-indigo-500"></i>
+                        ยินดีต้อนรับสู่ระบบบริหารงานที่ดิน — <span class="ml-1 text-gray-700">${new Date().toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                    </p>
+                </div>
+                <!-- Mini Stats Hero Widget -->
+                <div class="glass-premium rounded-3xl p-1 pr-6 flex items-center shadow-2xl shadow-indigo-100 border border-indigo-50/50">
+                    <div class="relative w-20 h-20">
+                        <svg viewBox="0 0 36 36" class="w-full h-full transform -rotate-90">
+                            <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(99, 102, 241, 0.1)" stroke-width="3" />
+                            <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="url(#blue-grad)" stroke-width="3" stroke-dasharray="${completionRate}, 100" class="animate-progress" />
+                            <defs>
+                                <linearGradient id="blue-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+                                    <stop offset="100%" style="stop-color:#4338ca;stop-opacity:1" />
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <span class="text-sm font-black text-indigo-600">${completionRate}%</span>
+                        </div>
+                    </div>
+                    <div class="ml-3">
+                        <div class="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">ความสำเร็จ</div>
+                        <div class="text-xl font-black text-gray-800">${stats.completed}/${stats.total}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Primary Metric Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
                 <!-- Total Task -->
-                <div class="rounded-2xl p-6 bg-white shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200 relative overflow-hidden" data-aos="fade-up" data-aos-delay="0">
-                    <div class="absolute left-0 top-0 bottom-0 w-1 bg-gray-700/80"></div>
-                    <div class="flex items-start justify-between">
-                        <div>
-                            <div class="text-xs font-semibold text-gray-500 tracking-wide">จำนวนรายการทั้งหมด</div>
-                            <div class="mt-1 text-4xl font-extrabold text-gray-900 tracking-tight">${stats.total}</div>
-                            <div class="mt-2 text-xs text-gray-500">รวมทุกสถานะ</div>
+                <div class="glass-premium card-hover rounded-3xl p-6 relative overflow-hidden group" data-aos="fade-up" data-aos-delay="0">
+                    <div class="absolute right-0 top-0 -mr-6 -mt-6 w-24 h-24 bg-indigo-50 rounded-full group-hover:scale-110 transition-transform duration-500 opacity-50"></div>
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="w-12 h-12 rounded-2xl gradient-indigo flex items-center justify-center text-white shadow-lg shadow-indigo-100">
+                            <i class="fas fa-layer-group text-lg"></i>
                         </div>
-                        <div class="w-10 h-10 rounded-xl bg-gray-100 text-gray-600 flex items-center justify-center">
-                            <i class="fas fa-layer-group"></i>
-                        </div>
+                        <div class="text-xs font-bold text-gray-400 uppercase tracking-widest">จำนวนงานทั้งหมด</div>
+                    </div>
+                    <div class="text-4xl font-black text-gray-800 tracking-tight">${stats.total}</div>
+                    <div class="mt-2 text-xs text-gray-500 flex items-center">
+                        <span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mr-2 animate-pulse"></span>
+                        รายการรวมทุกสถานะ
                     </div>
                 </div>
 
-                <!-- Completed -->
-                <div class="rounded-2xl p-6 bg-white shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200 relative overflow-hidden" data-aos="fade-up" data-aos-delay="100">
-                    <div class="absolute left-0 top-0 bottom-0 w-1 bg-emerald-600"></div>
-                    <div class="flex items-start justify-between">
-                        <div>
-                            <div class="text-xs font-semibold text-gray-500 tracking-wide">ดำเนินการแล้วเสร็จ</div>
-                            <div class="mt-1 text-4xl font-extrabold text-gray-900 tracking-tight">${stats.completed}</div>
-                            <div class="mt-2 text-xs text-gray-500">คิดเป็น ${Math.round((stats.completed / (stats.total || 1) * 100))}% ของทั้งหมด</div>
+                <!-- Completed Tasks -->
+                <div class="glass-premium card-hover rounded-3xl p-6 relative overflow-hidden group" data-aos="fade-up" data-aos-delay="100">
+                    <div class="absolute right-0 top-0 -mr-6 -mt-6 w-24 h-24 bg-emerald-50 rounded-full group-hover:scale-110 transition-transform duration-500 opacity-50"></div>
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="w-12 h-12 rounded-2xl gradient-emerald flex items-center justify-center text-white shadow-lg shadow-emerald-100">
+                            <i class="fas fa-check-double text-lg"></i>
                         </div>
-                        <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
-                            <i class="fas fa-check"></i>
-                        </div>
+                        <div class="text-xs font-bold text-gray-400 uppercase tracking-widest">ดำเนินการแล้วเสร็จ</div>
+                    </div>
+                    <div class="text-4xl font-black text-gray-800 tracking-tight">${stats.completed}</div>
+                    <div class="mt-2 text-xs text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full inline-block">
+                        <i class="fas fa-chart-line mr-1"></i> ${completionRate}% เสร็จสิ้น
                     </div>
                 </div>
 
                 <!-- Over 30 Days -->
-                <div class="rounded-2xl p-6 bg-white shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200 relative overflow-hidden" data-aos="fade-up" data-aos-delay="200">
-                    <div class="absolute left-0 top-0 bottom-0 w-1 bg-amber-500"></div>
-                    <div class="flex items-start justify-between">
-                        <div>
-                            <div class="text-xs font-semibold text-gray-500 tracking-wide">งานค้างเกิน 30 วัน</div>
-                            <div class="mt-1 text-4xl font-extrabold text-gray-900 tracking-tight">${stats.over30}</div>
-                            <div class="mt-2 text-xs text-gray-500">ควรเร่งรัดการดำเนินงาน</div>
+                <div class="glass-premium card-hover rounded-3xl p-6 relative overflow-hidden group" data-aos="fade-up" data-aos-delay="200">
+                    <div class="absolute right-0 top-0 -mr-6 -mt-6 w-24 h-24 bg-amber-50 rounded-full group-hover:scale-110 transition-transform duration-500 opacity-50"></div>
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="w-12 h-12 rounded-2xl gradient-amber flex items-center justify-center text-white shadow-lg shadow-amber-100">
+                            <i class="fas fa-hourglass-start text-lg"></i>
                         </div>
-                        <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center">
-                            <i class="fas fa-exclamation-triangle"></i>
-                        </div>
+                        <div class="text-xs font-bold text-gray-400 uppercase tracking-widest">ค้างเกิน 30 วัน</div>
+                    </div>
+                    <div class="text-4xl font-black text-gray-800 tracking-tight">${stats.over30}</div>
+                    <div class="mt-2 text-xs text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded-full inline-block">
+                        🚨 งานที่ควรเร่งรัด
                     </div>
                 </div>
 
                 <!-- Over 60 Days -->
-                <div class="rounded-2xl p-6 bg-white shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200 relative overflow-hidden" data-aos="fade-up" data-aos-delay="300">
-                    <div class="absolute left-0 top-0 bottom-0 w-1 bg-rose-600"></div>
-                    <div class="flex items-start justify-between">
-                        <div>
-                            <div class="text-xs font-semibold text-gray-500 tracking-wide">งานค้างเกิน 60 วัน</div>
-                            <div class="mt-1 text-4xl font-extrabold text-gray-900 tracking-tight">${stats.over60}</div>
-                            <div class="mt-2 text-xs text-gray-500">ติดตามอย่างใกล้ชิด</div>
+                <div class="glass-premium card-hover rounded-3xl p-6 relative overflow-hidden group" data-aos="fade-up" data-aos-delay="300">
+                    <div class="absolute right-0 top-0 -mr-6 -mt-6 w-24 h-24 bg-rose-50 rounded-full group-hover:scale-110 transition-transform duration-500 opacity-50"></div>
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="w-12 h-12 rounded-2xl gradient-rose flex items-center justify-center text-white shadow-lg shadow-rose-100">
+                            <i class="fas fa-fire-flame-curved text-lg"></i>
                         </div>
-                        <div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-700 flex items-center justify-center">
-                            <i class="fas fa-hourglass-half"></i>
-                        </div>
+                        <div class="text-xs font-bold text-gray-400 uppercase tracking-widest">ค้างเกิน 60 วัน</div>
+                    </div>
+                    <div class="text-4xl font-black text-rose-600 tracking-tight">${stats.over60}</div>
+                    <div class="mt-2 text-xs text-rose-600 font-bold bg-rose-50 px-2 py-0.5 rounded-full inline-block animate-pulse">
+                        ⚠️ ติดตามอย่างใกล้ชิด
                     </div>
                 </div>
             </div>
 
-            <!-- Department Workload Analysis -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8" data-aos="fade-up" data-aos-delay="350">
-                 <!-- Dept Stats -->
-                <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 p-6">
-                    <h3 class="font-bold text-lg text-gray-700 flex items-center mb-6">
-                        <span class="w-2 h-6 bg-blue-500 rounded-full mr-3"></span>
-                        งานค้างแยกตามฝ่าย
-                    </h3>
-                    <div class="space-y-4">
+            <!-- Analysis & Activity Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10" data-aos="fade-up" data-aos-delay="400">
+                <!-- Workload Breakdown -->
+                <div class="glass-premium rounded-3xl p-8 shadow-xl border border-gray-100">
+                    <div class="flex items-center justify-between mb-8">
+                        <div>
+                            <h3 class="font-black text-xl text-gray-800 tracking-tight">ภาระงานค้าง</h3>
+                            <p class="text-xs text-gray-500 font-medium">สัดส่วนงานค้างแยกตามแผนก</p>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
+                            <i class="fas fa-chart-pie"></i>
+                        </div>
+                    </div>
+                    <div class="space-y-6">
                         ${stats.pendingByDept && Object.entries(stats.pendingByDept).length > 0 ?
                 Object.entries(stats.pendingByDept)
-                    .sort(([, a], [, b]) => b - a) //Sort by count desc
+                    .sort(([, a], [, b]) => b - a)
                     .map(([dept, count], idx) => {
                         const percentage = Math.round((count / (stats.pending || 1)) * 100);
-                        const colors = ['bg-blue-500', 'bg-indigo-500', 'bg-purple-500', 'bg-pink-500', 'bg-cyan-500'];
-                        const color = colors[idx % colors.length];
+                        const depts_meta = {
+                            'ฝ่ายรังวัด': { icon: 'fa-vector-square', color: 'from-emerald-400 to-teal-500' },
+                            'ฝ่ายทะเบียน': { icon: 'fa-file-invoice', color: 'from-blue-400 to-indigo-500' },
+                            'กลุ่มงานวิชาการ': { icon: 'fa-book-reader', color: 'from-purple-400 to-pink-500' }
+                        };
+                        const meta = depts_meta[dept] || { icon: 'fa-layer-group', color: 'from-gray-400 to-gray-500' };
+
                         return `
-                                        <div>
-                                            <div class="flex justify-between items-end mb-1">
-                                                <span class="text-sm font-medium text-gray-700">${dept}</span>
-                                                <span class="text-sm font-bold text-gray-800">${count} งาน (${percentage}%)</span>
-                                            </div>
-                                            <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                                                <div class="${color} h-2.5 rounded-full transition-all duration-1000 ease-out" style="width: ${percentage}%"></div>
-                                            </div>
+                                <div>
+                                    <div class="flex justify-between items-end mb-2">
+                                        <div class="flex items-center">
+                                            <div class="w-2 h-2 rounded-full bg-gradient-to-r ${meta.color} mr-2"></div>
+                                            <span class="text-sm font-bold text-gray-700">${dept}</span>
                                         </div>
-                                    `;
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-xs font-bold text-gray-400 tracking-widest uppercase">${count} งาน</span>
+                                            <span class="text-lg font-black text-gray-800">${percentage}%</span>
+                                        </div>
+                                    </div>
+                                    <div class="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                                        <div class="bg-gradient-to-r ${meta.color} h-3 rounded-full transition-all duration-1000 ease-out shadow-inner" style="width: ${percentage}%"></div>
+                                    </div>
+                                </div>
+                            `;
                     }).join('')
-                : '<div class="text-center text-gray-400 py-4">ไม่มีข้อมูลงานค้างแยกตามฝ่าย</div>'
+                : '<div class="text-center text-gray-400 py-10"><i class="fas fa-inbox text-4xl mb-2 opacity-20"></i><p>ไม่มีข้อมูลงานค้าง</p></div>'
             }
                     </div>
                 </div>
 
-                <!-- Alert Summary (Moved here for better layout) -->
-                <div class="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-200 flex flex-col">
-                    <div class="p-4 border-b bg-gray-50 flex items-center justify-between">
-                        <h3 class="font-bold text-lg text-gray-700 flex items-center">
-                            <span class="w-2 h-6 bg-emerald-500 rounded-full mr-3"></span>
-                            สถานะงานค้าง
-                        </h3>
+                <!-- Recent Activity Feed -->
+                <div class="glass-premium rounded-3xl p-8 shadow-xl border border-gray-100 flex flex-col">
+                    <div class="flex items-center justify-between mb-8">
+                        <div>
+                            <h3 class="font-black text-xl text-gray-800 tracking-tight">รายการล่าสุด</h3>
+                            <p class="text-xs text-gray-500 font-medium">ความเคลื่อนไหวย้อนหลัง 8 รายการ</p>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
+                            <i class="fas fa-history"></i>
+                        </div>
                     </div>
-                    <div class="p-8 text-center flex-1 flex flex-col justify-center items-center">
-                        ${stats.pending === 0
-                ? `<div class="w-14 h-14 bg-emerald-50 text-emerald-700 rounded-xl flex items-center justify-center mb-4 text-xl"><i class="fas fa-check"></i></div>
-                               <p class="text-gray-700 font-semibold">ไม่พบงานค้าง</p>
-                               <p class="text-gray-500 text-sm mt-1">สถานะปกติ</p>`
-                : `<div class="w-14 h-14 bg-amber-50 text-amber-700 rounded-xl flex items-center justify-center mb-4 text-xl"><i class="fas fa-exclamation-triangle"></i></div>
-                               <p class="text-gray-700 font-semibold">พบงานค้างจำนวน ${stats.pending} รายการ</p>
-                               <p class="text-gray-500 text-sm mt-1">โปรดตรวจสอบและติดตามความคืบหน้า</p>`
-            }
-                    </div>
-            </div>
-
-            <!-- Removed Department Lists from Dashboard as per user request -->
-
-            <!-- Recent & Urgent Tasks Section -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8" data-aos="fade-up" data-aos-delay="400">
-                <!-- Recent Tasks -->
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div class="p-4 border-b bg-gray-50">
-                        <h3 class="font-bold text-lg text-gray-700 flex items-center">
-                            <span class="w-2 h-6 bg-blue-500 rounded-full mr-3"></span>
-                            <i class="fas fa-clock mr-2 text-blue-600"></i> รายการรับล่าสุด
-                        </h3>
-                    </div>
-                    <div class="p-4 max-h-80 overflow-y-auto">
+                    <div class="flex-1 overflow-y-auto custom-scrollbar -mx-2 px-2">
                         ${this.renderRecentTasks(surveyItems, registrationItems, academicItems)}
                     </div>
                 </div>
-
-                <!-- Urgent Tasks (Over 30 Days) -->
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div class="p-4 border-b bg-gray-50">
-                        <h3 class="font-bold text-lg text-gray-700 flex items-center">
-                            <span class="w-2 h-6 bg-red-500 rounded-full mr-3"></span>
-                            <i class="fas fa-triangle-exclamation mr-2 text-red-600"></i> รายการเร่งด่วน (เกิน 30 วัน)
-                        </h3>
-                    </div>
-                    <div class="p-4 max-h-80 overflow-y-auto">
-                        ${this.renderUrgentTasks(surveyItems, registrationItems, academicItems)}
-                    </div>
-                </div>
             </div>
 
-            <!-- Quick Stats Row -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8" data-aos="fade-up" data-aos-delay="450">
-                <div class="bg-white rounded-xl p-4 shadow-lg border border-gray-100 text-center hover:shadow-xl transition-shadow cursor-pointer" onclick="app.navigate('report')">
-                    <div class="text-3xl mb-2">📊</div>
-                    <div class="text-2xl font-black text-gray-700">${Math.round((stats.completed / (stats.total || 1)) * 100)}%</div>
-                    <div class="text-xs text-gray-500 mt-1">อัตราเสร็จสิ้น</div>
-                </div>
-                <div class="bg-white rounded-xl p-4 shadow-lg border border-gray-100 text-center hover:shadow-xl transition-shadow">
-                    <div class="text-3xl mb-2">⏱️</div>
-                    <div class="text-2xl font-black text-gray-700">${stats.pending}</div>
-                    <div class="text-xs text-gray-500 mt-1">รอดำเนินการ</div>
-                </div>
+            <!-- Ultimate Action Hub -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" data-aos="fade-up" data-aos-delay="500">
+                <!-- Action: New Report -->
                 ${(window.app?.currentUser?.role === 'superadmin' || window.app?.currentUser?.role === 'admin') ? `
-                <a href="sameday_report.html" class="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl p-4 shadow-lg border border-emerald-400 text-center hover:shadow-xl transition-all hover:scale-105 group">
-                    <div class="text-3xl mb-2 group-hover:scale-110 transition-transform text-white">📋</div>
-                    <div class="text-lg font-bold text-white tracking-tight">งานเกิดเสร็จวันเดียว</div>
-                    <div class="text-[10px] text-emerald-100 mt-1 uppercase font-bold tracking-widest">เปิดรายงาน</div>
-                </a>
+                <div class="glass-premium card-hover rounded-3xl p-6 group cursor-pointer border-l-4 border-indigo-500" onclick="app.navigate('report')">
+                    <div class="flex items-center gap-4">
+                        <div class="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-2xl group-hover:scale-110 group-hover:bg-indigo-500 group-hover:text-white transition-all duration-300">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div>
+                            <div class="text-lg font-black text-gray-800 tracking-tight">รายงาน KPI</div>
+                            <div class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">แผนงานงานค้าง</div>
+                        </div>
+                    </div>
+                </div>
                 ` : `
-                <div class="bg-white rounded-xl p-4 shadow-lg border border-gray-100 text-center hover:shadow-xl transition-shadow">
-                    <div class="text-3xl mb-2">🏢</div>
-                    <div class="text-2xl font-black text-gray-700">${Object.keys(stats.pendingByDept || {}).length}</div>
-                    <div class="text-xs text-gray-500 mt-1">จำนวนฝ่าย</div>
+                <div class="glass-premium rounded-3xl p-6 opacity-60 grayscale border-l-4 border-gray-300">
+                    <div class="flex items-center gap-4">
+                        <div class="w-14 h-14 rounded-2xl bg-gray-50 text-gray-400 flex items-center justify-center text-2xl">
+                            <i class="fas fa-lock"></i>
+                        </div>
+                        <div>
+                            <div class="text-lg font-black text-gray-800 tracking-tight italic">รายงาน KPI</div>
+                            <div class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5 italic">ผู้ดูแลระบบเท่านั้น</div>
+                        </div>
+                    </div>
                 </div>
                 `}
-                <div class="bg-white rounded-xl p-4 shadow-lg border border-gray-100 text-center hover:shadow-xl transition-shadow">
-                    <div class="text-3xl mb-2">${stats.over60 > 0 ? '🔥' : '✅'}</div>
-                    <div class="text-2xl font-black ${stats.over60 > 0 ? 'text-red-600' : 'text-emerald-600'}">${stats.over60 > 0 ? stats.over60 : 'OK'}</div>
-                    <div class="text-xs text-gray-500 mt-1">${stats.over60 > 0 ? 'ค้างเกิน 60 วัน' : 'ไม่พบรายการค้างเกิน 60 วัน'}</div>
+
+                <!-- Action: Sameday Report -->
+                ${(window.app?.currentUser?.role === 'superadmin' || window.app?.currentUser?.role === 'admin') ? `
+                <a href="sameday_report.html" class="glass-premium card-hover rounded-3xl p-6 group border-l-4 border-emerald-500 block">
+                    <div class="flex items-center gap-4">
+                        <div class="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl group-hover:scale-110 group-hover:bg-emerald-500 group-hover:text-white transition-all duration-300">
+                            <i class="fas fa-file-circle-check"></i>
+                        </div>
+                        <div>
+                            <div class="text-lg font-black text-gray-800 tracking-tight">เกิดเสร็จวันเดียว</div>
+                            <div class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Sameday Report</div>
+                        </div>
+                    </div>
+                </a>
+                ` : `
+                <div class="glass-premium rounded-3xl p-6 opacity-60 grayscale border-l-4 border-gray-300">
+                    <div class="flex items-center gap-4">
+                        <div class="w-14 h-14 rounded-2xl bg-gray-50 text-gray-400 flex items-center justify-center text-2xl">
+                            <i class="fas fa-lock"></i>
+                        </div>
+                        <div>
+                            <div class="text-lg font-black text-gray-800 tracking-tight italic">เกิดเสร็จวันเดียว</div>
+                            <div class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5 italic">ผู้ดูแลระบบเท่านั้น</div>
+                        </div>
+                    </div>
+                </div>
+                `}
+
+                <!-- Action: Backlog History -->
+                ${(window.app?.currentUser?.role === 'superadmin' || window.app?.currentUser?.role === 'admin') ? `
+                <div class="glass-premium card-hover rounded-3xl p-6 group cursor-pointer border-l-4 border-amber-500" onclick="app.navigate('old_backlog')">
+                    <div class="flex items-center gap-4">
+                        <div class="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-2xl group-hover:scale-110 group-hover:bg-amber-500 group-hover:text-white transition-all duration-300">
+                            <i class="fas fa-folder-open"></i>
+                        </div>
+                        <div>
+                            <div class="text-lg font-black text-gray-800 tracking-tight">งานค้างย้อนหลัง</div>
+                            <div class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Old Backlog</div>
+                        </div>
+                    </div>
+                </div>
+                ` : `
+                <div class="glass-premium rounded-3xl p-6 opacity-60 grayscale border-l-4 border-gray-300">
+                    <div class="flex items-center gap-4">
+                        <div class="w-14 h-14 rounded-2xl bg-gray-50 text-gray-400 flex items-center justify-center text-2xl">
+                            <i class="fas fa-lock"></i>
+                        </div>
+                        <div>
+                            <div class="text-lg font-black text-gray-800 tracking-tight italic">งานค้างย้อนหลัง</div>
+                            <div class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5 italic">ผู้ดูแลระบบเท่านั้น</div>
+                        </div>
+                    </div>
+                </div>
+                `}
+
+                <!-- Action: System Status -->
+                <div class="glass-premium rounded-3xl p-6 border-l-4 border-rose-500 flex items-center gap-4">
+                    <div class="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center text-2xl">
+                        <i class="fas fa-server"></i>
+                    </div>
+                    <div>
+                        <div class="text-lg font-black text-gray-800 tracking-tight">System Status</div>
+                        <div class="flex items-center mt-1">
+                            <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse mr-1.5"></span>
+                            <span class="text-[10px] text-emerald-600 font-black uppercase tracking-widest">Normal</span>
+                        </div>
+                    </div>
                 </div>
             </div>
-
-            `;
+        `;
     },
 
     //Helper function for Recent Tasks
@@ -504,16 +591,19 @@ window.UI = {
                 : '<span class="px-2 py-0.5 text-[10px] rounded-full bg-amber-100 text-amber-700"><i class="fas fa-hourglass-half mr-1"></i>รอ</span>';
 
             return `
-                <div class="flex items-center py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors rounded-lg px-2 ${opacityClass}">
-                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 flex flex-col items-center justify-center text-center mr-3 flex-shrink-0">
-                        <span class="text-lg font-bold text-gray-700">${date.getDate()}</span>
-                        <span class="text-[10px] text-gray-500">${date.toLocaleDateString('th-TH', { month: 'short' })}</span>
+                <div class="flex items-center p-3 mb-2 rounded-2xl hover:bg-gray-50/80 transition-all duration-300 group border border-transparent hover:border-gray-100 hover:shadow-sm">
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col items-center justify-center text-center mr-4 flex-shrink-0 group-hover:scale-110 transition-transform shadow-sm">
+                        <span class="text-lg font-black text-gray-700 leading-tight">${date.getDate()}</span>
+                        <span class="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">${date.toLocaleDateString('th-TH', { month: 'short' })}</span>
                     </div>
                     <div class="flex-1 min-w-0">
-                        <p class="font-medium text-gray-800 truncate">${title}</p>
-                        <div class="flex items-center gap-2 mt-1">
-                            <span class="px-2 py-0.5 text-[10px] rounded-full ${deptColor}">${dept}</span>
+                        <div class="flex justify-between items-start mb-1">
+                            <p class="font-bold text-gray-800 truncate group-hover:text-indigo-600 transition-colors">${title}</p>
                             ${statusBadge}
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 text-[9px] font-black rounded-lg uppercase tracking-widest ${deptColor}">${dept}</span>
+                            <span class="text-[10px] text-gray-400 truncate">${item.summary ? item.summary.substring(0, 30) + '...' : '-'}</span>
                         </div>
                     </div>
                 </div>

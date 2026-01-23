@@ -163,7 +163,7 @@ window.app = {
                 'mobile-nav-report', 'mobile-nav-sameday-report',
                 'nav-add-survey', 'nav-add-registration',
                 'nav-import-survey', 'nav-import-registration',
-                'nav-sameday-survey', 'nav-sameday_registration',
+                'nav-sameday-survey', 'nav-sameday-registration',
                 'nav-import-completed-survey', 'nav-import-completed-registration',
                 'nav-completed-survey', 'nav-completed-registration'
             ]
@@ -403,36 +403,42 @@ window.app = {
             }
         }
 
-        // Reset active nav state
+        // Reset active nav state efficiently without overwriting className (preserving 'hidden')
         document.querySelectorAll('.nav-item').forEach(el => {
-            el.className = 'nav-item w-full flex items-center p-3 rounded-lg hover:bg-emerald-50 hover:text-emerald-600 transition-all duration-300 text-left group text-gray-600';
+            el.classList.remove('bg-emerald-50', 'text-emerald-700', 'font-bold', 'shadow-sm', 'border-l-4', 'border-emerald-500',
+                'bg-indigo-50', 'text-indigo-700', 'border-indigo-500',
+                'bg-blue-50', 'text-blue-700', 'border-blue-500',
+                'bg-orange-50', 'text-orange-700', 'border-orange-500',
+                'bg-purple-50', 'text-purple-700', 'border-purple-500');
+            el.classList.add('hover:bg-emerald-50', 'hover:text-emerald-600', 'text-gray-600');
+
             const iconDiv = el.querySelector('div');
-            if (iconDiv) iconDiv.className = 'p-2 bg-gray-100 rounded-lg group-hover:bg-emerald-100 mr-3 transition-colors text-gray-400 group-hover:text-emerald-600';
+            if (iconDiv) {
+                iconDiv.className = 'p-2 bg-gray-100 rounded-lg group-hover:bg-emerald-100 mr-3 transition-colors text-gray-400 group-hover:text-emerald-600';
+            }
         });
 
         const activeNav = document.getElementById(`nav-${page}`);
         if (activeNav) {
-            // Check for specific colors based on page type (Survey=Indigo, Registration=Blue?)
-            // For now, defaulting to standard active style or specific overrides if I added classes
+            activeNav.classList.remove('text-gray-600');
+            activeNav.classList.add('font-bold', 'shadow-sm', 'transition-all', 'duration-300', 'text-left', 'group', 'border-l-4');
+
+            const iconDiv = activeNav.querySelector('div');
+
             if (page === 'survey_list') {
-                activeNav.className = 'nav-item w-full flex items-center p-3 rounded-lg bg-indigo-50 text-indigo-700 font-bold shadow-sm transition-all duration-300 text-left group border-l-4 border-indigo-500';
-                const iconDiv = activeNav.querySelector('div');
+                activeNav.classList.add('bg-indigo-50', 'text-indigo-700', 'border-indigo-500');
                 if (iconDiv) iconDiv.className = 'p-2 bg-indigo-100 rounded-lg mr-3 transition-colors text-indigo-600';
             } else if (page === 'registration_list') {
-                activeNav.className = 'nav-item w-full flex items-center p-3 rounded-lg bg-blue-50 text-blue-700 font-bold shadow-sm transition-all duration-300 text-left group border-l-4 border-blue-500';
-                const iconDiv = activeNav.querySelector('div');
+                activeNav.classList.add('bg-blue-50', 'text-blue-700', 'border-blue-500');
                 if (iconDiv) iconDiv.className = 'p-2 bg-blue-100 rounded-lg mr-3 transition-colors text-blue-600';
             } else if (page === 'academic_list') {
-                activeNav.className = 'nav-item w-full flex items-center p-3 rounded-lg bg-orange-50 text-orange-700 font-bold shadow-sm transition-all duration-300 text-left group border-l-4 border-orange-500';
-                const iconDiv = activeNav.querySelector('div');
+                activeNav.classList.add('bg-orange-50', 'text-orange-700', 'border-orange-500');
                 if (iconDiv) iconDiv.className = 'p-2 bg-orange-100 rounded-lg mr-3 transition-colors text-orange-600';
             } else if (page === 'sync_page') {
-                activeNav.className = 'nav-item w-full flex items-center p-3 rounded-lg bg-purple-50 text-purple-700 font-bold shadow-sm transition-all duration-300 text-left group border-l-4 border-purple-500';
-                const iconDiv = activeNav.querySelector('div');
+                activeNav.classList.add('bg-purple-50', 'text-purple-700', 'border-purple-500');
                 if (iconDiv) iconDiv.className = 'p-2 bg-purple-100 rounded-lg mr-3 transition-colors text-purple-600';
             } else {
-                activeNav.className = 'nav-item w-full flex items-center p-3 rounded-lg bg-emerald-50 text-emerald-700 font-bold shadow-sm transition-all duration-300 text-left group border-l-4 border-emerald-500';
-                const iconDiv = activeNav.querySelector('div');
+                activeNav.classList.add('bg-emerald-50', 'text-emerald-700', 'border-emerald-500');
                 if (iconDiv) iconDiv.className = 'p-2 bg-emerald-100 rounded-lg mr-3 transition-colors text-emerald-600';
             }
         }
