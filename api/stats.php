@@ -1,0 +1,140 @@
+<?php
+/**
+ * Stats API
+ * คำนวณยอดสรุปจากหลังบ้านเพื่อให้ Dashboard ทำงานได้รวดเร็ว
+ */
+header('Content-Type: application/json; charset=utf-8');
+header('Access-Control-Allow-Origin: *');
+
+include_once 'db.php';
+
+try {
+    $department = $_GET['department'] ?? 'all';
+
+    $tableMap = [
+        'survey' => 'survey_works',
+        'registration' => 'registration_works',
+        'academic' => 'academic_works'
+    ];
+
+    $tables = ($department === 'all') ? array_values($tableMap) : [$tableMap[$department]];
+
+    $stats = [
+        'total' => 0,
+        'pending' => 0,
+        'completed' => 0,
+        'over30' => 0,
+        'over60' => 0,
+        'pendingByDept' => [
+            'ฝ่ายรังวัด' => 0,
+            'ฝ่ายทะเบียน' => 0,
+            'กลุ่มงานวิชาการ' => 0
+        ],
+        'pendingBreakdown' => [
+            'ฝ่ายรังวัด' => ['type2' => 0, 'type4' => 0, 'other' => 0],
+            'ฝ่ายทะเบียน' => ['type2' => 0, 'type4' => 0, 'other' => 0],
+            'กลุ่มงานวิชาการ' => ['type2' => 0, 'type4' => 0, 'other' => 0]
+        ],
+        'kpi' => [
+            'oldWork' => ['total' => 0, 'pending' => 0, 'completed' => 0, 'percent' => 0],
+            'newWork' => ['total' => 0, 'within30' => 0, 'within60' => 0]
+        ]
+    ];
+
+    $deptLabelMap = [
+        'survey_works' => 'ฝ่ายรังวัด',
+        'registration_works' => 'ฝ่ายทะเบียน',
+        'academic_works' => 'กลุ่มงานวิชาการ'
+    ];
+
+    $baselineDate = '2025-12-31';
+    $newWorkStartDate = '2026-01-01';
+    $now = date('Y-m-d');
+
+    foreach ($tables as $table) {
+        $label = $deptLabelMap[$table];
+
+        // 1. Basic counts
+        $sql = "SELECT 
+                    COUNT(*) as total,
+                    SUM(CASE WHEN (completion_date IS NULL OR completion_date = '0000-00-00') THEN 1 ELSE 0 END) as pending,
+                    SUM(CASE WHEN (completion_date IS NOT NULL AND completion_date != '0000-00-00') THEN 1 ELSE 0 END) as completed,
+                    
+                    -- Over 30/60 days (Pending only)
+                    SUM(CASE WHEN (completion_date IS NULL OR completion_date = '0000-00-00') 
+                             AND DATEDIFF(:now1, received_date) > 60 THEN 1 ELSE 0 END) as over60,
+                    SUM(CASE WHEN (completion_date IS NULL OR completion_date = '0000-00-00') 
+                             AND DATEDIFF(:now2, received_date) > 30 
+                             AND DATEDIFF(:now3, received_date) <= 60 THEN 1 ELSE 0 END) as over30,
+                    
+                    -- Pending Breakdown
+                    SUM(CASE WHEN (completion_date IS NULL OR completion_date = '0000-00-00') AND progress_type = 2 THEN 1 ELSE 0 END) as type2,
+                    SUM(CASE WHEN (completion_date IS NULL OR completion_date = '0000-00-00') AND progress_type = 4 THEN 1 ELSE 0 END) as type4,
+                    SUM(CASE WHEN (completion_date IS NULL OR completion_date = '0000-00-00') AND progress_type NOT IN (2, 4) THEN 1 ELSE 0 END) as other_pending,
+
+                    -- KPI Old Work (<= 2025-12-31)
+                    SUM(CASE WHEN received_date <= :baseline1 THEN 1 ELSE 0 END) as old_total,
+                    SUM(CASE WHEN received_date <= :baseline2 AND (completion_date IS NULL OR completion_date = '0000-00-00') THEN 1 ELSE 0 END) as old_pending,
+                    SUM(CASE WHEN received_date <= :baseline3 AND (completion_date IS NOT NULL AND completion_date != '0000-00-00') THEN 1 ELSE 0 END) as old_completed,
+
+                    -- KPI New Work (>= 2026-01-01)
+                    SUM(CASE WHEN received_date >= :newstart1 THEN 1 ELSE 0 END) as new_total,
+                    SUM(CASE WHEN received_date >= :newstart2 AND (completion_date IS NOT NULL AND completion_date != '0000-00-00') AND DATEDIFF(completion_date, received_date) <= 30 THEN 1 ELSE 0 END) as new_within30,
+                    SUM(CASE WHEN received_date >= :newstart3 AND (completion_date IS NOT NULL AND completion_date != '0000-00-00') AND DATEDIFF(completion_date, received_date) <= 60 THEN 1 ELSE 0 END) as new_within60
+                FROM $table";
+
+        $stmt = $conn->prepare($sql);
+        $stmt->execute([
+            'now1' => $now,
+            'now2' => $now,
+            'now3' => $now,
+            'baseline1' => $baselineDate,
+            'baseline2' => $baselineDate,
+            'baseline3' => $baselineDate,
+            'newstart1' => $newWorkStartDate,
+            'newstart2' => $newWorkStartDate,
+            'newstart3' => $newWorkStartDate
+        ]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $stats['total'] += (int) $row['total'];
+        $stats['pending'] += (int) $row['pending'];
+        $stats['completed'] += (int) $row['completed'];
+        $stats['over30'] += (int) $row['over30'];
+        $stats['over60'] += (int) $row['over60'];
+
+        $stats['pendingByDept'][$label] = (int) $row['pending'];
+        $stats['pendingBreakdown'][$label]['type2'] = (int) $row['type2'];
+        $stats['pendingBreakdown'][$label]['type4'] = (int) $row['type4'];
+        $stats['pendingBreakdown'][$label]['other'] = (int) $row['other_pending'];
+
+        $stats['kpi']['oldWork']['total'] += (int) $row['old_total'];
+        $stats['kpi']['oldWork']['pending'] += (int) $row['old_pending'];
+        $stats['kpi']['oldWork']['completed'] += (int) $row['old_completed'];
+
+        $stats['kpi']['newWork']['total'] += (int) $row['new_total'];
+        // Note: These are raw counts, percentages will be calculated at the end
+        $stats['kpi']['newWork']['_within30'] = ($stats['kpi']['newWork']['_within30'] ?? 0) + (int) $row['new_within30'];
+        $stats['kpi']['newWork']['_within60'] = ($stats['kpi']['newWork']['_within60'] ?? 0) + (int) $row['new_within60'];
+    }
+
+    // Final calculations
+    if ($stats['kpi']['oldWork']['total'] > 0) {
+        $stats['kpi']['oldWork']['percent'] = ($stats['kpi']['oldWork']['completed'] / $stats['kpi']['oldWork']['total']) * 100;
+    }
+
+    if ($stats['kpi']['newWork']['total'] > 0) {
+        $stats['kpi']['newWork']['within30'] = ($stats['kpi']['newWork']['_within30'] / $stats['kpi']['newWork']['total']) * 100;
+        $stats['kpi']['newWork']['within60'] = ($stats['kpi']['newWork']['_within60'] / $stats['kpi']['newWork']['total']) * 100;
+    }
+
+    // Clean up temporary fields
+    unset($stats['kpi']['newWork']['_within30']);
+    unset($stats['kpi']['newWork']['_within60']);
+
+    echo json_encode($stats);
+
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode(['error' => $e->getMessage()]);
+}

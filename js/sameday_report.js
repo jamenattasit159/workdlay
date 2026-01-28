@@ -14,12 +14,16 @@ window.samedayReport = {
      * Initialize the report page
      */
     init() {
-        // Permission check
+        // Permission check: allow admins and authorized department staff
         const user = JSON.parse(localStorage.getItem('dol_user'));
-        if (!user || (user.role !== 'superadmin' && user.role !== 'admin')) {
+        const isAdmin = user && (user.role === 'superadmin' || user.role === 'admin');
+        const isAuthorizedStaff = user && user.role === 'staff' && ['survey', 'registration', 'academic'].includes(user.department);
+
+        if (!user || (!isAdmin && !isAuthorizedStaff)) {
             window.location.href = 'index.html';
             return;
         }
+
 
         // Initialize AOS animations
         AOS.init({
@@ -34,7 +38,18 @@ window.samedayReport = {
         // Set default month to current month
         const today = new Date();
         const yearMonth = today.toISOString().slice(0, 7);
-        document.getElementById('filter-month').value = yearMonth;
+        const monthInput = document.getElementById('filter-month');
+        if (monthInput) monthInput.value = yearMonth;
+
+        // If not admin, lock department filter
+        if (!isAdmin) {
+            const deptSelect = document.getElementById('filter-department');
+            if (deptSelect) {
+                deptSelect.value = user.department;
+                deptSelect.disabled = true;
+                deptSelect.classList.add('bg-gray-100', 'cursor-not-allowed');
+            }
+        }
 
         // Load initial data
         this.loadReport();

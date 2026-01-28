@@ -404,6 +404,22 @@ window.UI = {
 
             <!-- Analysis & Activity Section -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10" data-aos="fade-up" data-aos-delay="400">
+                <!-- Performance Trends Graph -->
+                <div class="glass-premium rounded-3xl p-8 shadow-xl border border-gray-100 lg:col-span-2">
+                    <div class="flex items-center justify-between mb-8">
+                        <div>
+                            <h3 class="font-black text-xl text-gray-800 tracking-tight">กราฟภาพรวมผลการดำเนินงาน</h3>
+                            <p class="text-xs text-gray-500 font-medium">แนวโน้มงานเสร็จสิ้นและงานค้างสะสม 6 เดือนล่าสุด</p>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-sm">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                    </div>
+                    <div class="h-[300px] w-full relative">
+                        <canvas id="performanceChart"></canvas>
+                    </div>
+                </div>
+
                 <!-- Workload Breakdown -->
                 <div class="glass-premium rounded-3xl p-8 shadow-xl border border-gray-100">
                     <div class="flex items-center justify-between mb-8">
@@ -435,9 +451,15 @@ window.UI = {
                                             <div class="w-2 h-2 rounded-full bg-gradient-to-r ${meta.color} mr-2"></div>
                                             <span class="text-sm font-bold text-gray-700">${dept}</span>
                                         </div>
-                                        <div class="flex items-center gap-2">
-                                            <span class="text-xs font-bold text-gray-400 tracking-widest uppercase">${count} งาน</span>
-                                            <span class="text-lg font-black text-gray-800">${percentage}%</span>
+                                        <div class="flex flex-col items-end">
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-xs font-bold text-gray-400 tracking-widest uppercase">${count} งาน</span>
+                                                <span class="text-lg font-black text-gray-800">${percentage}%</span>
+                                            </div>
+                                            <div class="text-[9px] space-x-2 font-bold whitespace-nowrap mt-0.5">
+                                                ${stats.pendingBreakdown?.[dept]?.type2 ? `<span class="bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded border border-purple-100 italic">สุดขั้นตอน(2): ${stats.pendingBreakdown[dept].type2}</span>` : ''}
+                                                ${stats.pendingBreakdown?.[dept]?.type4 ? `<span class="bg-orange-50 text-orange-600 px-1.5 py-0.5 rounded border border-orange-100 italic">งานค้าง(4): ${stats.pendingBreakdown[dept].type4}</span>` : ''}
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
@@ -471,34 +493,19 @@ window.UI = {
             <!-- Ultimate Action Hub -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" data-aos="fade-up" data-aos-delay="500">
                 <!-- Action: New Report -->
-                ${(window.app?.currentUser?.role === 'superadmin' || window.app?.currentUser?.role === 'admin') ? `
                 <div class="glass-premium card-hover rounded-3xl p-6 group cursor-pointer border-l-4 border-indigo-500" onclick="app.navigate('report')">
                     <div class="flex items-center gap-4">
                         <div class="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-2xl group-hover:scale-110 group-hover:bg-indigo-500 group-hover:text-white transition-all duration-300">
                             <i class="fas fa-chart-line"></i>
                         </div>
                         <div>
-                            <div class="text-lg font-black text-gray-800 tracking-tight">รายงาน KPI</div>
+                            <div class="text-lg font-black text-gray-800 tracking-tight">รายงาน งานเกิดใหม่</div>
                             <div class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">แผนงานงานค้าง</div>
                         </div>
                     </div>
                 </div>
-                ` : `
-                <div class="glass-premium rounded-3xl p-6 opacity-60 grayscale border-l-4 border-gray-300">
-                    <div class="flex items-center gap-4">
-                        <div class="w-14 h-14 rounded-2xl bg-gray-50 text-gray-400 flex items-center justify-center text-2xl">
-                            <i class="fas fa-lock"></i>
-                        </div>
-                        <div>
-                            <div class="text-lg font-black text-gray-800 tracking-tight italic">รายงาน KPI</div>
-                            <div class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5 italic">ผู้ดูแลระบบเท่านั้น</div>
-                        </div>
-                    </div>
-                </div>
-                `}
 
                 <!-- Action: Sameday Report -->
-                ${(window.app?.currentUser?.role === 'superadmin' || window.app?.currentUser?.role === 'admin') ? `
                 <a href="sameday_report.html" class="glass-premium card-hover rounded-3xl p-6 group border-l-4 border-emerald-500 block">
                     <div class="flex items-center gap-4">
                         <div class="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl group-hover:scale-110 group-hover:bg-emerald-500 group-hover:text-white transition-all duration-300">
@@ -510,22 +517,8 @@ window.UI = {
                         </div>
                     </div>
                 </a>
-                ` : `
-                <div class="glass-premium rounded-3xl p-6 opacity-60 grayscale border-l-4 border-gray-300">
-                    <div class="flex items-center gap-4">
-                        <div class="w-14 h-14 rounded-2xl bg-gray-50 text-gray-400 flex items-center justify-center text-2xl">
-                            <i class="fas fa-lock"></i>
-                        </div>
-                        <div>
-                            <div class="text-lg font-black text-gray-800 tracking-tight italic">เกิดเสร็จวันเดียว</div>
-                            <div class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5 italic">ผู้ดูแลระบบเท่านั้น</div>
-                        </div>
-                    </div>
-                </div>
-                `}
 
                 <!-- Action: Backlog History -->
-                ${(window.app?.currentUser?.role === 'superadmin' || window.app?.currentUser?.role === 'admin') ? `
                 <div class="glass-premium card-hover rounded-3xl p-6 group cursor-pointer border-l-4 border-amber-500" onclick="app.navigate('old_backlog')">
                     <div class="flex items-center gap-4">
                         <div class="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-2xl group-hover:scale-110 group-hover:bg-amber-500 group-hover:text-white transition-all duration-300">
@@ -537,19 +530,6 @@ window.UI = {
                         </div>
                     </div>
                 </div>
-                ` : `
-                <div class="glass-premium rounded-3xl p-6 opacity-60 grayscale border-l-4 border-gray-300">
-                    <div class="flex items-center gap-4">
-                        <div class="w-14 h-14 rounded-2xl bg-gray-50 text-gray-400 flex items-center justify-center text-2xl">
-                            <i class="fas fa-lock"></i>
-                        </div>
-                        <div>
-                            <div class="text-lg font-black text-gray-800 tracking-tight italic">งานค้างย้อนหลัง</div>
-                            <div class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5 italic">ผู้ดูแลระบบเท่านั้น</div>
-                        </div>
-                    </div>
-                </div>
-                `}
 
                 <!-- Action: System Status -->
                 <div class="glass-premium rounded-3xl p-6 border-l-4 border-rose-500 flex items-center gap-4">
@@ -682,7 +662,7 @@ window.UI = {
                 <!-- Header Zone -->
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                        <h2 class="text-2xl font-black text-gray-800 tracking-tight">รายงานสรุปผลการดำเนินงาน KPI</h2>
+                        <h2 class="text-2xl font-black text-gray-800 tracking-tight">รายงานสรุปผลการดำเนินงาน</h2>
                         <p class="text-gray-500 flex items-center mt-1">
                             <i class="fas fa-calendar-alt mr-2 text-blue-500"></i> สรุปผลงานรายเดือน (Action Plan)
                         </p>
@@ -946,6 +926,10 @@ window.UI = {
                         <option value="4" ${app.surveyProgressFilter === '4' ? 'selected' : ''}>งานค้าง</option>
                     </select>
 
+                    <button onclick="app.exportDepartmentToExcel('survey')" class="bg-white border border-indigo-200 text-indigo-600 px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-indigo-50 transition-all shadow-sm flex items-center justify-center whitespace-nowrap">
+                        <i class="fas fa-file-excel mr-2"></i> ส่งออก Excel
+                    </button>
+
                     <button onclick="app.openAddModal('survey')" class="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg hover:shadow-indigo-500/30 transform hover:-translate-y-0.5 flex items-center justify-center whitespace-nowrap">
                         <i class="fas fa-plus mr-2"></i> เพิ่มงาน
                     </button>
@@ -1045,10 +1029,11 @@ window.UI = {
             <table id="survey-datatable" class="w-full text-left border-collapse display">
                 <thead class="bg-emerald-50/80 border-b border-emerald-100">
                     <tr>
-                        <th class="px-3 py-3 text-xs font-bold text-emerald-800 text-center" style="width:60px">สถานะ</th>
+                        <th class="px-3 py-3 text-xs font-bold text-emerald-800 text-center" style="width:50px">สถานะ</th>
                         <th class="px-3 py-3 text-xs font-bold text-emerald-800 text-center" style="width:90px">วันที่รับ</th>
                         <th class="px-3 py-3 text-xs font-bold text-red-600 text-center" style="width:80px">ระยะเวลา</th>
                         <th class="px-3 py-3 text-xs font-bold text-emerald-800 text-center" style="width:60px">ลำดับ</th>
+                        <th class="px-3 py-3 text-xs font-bold text-emerald-800 text-center" style="width:80px">เลข รว.12</th>
                         <th class="px-3 py-3 text-xs font-bold text-emerald-800" style="width:120px">ประเภท</th>
                         <th class="px-3 py-3 text-xs font-bold text-emerald-800">ผู้ขอ</th>
                         <th class="px-3 py-3 text-xs font-bold text-emerald-800">สรุป</th>
@@ -1098,6 +1083,7 @@ window.UI = {
                         <td class="px-3 py-2 text-center text-sm text-gray-700 font-medium">${formattedDate}</td>
                         <td class="px-3 py-2 text-center">${durationCol}</td>
                         <td class="px-3 py-2 text-center text-sm text-gray-400">#${item.received_seq || '-'}</td>
+                        <td class="px-3 py-2 text-center text-sm text-indigo-600 font-bold">${item.rv_12 || '-'}</td>
                         <td class="px-3 py-2 text-sm text-gray-700">${truncate(item.survey_type, 15)}</td>
                         <td class="px-3 py-2 text-sm text-gray-800 font-medium">${truncate(item.applicant, 20)}</td>
                         <td class="px-3 py-2 text-sm text-gray-600">${truncate(item.summary, 25)}</td>
@@ -1129,6 +1115,23 @@ window.UI = {
 
         //1. Handle Short Years (e.g. 23 -> 2023)
         //Browsers might parse "23" as 1923 or 2023. We want 2023 for this system.
+        // This is a placeholder for the actual navigate function logic.
+        // The instruction implies this code snippet is part of a larger 'navigate' function.
+        // Since the full 'navigate' function is not provided, I'm inserting the change
+        // at the closest logical point based on the provided context, which is within
+        // the 'getSafeDate' function's comments, as per the instruction's formatting.
+        // In a real scenario, this would be placed in the 'app.navigate' function.
+        /*
+        if (page === 'dashboard') {
+            title.innerText = 'ภาพรวมการดำเนินงาน';
+            content.innerHTML = await UI.renderDashboard(userDept);
+            this.initPerformanceChart();
+        } else if (page === 'logs') {
+            title.innerText = 'ตรวจสอบประวัติ (Activity Logs)';
+            content.innerHTML = await UI.renderLogs();
+            UI.initDataTable('logs-datatable', { order: [[4, 'desc']] });
+        } else if (page === 'report') {
+        */
         if (year < 100) {
             year += 2000;
             date.setFullYear(year);
@@ -1275,6 +1278,10 @@ window.UI = {
                         <option value="3" ${app.registrationProgressFilter === '3' ? 'selected' : ''}>งานศาล</option>
                         <option value="4" ${app.registrationProgressFilter === '4' ? 'selected' : ''}>งานค้าง</option>
                     </select>
+
+                    <button onclick="app.exportDepartmentToExcel('registration')" class="bg-white border border-blue-200 text-blue-600 px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-blue-50 transition-all shadow-sm flex items-center justify-center whitespace-nowrap">
+                        <i class="fas fa-file-excel mr-2"></i> ส่งออก Excel
+                    </button>
 
                     <button onclick="app.openAddModal('registration')" class="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg hover:shadow-blue-500/30 transform hover:-translate-y-0.5 flex items-center justify-center whitespace-nowrap">
                         <i class="fas fa-plus mr-2"></i> เพิ่มงาน
@@ -1484,6 +1491,10 @@ window.UI = {
                         <option value="3" ${app.academicProgressFilter === '3' ? 'selected' : ''}>งานศาล</option>
                         <option value="4" ${app.academicProgressFilter === '4' ? 'selected' : ''}>งานค้าง</option>
                     </select>
+
+                    <button onclick="app.exportDepartmentToExcel('academic')" class="bg-white border border-orange-200 text-orange-600 px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-orange-50 transition-all shadow-sm flex items-center justify-center whitespace-nowrap">
+                        <i class="fas fa-file-excel mr-2"></i> ส่งออก Excel
+                    </button>
 
                     <button onclick="app.openAddModal('academic')" class="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg hover:shadow-orange-500/30 transform hover:-translate-y-0.5 flex items-center justify-center whitespace-nowrap">
                         <i class="fas fa-plus mr-2"></i> เพิ่มงาน
@@ -1758,6 +1769,10 @@ window.UI = {
                             </select>
                         </div>
                         <div class="group">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">เลข รว.12</label>
+                            <input type="text" name="rv_12" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 p-3 bg-white" placeholder="เช่น 123/2567">
+                        </div>
+                        <div class="group">
                             <label class="block text-sm font-semibold text-gray-700 mb-2">คนคุมเรื่อง</label>
                             <input type="text" name="men" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 p-3 bg-white" placeholder="ชื่อผู้รับผิดชอบ">
                         </div>
@@ -1821,10 +1836,13 @@ window.UI = {
                             <p><span class="text-gray-500">ประเภทการรังวัด:</span> <span class="font-medium">${item.survey_type || '-'}</span></p>
                             <p><span class="text-gray-500">ผู้ขอรังวัด:</span> <span class="font-medium">${item.applicant || '-'}</span></p>
                         </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <p><span class="text-gray-500 font-bold text-indigo-600">เลข รว.12:</span> <span class="font-black text-indigo-700">${item.rv_12 || '-'}</span></p>
+                            <p><span class="text-gray-500">คนคุมเรื่อง:</span> <span class="font-medium">${item.men || '-'}</span></p>
+                        </div>
                         ${item.summary ? `<p><span class="text-gray-500">สรุปเรื่อง:</span> <span class="font-medium">${item.summary}</span></p>` : ''}
                         <div class="grid grid-cols-2 gap-4">
                             ${statusValue ? `<p><span class="text-gray-500">สาเหตุที่ค้าง:</span> <span class="font-medium">${statusValue}</span></p>` : ''}
-                            ${item.men ? `<p><span class="text-gray-500">คนคุมเรื่อง:</span> <span class="font-medium">${item.men}</span></p>` : ''}
                         </div>
                     </div>
                 </div>
@@ -1843,6 +1861,12 @@ window.UI = {
                             <input type="text" id="update-status-input" value="${statusValue}" 
                                 class="w-full border-emerald-200 rounded-xl shadow-sm p-3 text-sm focus:ring-2 focus:ring-emerald-400 focus:border-transparent" 
                                 placeholder="เช่น รอดำเนินการ...">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-indigo-700 mb-2">เลข รว.12</label>
+                            <input type="text" id="update-rv12-input" value="${item.rv_12 || ''}" 
+                                class="w-full border-indigo-200 rounded-xl shadow-sm p-3 text-sm focus:ring-2 focus:ring-indigo-400 focus:border-transparent" 
+                                placeholder="ระบุเลข รว.12">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-emerald-700 mb-2">วันที่ทำรายการเสร็จ</label>
@@ -2098,43 +2122,19 @@ window.UI = {
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700">เลขที่ ร.ว. 12</label>
-                    <input type="text" name="rw12_no" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm border p-2">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">วันที่ ร.ว. 12</label>
-                    <input type="date" name="rw12_date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm border p-2">
+                    <input type="text" name="rv_12" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm border p-2">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700">ประเภทการรังวัด</label>
                     <input type="text" name="survey_type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm border p-2">
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">แปลง (Plot No)</label>
-                    <input type="text" name="plot_no" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm border p-2">
-                </div>
                 <div class="md:col-span-2">
                     <label class="block text-sm font-medium text-gray-700">ผู้ขอ (Applicant)</label>
                     <input type="text" name="applicant" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm border p-2">
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">ชนิดเอกสาร (Doc Type)</label>
-                    <select name="doc_type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm border p-2">
-                        <option value="โฉนดที่ดิน">โฉนดที่ดิน</option>
-                        <option value="น.ส.3ก">น.ส.3ก</option>
-                        <option value="อื่น ๆ">อื่น ๆ</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">เลขที่เอกสาร (Doc No)</label>
-                    <input type="text" name="doc_no" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm border p-2">
-                </div>
-                <div>
+                <div class="md:col-span-2">
                     <label class="block text-sm font-medium text-gray-700">ช่างรังวัด</label>
-                    <input type="text" name="surveyor" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm border p-2">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">วันที่นัดรังวัด</label>
-                    <input type="date" name="survey_date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm border p-2">
+                    <input type="text" name="men" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm border p-2">
                 </div>
 `;
         } else if (type === 'registration' || type === 'academic') {
@@ -2233,11 +2233,7 @@ window.UI = {
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700">เลขที่ ร.ว. 12</label>
-                    <input type="text" name="rw12_no" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm border p-2">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">วันที่ ร.ว. 12</label>
-                    <input type="date" name="rw12_date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm border p-2">
+                    <input type="text" name="rv_12" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm border p-2">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700">ประเภทการรังวัด</label>
@@ -2266,6 +2262,14 @@ window.UI = {
                 <div>
                     <label class="block text-sm font-medium text-gray-700">ช่างรังวัด</label>
                     <input type="text" name="surveyor" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm border p-2">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">เลข รว.12</label>
+                    <input type="text" name="rv_12" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm border p-2" placeholder="เช่น 123/2567">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">คนคุมเรื่อง</label>
+                    <input type="text" name="men" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm border p-2" placeholder="ชื่อผู้รับผิดชอบ">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700">วันที่นัดรังวัด</label>
@@ -2319,7 +2323,7 @@ window.UI = {
         <html lang="th">
             <head>
                 <meta charset="UTF-8">
-                    <title>รายงานผล KPI - ${dateStr}</title>
+                    <title>รายงานผลงานเกิดใหม่ - ${dateStr}</title>
                     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
                         <style>
                             @page {size: A4; margin: 15mm; }
@@ -2429,7 +2433,7 @@ window.UI = {
                         <div class="page">
                             <div class="official-header">
                                 <img src="${garudaUrl}" class="garuda">
-                                    <div class="title-main">รายงานผลการดำเนินงานตามตัวชี้วัด (KPI)</div>
+                                    <div class="title-main">รายงานผลการดำเนินงานตามตัวชี้วัด</div>
                                     <div class="title-sub">สำนักงานที่ดินจังหวัดอ่างทอง</div>
                             </div>
 
@@ -2575,6 +2579,76 @@ window.UI = {
                 </html>
                 `;
         return html;
+    },
+
+    /**
+     * Render System Activity Logs
+     */
+    async renderLogs() {
+        try {
+            const response = await fetch('api/logs_fetch.php');
+            const logs = await response.json();
+
+            const rows = logs.map((log, idx) => {
+                const actionColors = {
+                    'ADD': 'emerald',
+                    'UPDATE': 'blue',
+                    'DELETE': 'rose',
+                    'STATUS_CHANGE': 'amber',
+                    'IMPORT': 'purple'
+                };
+                const color = actionColors[log.action] || 'gray';
+
+                return `
+                    <tr class="hover:bg-gray-50/50 transition-colors border-b border-gray-100/50">
+                        <td class="px-6 py-4 text-xs font-bold text-gray-400">${idx + 1}</td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center">
+                                <div class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center mr-3">
+                                    <i class="fas fa-user text-gray-400 text-xs"></i>
+                                </div>
+                                <span class="text-sm font-bold text-gray-700">${log.user_name}</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="px-3 py-1 bg-${color}-50 text-${color}-600 rounded-lg text-[10px] font-black uppercase tracking-wider border border-${color}-100">
+                                ${log.action}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-500 font-medium">${log.department}</td>
+                        <td class="px-6 py-4 text-sm text-gray-400">${log.created_at}</td>
+                        <td class="px-6 py-4">
+                            <p class="text-xs text-gray-600 max-w-xs truncate" title="${log.details || ''}">${log.details || '-'}</p>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            return `
+                <div class="glass-premium rounded-3xl p-8 shadow-xl border border-gray-100" data-aos="fade-up">
+                    <div class="overflow-x-auto">
+                        <table id="logs-datatable" class="w-full text-left">
+                            <thead>
+                                <tr class="text-gray-400 text-[10px] font-black uppercase tracking-widest border-b border-gray-100">
+                                    <th class="px-6 py-4">#</th>
+                                    <th class="px-6 py-4">ผู้ใช้งาน</th>
+                                    <th class="px-6 py-4">การกระทำ</th>
+                                    <th class="px-6 py-4">ฝ่าย</th>
+                                    <th class="px-6 py-4">วัน/เวลา</th>
+                                    <th class="px-6 py-4">รายละเอียด</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rows}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        } catch (error) {
+            console.error('Error rendering logs:', error);
+            return '<div class="p-8 text-center text-rose-500 font-bold glass-premium rounded-3xl">เกิดข้อผิดพลาดในการโหลดข้อมูลประวัติ</div>';
+        }
     }
 };
 

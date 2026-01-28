@@ -13,9 +13,12 @@ window.backlogApp = {
      * Initialize the report page
      */
     init() {
-        // Permission check
+        // Permission check: allow admins and authorized department staff
         const user = JSON.parse(localStorage.getItem('dol_user'));
-        if (!user || (user.role !== 'superadmin' && user.role !== 'admin')) {
+        const isAdmin = user && (user.role === 'superadmin' || user.role === 'admin');
+        const isAuthorizedStaff = user && user.role === 'staff' && ['survey', 'registration', 'academic'].includes(user.department);
+
+        if (!user || (!isAdmin && !isAuthorizedStaff)) {
             window.location.href = 'index.html';
             return;
         }
@@ -145,6 +148,10 @@ window.backlogApp = {
      * Render the backlog report
      */
     renderReport(data) {
+        const user = JSON.parse(localStorage.getItem('dol_user')) || {};
+        const isAdmin = user.role === 'superadmin' || user.role === 'admin';
+        const userRole = user.role;
+
         const container = document.getElementById('report-data');
         const months = data.months || [];
 
@@ -152,7 +159,14 @@ window.backlogApp = {
 
         // Iterate through months
         months.forEach((monthItem, index) => {
-            const depts = Object.values(monthItem.departments || {});
+            let deptEntries = Object.entries(monthItem.departments || {});
+
+            // Filter if not admin
+            if (!isAdmin) {
+                deptEntries = deptEntries.filter(([key]) => key === user.department);
+            }
+
+            const depts = deptEntries.map(([, val]) => val);
 
             // Skip months with no data
             const hasData = depts.some(d => d.backlog_total > 0 || d.structure_work > 0);

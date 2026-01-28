@@ -149,31 +149,40 @@ try {
                 exit;
             }
 
-            $sql = "INSERT INTO sameday_completion_logs (record_date, department, count, notes, created_by) 
-                    VALUES (?, ?, ?, ?, ?)";
-            $stmt = $conn->prepare($sql);
-            $stmt->execute([$recordDate, $department, $count, $notes, $createdBy]);
+            $conn->beginTransaction();
 
-            $newId = $conn->lastInsertId();
+            try {
+                $sql = "INSERT INTO sameday_completion_logs (record_date, department, count, notes, created_by) 
+                        VALUES (?, ?, ?, ?, ?)";
+                $stmt = $conn->prepare($sql);
+                $stmt->execute([$recordDate, $department, $count, $notes, $createdBy]);
 
-            // Also update monthly KPI reports (monthly_kpi_reports)
-            $yearMonth = date('Y-m', strtotime($recordDate));
-            updateMonthlyKPIForSameDay($conn, $yearMonth, $department, $count, $createdBy);
+                $newId = $conn->lastInsertId();
 
-            echo json_encode([
-                'status' => 'success',
-                'message' => 'บันทึกสำเร็จ',
-                'id' => $newId,
-                'kpi_updated' => true,
-                'data' => [
+                // Also update monthly KPI reports (monthly_kpi_reports)
+                $yearMonth = date('Y-m', strtotime($recordDate));
+                updateMonthlyKPIForSameDay($conn, $yearMonth, $department, $count, $createdBy);
+
+                $conn->commit();
+
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => 'บันทึกสำเร็จ',
                     'id' => $newId,
-                    'record_date' => $recordDate,
-                    'department' => $department,
-                    'count' => $count,
-                    'notes' => $notes,
-                    'created_by' => $createdBy
-                ]
-            ]);
+                    'kpi_updated' => true,
+                    'data' => [
+                        'id' => $newId,
+                        'record_date' => $recordDate,
+                        'department' => $department,
+                        'count' => $count,
+                        'notes' => $notes,
+                        'created_by' => $createdBy
+                    ]
+                ]);
+            } catch (Exception $e) {
+                $conn->rollBack();
+                throw $e;
+            }
             break;
 
         case 'PUT':
@@ -223,30 +232,39 @@ try {
                 exit;
             }
 
-            $params[] = $id;
-            $sql = "UPDATE sameday_completion_logs SET " . implode(', ', $updateFields) . " WHERE id = ?";
-            $stmt = $conn->prepare($sql);
-            $stmt->execute($params);
+            $conn->beginTransaction();
 
-            // KPI adjustment: subtract old, add new (based on updated values)
-            $newRecordDate = $data['record_date'] ?? $old['record_date'];
-            $newDepartment = $data['department'] ?? $old['department'];
-            $newCount = isset($data['count']) ? (int) $data['count'] : (int) $old['count'];
-            $newCreatedBy = $data['created_by'] ?? ($data['updated_by'] ?? ($data['changed_by'] ?? null));
+            try {
+                $params[] = $id;
+                $sql = "UPDATE sameday_completion_logs SET " . implode(', ', $updateFields) . " WHERE id = ?";
+                $stmt = $conn->prepare($sql);
+                $stmt->execute($params);
 
-            $oldYearMonth = date('Y-m', strtotime($old['record_date']));
-            $newYearMonth = date('Y-m', strtotime($newRecordDate));
+                // KPI adjustment: subtract old, add new (based on updated values)
+                $newRecordDate = $data['record_date'] ?? $old['record_date'];
+                $newDepartment = $data['department'] ?? $old['department'];
+                $newCount = isset($data['count']) ? (int) $data['count'] : (int) $old['count'];
+                $newCreatedBy = $data['created_by'] ?? ($data['updated_by'] ?? ($data['changed_by'] ?? null));
 
-            // Subtract old
-            updateMonthlyKPIForSameDay($conn, $oldYearMonth, $old['department'], -((int) $old['count']), $newCreatedBy);
-            // Add new
-            updateMonthlyKPIForSameDay($conn, $newYearMonth, $newDepartment, $newCount, $newCreatedBy);
+                $oldYearMonth = date('Y-m', strtotime($old['record_date']));
+                $newYearMonth = date('Y-m', strtotime($newRecordDate));
 
-            echo json_encode([
-                'status' => 'success',
-                'message' => 'อัปเดตสำเร็จ',
-                'kpi_updated' => true
-            ]);
+                // Subtract old
+                updateMonthlyKPIForSameDay($conn, $oldYearMonth, $old['department'], -((int) $old['count']), $newCreatedBy);
+                // Add new
+                updateMonthlyKPIForSameDay($conn, $newYearMonth, $newDepartment, $newCount, $newCreatedBy);
+
+                $conn->commit();
+
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => 'อัปเดตสำเร็จ',
+                    'kpi_updated' => true
+                ]);
+            } catch (Exception $e) {
+                $conn->rollBack();
+                throw $e;
+            }
             break;
 
         case 'DELETE':
@@ -265,21 +283,34 @@ try {
             $stmt->execute([$id]);
             $old = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            $sql = "DELETE FROM sameday_completion_logs WHERE id = ?";
-            $stmt = $conn->prepare($sql);
-            $stmt->execute([$id]);
-
-            // Subtract from KPI if log existed
-            if ($old) {
-                $oldYearMonth = date('Y-m', strtotime($old['record_date']));
-                updateMonthlyKPIForSameDay($conn, $oldYearMonth, $old['department'], -((int) $old['count']), null);
+            if (!$old) {
+                http_response_code(404);
+                echo json_encode(['error' => 'log not found']);
+                exit;
             }
 
-            echo json_encode([
-                'status' => 'success',
-                'message' => 'ลบสำเร็จ',
-                'kpi_updated' => (bool) $old
-            ]);
+            $conn->beginTransaction();
+
+            try {
+                $sql = "DELETE FROM sameday_completion_logs WHERE id = ?";
+                $stmt = $conn->prepare($sql);
+                $stmt->execute([$id]);
+
+                // Subtract from KPI if log existed
+                $oldYearMonth = date('Y-m', strtotime($old['record_date']));
+                updateMonthlyKPIForSameDay($conn, $oldYearMonth, $old['department'], -((int) $old['count']), null);
+
+                $conn->commit();
+
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => 'ลบสำเร็จ',
+                    'kpi_updated' => true
+                ]);
+            } catch (Exception $e) {
+                $conn->rollBack();
+                throw $e;
+            }
             break;
 
         default:
@@ -287,7 +318,10 @@ try {
             echo json_encode(['error' => 'Method not allowed']);
             break;
     }
-} catch (PDOException $e) {
+} catch (Exception $e) {
+    if (isset($conn) && $conn->inTransaction()) {
+        $conn->rollBack();
+    }
     http_response_code(500);
     echo json_encode(['error' => $e->getMessage()]);
 }

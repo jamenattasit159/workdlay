@@ -24,7 +24,45 @@ const DataManager = {
         return !this.isCompleted(item);
     },
 
+    // --- Cache Storage ---
+    _cache: {
+        lastStats: null,
+        lastStatsTime: 0,
+        surveyItems: null,
+        surveyItemsTime: 0,
+        regItems: null,
+        regItemsTime: 0,
+        acadItems: null,
+        acadItemsTime: 0,
+        ttl: 30000 // 30 seconds TTL
+    },
+
     async getStats() {
+        const now = Date.now();
+        // Check cache
+        if (this._cache.lastStats && (now - this._cache.lastStatsTime < this._cache.ttl)) {
+            console.log('Using cached stats');
+            return this._cache.lastStats;
+        }
+
+        try {
+            const response = await fetch('api/stats.php');
+            if (!response.ok) throw new Error('Stats API failed');
+            const stats = await response.json();
+
+            // Update cache
+            this._cache.lastStats = stats;
+            this._cache.lastStatsTime = now;
+
+            return stats;
+        } catch (error) {
+            console.error('Stats API error, falling back to manual calculation:', error);
+            // Fallback to manual calculation if API fails
+            return this.getStatsManual();
+        }
+    },
+
+    async getStatsManual() {
         const [surveyItems, regItems, acadItems] = await Promise.all([
             this.getSurveyItems(),
             this.getRegistrationItems(),
@@ -62,12 +100,21 @@ const DataManager = {
         });
 
         const pendingByDept = {};
+        const pendingBreakdown = {};
         allItems.forEach(item => {
             // ใช้ helper function isCompleted() แทน logic เดิม
             if (this.isCompleted(item)) return;
 
             const dept = item.department;
             pendingByDept[dept] = (pendingByDept[dept] || 0) + 1;
+
+            if (!pendingBreakdown[dept]) {
+                pendingBreakdown[dept] = { type2: 0, type4: 0, other: 0 };
+            }
+            const pType = parseInt(item.progress_type);
+            if (pType === 2) pendingBreakdown[dept].type2++;
+            else if (pType === 4) pendingBreakdown[dept].type4++;
+            else pendingBreakdown[dept].other++;
         });
 
         // Add monthly reduction KPI (Old Work)
@@ -112,7 +159,7 @@ const DataManager = {
         const kpi60Percent = totalNewWork > 0 ? (completedWithin60 / totalNewWork) * 100 : 0;
 
         return {
-            total, pending, completed, over30, over60, pendingByDept,
+            total, pending, completed, over30, over60, pendingByDept, pendingBreakdown,
             kpi: {
                 oldWork: { total: totalOldWork, pending: oldWorkPending, completed: oldWorkCompleted, percent: reductionPercent },
                 newWork: { total: totalNewWork, within30: kpi30Percent, within60: kpi60Percent }
@@ -338,10 +385,19 @@ const DataManager = {
     surveyApiUrl: 'api/survey.php',
 
     async getSurveyItems() {
+        const now = Date.now();
+        if (this._cache.surveyItems && (now - this._cache.surveyItemsTime < this._cache.ttl)) {
+            return this._cache.surveyItems;
+        }
+
         try {
             const response = await fetch(this.surveyApiUrl);
             if (!response.ok) throw new Error('Network response was not ok');
-            return await response.json();
+            const data = await response.json();
+
+            this._cache.surveyItems = data;
+            this._cache.surveyItemsTime = now;
+            return data;
         } catch (error) {
             console.error('Fetch survey error:', error);
             return [];
@@ -349,6 +405,8 @@ const DataManager = {
     },
 
     async saveSurveyItem(item) {
+        this.clearCache();
+        if (window.app?.currentUser) item.user_name = window.app.currentUser.name;
         try {
             const response = await fetch(this.surveyApiUrl, {
                 method: 'POST',
@@ -363,6 +421,8 @@ const DataManager = {
     },
 
     async updateSurveyItem(item) {
+        this.clearCache();
+        if (window.app?.currentUser) item.user_name = window.app.currentUser.name;
         try {
             const response = await fetch(this.surveyApiUrl, {
                 method: 'PUT',
@@ -381,11 +441,13 @@ const DataManager = {
     },
 
     async deleteSurveyItem(id) {
+        this.clearCache();
+        const userName = window.app?.currentUser?.name || 'System';
         try {
             await fetch(this.surveyApiUrl, {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: id })
+                body: JSON.stringify({ id: id, user_name: userName })
             });
         } catch (error) {
             console.error('Delete survey error:', error);
@@ -396,13 +458,22 @@ const DataManager = {
     registrationApiUrl: 'api/registration.php',
 
     async getRegistrationItems() {
+        const now = Date.now();
+        if (this._cache.regItems && (now - this._cache.regItemsTime < this._cache.ttl)) {
+            return this._cache.regItems;
+        }
+
         try {
             const response = await fetch(this.registrationApiUrl);
             if (!response.ok) throw new Error('Network response was not ok');
-            return await response.json();
+            const data = await response.json();
+
+            this._cache.regItems = data;
+            this._cache.regItemsTime = now;
+            return data;
         } catch (error) {
             console.warn('Fetch registration error (using mock data):', error);
-            // Mock Data for Demo
+            // ... mock data logic ...
             return [
                 { id: 1, seq_no: '1', received_date: '2023-02-02', subject: 'ใบแทน', related_person: 'นางสาววันทนา รักดี', summary: 'โฉนดที่ดินสูญหาย', status_cause: 'ส่งช่าง', responsible_person: 'นายจีระเดช ฤทธิรัตน์' },
                 { id: 2, seq_no: '2', received_date: '2023-02-27', subject: 'ใบแทน', related_person: 'นางสมนึก ฉุนชื่นจิตร', summary: 'โฉนดที่ดินสูญหาย', status_cause: 'รอแจก', responsible_person: 'นายจีระเดช ฤทธิรัตน์' },
@@ -419,6 +490,7 @@ const DataManager = {
     },
 
     async saveRegistrationItem(item) {
+        this.clearCache();
         try {
             const response = await fetch(this.registrationApiUrl, {
                 method: 'POST',
@@ -433,6 +505,7 @@ const DataManager = {
     },
 
     async updateRegistrationItem(item) {
+        this.clearCache();
         try {
             const response = await fetch(this.registrationApiUrl, {
                 method: 'PUT',
@@ -451,6 +524,7 @@ const DataManager = {
     },
 
     async deleteRegistrationItem(id) {
+        this.clearCache();
         try {
             await fetch(this.registrationApiUrl, {
                 method: 'DELETE',
@@ -466,18 +540,27 @@ const DataManager = {
     academicApiUrl: 'api/academic.php',
 
     async getAcademicItems() {
+        const now = Date.now();
+        if (this._cache.acadItems && (now - this._cache.acadItemsTime < this._cache.ttl)) {
+            return this._cache.acadItems;
+        }
+
         try {
             const response = await fetch(this.academicApiUrl);
             if (!response.ok) throw new Error('Network response was not ok');
-            return await response.json();
+            const data = await response.json();
+
+            this._cache.acadItems = data;
+            this._cache.acadItemsTime = now;
+            return data;
         } catch (error) {
             console.error('Fetch academic error:', error);
-            // Mock Data if fetch fails
             return [];
         }
     },
 
     async saveAcademicItem(item) {
+        this.clearCache();
         try {
             const response = await fetch(this.academicApiUrl, {
                 method: 'POST',
@@ -492,6 +575,7 @@ const DataManager = {
     },
 
     async updateAcademicItem(item) {
+        this.clearCache();
         try {
             const response = await fetch(this.academicApiUrl, {
                 method: 'PUT',
@@ -510,6 +594,7 @@ const DataManager = {
     },
 
     async deleteAcademicItem(id) {
+        this.clearCache();
         try {
             await fetch(this.academicApiUrl, {
                 method: 'DELETE',
@@ -519,6 +604,14 @@ const DataManager = {
         } catch (error) {
             console.error('Delete academic error:', error);
         }
+    },
+
+    clearCache() {
+        console.log('Clearing DataManager cache');
+        this._cache.lastStats = null;
+        this._cache.surveyItems = null;
+        this._cache.regItems = null;
+        this._cache.acadItems = null;
     }
 };
 

@@ -14,9 +14,12 @@ window.reportApp = {
      * Initialize the report page
      */
     init() {
-        // Permission check
+        // Permission check: allow admins and authorized department staff
         const user = JSON.parse(localStorage.getItem('dol_user'));
-        if (!user || (user.role !== 'superadmin' && user.role !== 'admin')) {
+        const isAdmin = user && (user.role === 'superadmin' || user.role === 'admin');
+        const isAuthorizedStaff = user && user.role === 'staff' && ['survey', 'registration', 'academic'].includes(user.department);
+
+        if (!user || (!isAdmin && !isAuthorizedStaff)) {
             window.location.href = 'index.html';
             return;
         }
@@ -34,8 +37,11 @@ window.reportApp = {
         // Set default date to current month
         const today = new Date();
         const defaultMonth = today.toISOString().slice(0, 7);
-        document.getElementById('kpi-report-month').value = defaultMonth;
-        this.currentYearMonth = defaultMonth;
+        const monthInput = document.getElementById('kpi-report-month');
+        if (monthInput) {
+            monthInput.value = defaultMonth;
+            this.currentYearMonth = defaultMonth;
+        }
 
         // Load initial data
         this.loadReport(defaultMonth);
@@ -150,16 +156,26 @@ window.reportApp = {
      * Render the KPI report
      */
     renderReport(kpiData) {
+        const user = JSON.parse(localStorage.getItem('dol_user')) || {};
+        const isAdmin = user.role === 'superadmin' || user.role === 'admin';
+
         const container = document.getElementById('report-data');
         const trend = kpiData.trend || [];
-        const depts = [
+        let depts = [
             { id: 'academic', label: 'ฝ่ายวิชาการ' },
             { id: 'registration', label: 'ฝ่ายทะเบียน' },
             { id: 'survey', label: 'ฝ่ายรังวัด' }
         ];
 
+        // Filter depts if not admin
+        if (!isAdmin) {
+            depts = depts.filter(d => d.id === user.department);
+        }
+
         // Track running balances
         let deptBalances = { academic: 0, registration: 0, survey: 0 };
+        let deptBalancesType2 = { academic: 0, registration: 0, survey: 0 };
+        let deptBalancesType4 = { academic: 0, registration: 0, survey: 0 };
 
         let html = `<div class="space-y-8">`;
 
@@ -186,6 +202,14 @@ window.reportApp = {
                 const currentBal = prevBal + pendingCurrent;
                 deptBalances[dept.id] = currentBal;
 
+                // Track breakdown balances
+                const pType2 = dData.pending_type2 || 0;
+                const pType4 = dData.pending_type4 || 0;
+                const currentBalType2 = (deptBalancesType2[dept.id] || 0) + pType2;
+                const currentBalType4 = (deptBalancesType4[dept.id] || 0) + pType4;
+                deptBalancesType2[dept.id] = currentBalType2;
+                deptBalancesType4[dept.id] = currentBalType4;
+
                 return `
                     <tr class="hover:bg-gray-50 transition-colors">
                         <td class="px-3 py-3 border font-bold text-gray-700 bg-gray-50/50">${dept.label}</td>
@@ -195,11 +219,18 @@ window.reportApp = {
                         <!-- (8) 60 วัน -->
                         <td class="px-3 py-3 border text-center font-bold text-indigo-600">${comp60.toLocaleString()}</td>
                         <td class="px-3 py-3 border text-center font-medium text-gray-600">${pct60} %</td>
-                        <!-- (9) ไม่แล้วเสร็จ -->
                         <!-- (11) งานก่อนหน้า -->
                         <td class="px-3 py-3 border text-center font-bold text-gray-500 bg-gray-50/30">${prevBal.toLocaleString()}</td>
-                        <!-- (12) เดือนปัจจุบัน -->
-                        <td class="px-3 py-3 border text-center font-black text-orange-600 bg-orange-50/30">${currentBal.toLocaleString()}</td>
+                        <!-- (2) สุดขั้นตอน -->
+                        <td class="px-3 py-3 border text-center font-bold text-purple-600 bg-purple-50/20">${currentBalType2.toLocaleString()}</td>
+                        <!-- (4) งานค้าง -->
+                        <td class="px-3 py-3 border text-center font-bold text-orange-600 bg-orange-50/20">${currentBalType4.toLocaleString()}</td>
+                        <!-- (12) รวมทั้งหมด -->
+                        <td class="px-3 py-3 border text-center font-black text-emerald-600 bg-emerald-50/30 cursor-pointer hover:underline" 
+                            title="คลิกเพื่อดูรายละเอียดงานค้าง"
+                            onclick="reportApp.showPendingDetails('${dept.id}', '${monthItem.month}', ${currentBal})">
+                            ${currentBal.toLocaleString()}
+                        </td>
                         <!-- หมายเหตุ -->
                         <td class="px-3 py-3 border text-xs text-gray-500 min-w-[150px]">
                             <input type="text" 
@@ -212,6 +243,40 @@ window.reportApp = {
                 `;
             }).join('');
 
+            // Calculate totals for all departments in this month
+            let totalComp30 = 0, totalIntake = 0, totalComp60 = 0;
+            let totalPrevBal = 0, totalCurType2 = 0, totalCurType4 = 0, totalCurTotal = 0;
+
+            depts.forEach(dept => {
+                const dData = monthItem.depts[dept.id] || {};
+                totalIntake += (dData.intake || 0);
+                totalComp30 += (dData.comp30 || 0);
+                totalComp60 += (dData.comp60 || 0);
+
+                totalPrevBal += (deptBalances[dept.id] - (dData.pending || 0));
+                totalCurType2 += deptBalancesType2[dept.id];
+                totalCurType4 += deptBalancesType4[dept.id];
+                totalCurTotal += deptBalances[dept.id];
+            });
+
+            const totalPct30 = totalIntake > 0 ? ((totalComp30 / totalIntake) * 100).toFixed(2) : "0.00";
+            const totalPct60 = totalIntake > 0 ? ((totalComp60 / totalIntake) * 100).toFixed(2) : "0.00";
+
+            const totalHtml = `
+                <tr class="bg-gray-100/80 font-black text-gray-800 border-t-2 border-gray-300">
+                    <td class="px-3 py-3 border text-center bg-gray-200">รวมทุกฝ่าย</td>
+                    <td class="px-3 py-3 border text-center text-blue-700">${totalComp30.toLocaleString()}</td>
+                    <td class="px-3 py-3 border text-center">${totalPct30} %</td>
+                    <td class="px-3 py-3 border text-center text-indigo-700">${totalComp60.toLocaleString()}</td>
+                    <td class="px-3 py-3 border text-center">${totalPct60} %</td>
+                    <td class="px-3 py-3 border text-center text-gray-600">${totalPrevBal.toLocaleString()}</td>
+                    <td class="px-3 py-3 border text-center text-purple-700">${totalCurType2.toLocaleString()}</td>
+                    <td class="px-3 py-3 border text-center text-orange-700">${totalCurType4.toLocaleString()}</td>
+                    <td class="px-3 py-3 border text-center text-emerald-700">${totalCurTotal.toLocaleString()}</td>
+                    <td class="px-3 py-3 border bg-gray-200"></td>
+                </tr>
+            `;
+
             html += `
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                     <div class="bg-gray-100/50 px-6 py-3 border-b border-gray-200">
@@ -223,27 +288,30 @@ window.reportApp = {
                                 <!-- Row 1 -->
                                 <tr class="bg-blue-100/50 text-gray-800 font-bold">
                                     <th rowspan="3" class="px-4 py-3 border text-center w-32">ฝ่าย</th>
-                                    <th colspan="6" class="px-2 py-2 border text-center bg-blue-200/30 font-black">ปริมาณงานเกิดใหม่<sup>(5)</sup> ประจำเดือน</th>
+                                    <th colspan="8" class="px-2 py-2 border text-center bg-blue-200/30 font-black">ปริมาณงานเกิดใหม่<sup>(5)</sup> ประจำเดือน</th>
                                     <th rowspan="3" class="px-4 py-3 border text-center w-48">หมายเหตุ</th>
                                 </tr>
                                 <!-- Row 2 -->
                                 <tr class="bg-blue-50/50 text-gray-700 font-bold text-[11px]">
-                                    <th colspan="2" class="px-2 py-2 border text-center">งานที่ดำเนินการแล้วเสร็จภายใน 30 วัน <sup>(7)</sup><br><span class="text-blue-600 font-medium">(เป้าหมายไม่น้อยกว่า 80% ตามแผนฯ)</span></th>
-                                    <th colspan="2" class="px-2 py-2 border text-center">งานที่ดำเนินการแล้วเสร็จภายใน 60 วัน <sup>(8)</sup><br><span class="text-indigo-600 font-medium">(เป้าหมาย = 100% ตามแผนฯ)</span></th>
-                                    <th colspan="2" class="px-2 py-2 border text-center bg-blue-50">งานที่ยังดำเนินการ<br>ไม่แล้วเสร็จ <sup>(9)</sup></th>
+                                    <th colspan="2" class="px-2 py-2 border text-center">งานที่ดำเนินการแล้วเสร็จภายใน 30 วัน <sup>(7)</sup><br><span class="text-blue-600 font-medium text-[10px]">(เป้าหมาย > 80%)</span></th>
+                                    <th colspan="2" class="px-2 py-2 border text-center">งานที่ดำเนินการแล้วเสร็จภายใน 60 วัน <sup>(8)</sup><br><span class="text-indigo-600 font-medium text-[10px]">(เป้าหมาย = 100%)</span></th>
+                                    <th colspan="4" class="px-2 py-2 border text-center bg-blue-50">งานที่อยู่ระหว่างดำเนินการ (สะสม)</th>
                                 </tr>
                                 <!-- Row 3 -->
                                 <tr class="bg-blue-50/30 text-[10px] font-bold text-gray-600">
-                                    <th class="px-1 py-2 border text-center w-16">เรื่อง</th>
-                                    <th class="px-1 py-2 border text-center w-16">ร้อยละ</th>
-                                    <th class="px-1 py-2 border text-center w-16">เรื่อง <sup>(10)</sup></th>
-                                    <th class="px-1 py-2 border text-center w-16">ร้อยละ</th>
-                                    <th class="px-1 py-2 border text-center w-24 bg-blue-50/50">เดือนก่อนหน้า <sup>(11)</sup></th>
-                                    <th class="px-1 py-2 border text-center w-24 bg-blue-50/80">เดือนปัจจุบัน <sup>(12)</sup></th>
+                                    <th class="px-1 py-2 border text-center w-14">เรื่อง</th>
+                                    <th class="px-1 py-2 border text-center w-14">ร้อยละ</th>
+                                    <th class="px-1 py-2 border text-center w-14">เรื่อง</th>
+                                    <th class="px-1 py-2 border text-center w-14">ร้อยละ</th>
+                                    <th class="px-1 py-2 border text-center w-20 bg-blue-50/50">ก่อนหน้า</th>
+                                    <th class="px-1 py-2 border text-center w-20 text-purple-600">สุดขั้นตอน (2)</th>
+                                    <th class="px-1 py-2 border text-center w-20 text-orange-600">งานค้าง (4)</th>
+                                    <th class="px-1 py-2 border text-center w-20 bg-emerald-50 text-emerald-700">รวมทั้งหมด</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100">
                                 ${rowHtml}
+                                ${totalHtml}
                             </tbody>
                         </table>
                     </div>
@@ -299,6 +367,108 @@ window.reportApp = {
                 title: 'เกิดข้อผิดพลาด',
                 text: 'ไม่สามารถบันทึกหมายเหตุได้',
                 confirmButtonColor: '#10b981'
+            });
+        }
+    },
+
+    /**
+     * Show detailed list of pending work (Drill-down)
+     */
+    async showPendingDetails(dept, yearMonth, total) {
+        const deptNames = {
+            survey: 'ฝ่ายรังวัด',
+            registration: 'ฝ่ายทะเบียน',
+            academic: 'กลุ่มงานวิชาการ'
+        };
+        const deptLabel = deptNames[dept] || dept;
+
+        // Show loading
+        Swal.fire({
+            title: `กำลังโหลดรายละเอียด...`,
+            html: `<div class="p-4 text-center"><i class="fas fa-spinner fa-spin fa-2x text-emerald-500"></i><p class="mt-2">กำลังดึงข้อมูลงานค้างของ ${deptLabel}</p></div>`,
+            showConfirmButton: false,
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            const response = await fetch(`api/kpi_details.php?department=${dept}&year_month=${yearMonth}&type=pending`);
+            const result = await response.json();
+
+            if (result.status !== 'success') throw new Error(result.error || 'Failed to load details');
+
+            const data = result.data || [];
+            const rows = data.length > 0
+                ? data.map((item, idx) => `
+                    <tr class="border-b border-gray-100 hover:bg-gray-50 text-xs text-left">
+                        <td class="px-2 py-2 text-center text-gray-500">${idx + 1}</td>
+                        <td class="px-2 py-2 text-gray-700 whitespace-nowrap">${item.received_date || '-'}</td>
+                        <td class="px-2 py-2 text-gray-900 font-medium">${item.applicant_name ? String(item.applicant_name).replace(/</g, '&lt;') : '-'}</td>
+                        <td class="px-2 py-2 text-gray-600">${item.work_name ? String(item.work_name).replace(/</g, '&lt;') : '-'}</td>
+                        <td class="px-2 py-2 text-center">
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${item.progress_type == 4 ? 'bg-orange-100 text-orange-700' :
+                        item.progress_type == 2 ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'
+                    }">
+                                ${item.progress_type == 4 ? 'งานค้าง' : item.progress_type == 2 ? 'สุดขั้นตอน' : 'ปกติ'}
+                            </span>
+                        </td>
+                    </tr>
+                `).join('')
+                : `<tr><td colspan="5" class="px-4 py-8 text-center text-gray-400">ไม่พบรายการงานค้าง</td></tr>`;
+
+            const date = new Date(yearMonth + '-01');
+            const monthLabel = date.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
+
+            Swal.fire({
+                title: `<div class="text-left text-lg font-black border-b pb-2">รายละเอียดงานค้างสะสม</div>`,
+                width: 800,
+                html: `
+                    <div class="text-left mt-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <div class="text-sm">
+                                <span class="text-gray-500">หน่วยงาน:</span> <span class="font-bold text-gray-800">${deptLabel}</span>
+                                <span class="mx-2 text-gray-300">|</span>
+                                <span class="text-gray-500">ข้อมูล ณ เดือน:</span> <span class="font-bold text-gray-800">${monthLabel}</span>
+                            </div>
+                            <div class="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-lg text-sm font-black">
+                                ทั้งหมด ${data.length.toLocaleString()} รายการ
+                            </div>
+                        </div>
+                        <div class="overflow-y-auto max-h-[50vh] border rounded-xl custom-scrollbar">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-gray-50 sticky top-0 shadow-sm">
+                                    <tr class="text-[11px] uppercase text-gray-500 font-black">
+                                        <th class="px-2 py-3 text-center w-10">#</th>
+                                        <th class="px-2 py-3 w-28">วันที่รับเรื่อง</th>
+                                        <th class="px-2 py-3 w-40">ชื่อผู้ขอ/เจ้าของ</th>
+                                        <th class="px-2 py-3">รายละเอียดงาน</th>
+                                        <th class="px-2 py-3 text-center w-24">สถานะ</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${rows}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mt-4 p-3 bg-blue-50 rounded-lg text-xs text-blue-700 flex items-start gap-2">
+                            <i class="fas fa-info-circle mt-0.5"></i>
+                            <p>รายการที่แสดงคือรายการที่ยังไม่บันทึกความสำเร็จ หรือเสร็จช้ากว่า 60 วัน นับตั้งแต่วันเริ่มต้นปีงบประมาณถึงสิ้นเดือนสัปดาห์นี้</p>
+                        </div>
+                    </div>
+                `,
+                showCloseButton: true,
+                showConfirmButton: true,
+                confirmButtonText: 'ปิดหน้าต่าง',
+                confirmButtonColor: '#6B7280'
+            });
+
+        } catch (error) {
+            console.error('Drill-down error:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'เกิดข้อผิดพลาด',
+                text: 'ไม่สามารถโหลดข้อมูลรายละเอียดได้',
+                confirmButtonColor: '#EF4444'
             });
         }
     },

@@ -109,7 +109,18 @@ try {
                     -- (9) Pending beyond 60 days or still incomplete
                     SUM(CASE WHEN received_date BETWEEN :start_m AND :end_m 
                              AND (completion_date IS NULL OR completion_date = '0000-00-00' 
-                                  OR DATEDIFF(completion_date, received_date) > 60) THEN 1 ELSE 0 END) as count_pending
+                                  OR DATEDIFF(completion_date, received_date) > 60) THEN 1 ELSE 0 END) as count_pending,
+
+                    -- Breakdown of Pending (Month's Intake)
+                    SUM(CASE WHEN received_date BETWEEN :start_m AND :end_m 
+                             AND ((completion_date IS NULL OR completion_date = '0000-00-00' 
+                                  OR DATEDIFF(completion_date, received_date) > 60))
+                             AND progress_type = 2 THEN 1 ELSE 0 END) as pending_type2,
+                             
+                    SUM(CASE WHEN received_date BETWEEN :start_m AND :end_m 
+                             AND ((completion_date IS NULL OR completion_date = '0000-00-00' 
+                                  OR DATEDIFF(completion_date, received_date) > 60))
+                             AND progress_type = 4 THEN 1 ELSE 0 END) as pending_type4
                 FROM $table WHERE received_date BETWEEN :start_m AND :end_m";
 
                 $stmt = $conn->prepare($sql);
@@ -131,6 +142,8 @@ try {
                     'current_completed_30' => (int) ($stats['current_completed_30'] ?? 0),
                     'current_completed_60' => (int) ($stats['current_completed_60'] ?? 0),
                     'current_pending' => (int) ($stats['count_pending'] ?? 0),
+                    'pending_type2' => (int) ($stats['pending_type2'] ?? 0),
+                    'pending_type4' => (int) ($stats['pending_type4'] ?? 0),
                     'old_pending' => (int) $oldPending
                 ];
             }
@@ -205,7 +218,15 @@ try {
                              AND DATEDIFF(completion_date, received_date) <= 60 THEN 1 ELSE 0 END) as comp60,
                     SUM(CASE WHEN (completion_date IS NULL OR completion_date = '0000-00-00')
                              OR (completion_date > CURDATE())
-                             OR (DATEDIFF(completion_date, received_date) > 60) THEN 1 ELSE 0 END) as pending
+                             OR (DATEDIFF(completion_date, received_date) > 60) THEN 1 ELSE 0 END) as pending,
+                    SUM(CASE WHEN ((completion_date IS NULL OR completion_date = '0000-00-00')
+                                 OR (completion_date > CURDATE())
+                                 OR (DATEDIFF(completion_date, received_date) > 60))
+                             AND progress_type = 2 THEN 1 ELSE 0 END) as pending_type2,
+                    SUM(CASE WHEN ((completion_date IS NULL OR completion_date = '0000-00-00')
+                                 OR (completion_date > CURDATE())
+                                 OR (DATEDIFF(completion_date, received_date) > 60))
+                             AND progress_type = 4 THEN 1 ELSE 0 END) as pending_type4
                 FROM $tableName 
                 WHERE received_date BETWEEN ? AND ?
                 GROUP BY DATE_FORMAT(received_date, '%Y-%m')
@@ -238,6 +259,8 @@ try {
                         'comp30' => (int) $workData['comp30'] + $manual30,
                         'comp60' => (int) $workData['comp60'] + $manual60,
                         'pending' => (int) $workData['pending'],
+                        'pending_type2' => (int) ($workData['pending_type2'] ?? 0),
+                        'pending_type4' => (int) ($workData['pending_type4'] ?? 0),
                         'notes' => $savedData['notes'] ?? ''
                     ];
                 }

@@ -11,6 +11,9 @@ if ($_SERVER['REQUEST_METHOD'] != 'POST') {
 $type = $_POST['type'] ?? '';
 $isCompleted = isset($_POST['is_completed']) && $_POST['is_completed'] === '1';
 
+// Debug log
+file_put_contents('save_debug.txt', date('[Y-m-d H:i:s] ') . "POST: " . json_encode($_POST) . "\n", FILE_APPEND);
+
 try {
     if ($type === 'survey') {
         // Survey Work
@@ -28,47 +31,37 @@ try {
         // ถ้าเป็นงานเสร็จ ให้ใส่ completion_date และ progress_type
         if ($isCompleted) {
             $sql = "INSERT INTO survey_works 
-                    (received_seq, received_date, rw12_no, rw12_date, survey_type, plot_no, applicant, doc_type, doc_no, surveyor, survey_date, status, completion_date, progress_type, created_at, updated_at) 
+                    (received_seq, received_date, rv_12, survey_type, applicant, men, status_cause, completion_date, progress_type, created_at, updated_at) 
                     VALUES 
-                    (:received_seq, :received_date, :rw12_no, :rw12_date, :survey_type, :plot_no, :applicant, :doc_type, :doc_no, :surveyor, :survey_date, :status, :completion_date, :progress_type, NOW(), NOW())";
+                    (:received_seq, :received_date, :rv_12, :survey_type, :applicant, :men, :status_cause, :completion_date, :progress_type, NOW(), NOW())";
 
             $stmt = $conn->prepare($sql);
             $stmt->execute([
                 ':received_seq' => $nextSeq,
                 ':received_date' => $_POST['received_date'],
-                ':rw12_no' => $_POST['rw12_no'] ?? '',
-                ':rw12_date' => $_POST['rw12_date'] ?? null,
+                ':rv_12' => $_POST['rv_12'] ?? $_POST['rw12_no'] ?? '',
                 ':survey_type' => $_POST['survey_type'] ?? '',
-                ':plot_no' => $_POST['plot_no'] ?? '',
                 ':applicant' => $_POST['applicant'],
-                ':doc_type' => $_POST['doc_type'] ?? 'โฉนดที่ดิน',
-                ':doc_no' => $_POST['doc_no'] ?? '',
-                ':surveyor' => $_POST['surveyor'] ?? '',
-                ':survey_date' => $_POST['survey_date'] ?? null,
-                ':status' => 'เสร็จสิ้น',
+                ':men' => $_POST['men'] ?? '',
+                ':status_cause' => 'เสร็จสิ้น',
                 ':completion_date' => $_POST['received_date'], // ใช้วันที่รับเรื่องเป็นวันเสร็จ
                 ':progress_type' => $_POST['progress_type'] ?? 1 // ประเภทงานที่เลือกมา (ปกติ/สุดขั้นตอน/ศาล)
             ]);
         } else {
             $sql = "INSERT INTO survey_works 
-                    (received_seq, received_date, rw12_no, rw12_date, survey_type, plot_no, applicant, doc_type, doc_no, surveyor, survey_date, status, progress_type, created_at, updated_at) 
+                    (received_seq, received_date, rv_12, survey_type, applicant, men, status_cause, progress_type, created_at, updated_at) 
                     VALUES 
-                    (:received_seq, :received_date, :rw12_no, :rw12_date, :survey_type, :plot_no, :applicant, :doc_type, :doc_no, :surveyor, :survey_date, :status, :progress_type, NOW(), NOW())";
+                    (:received_seq, :received_date, :rv_12, :survey_type, :applicant, :men, :status_cause, :progress_type, NOW(), NOW())";
 
             $stmt = $conn->prepare($sql);
             $stmt->execute([
                 ':received_seq' => $nextSeq,
                 ':received_date' => $_POST['received_date'],
-                ':rw12_no' => $_POST['rw12_no'] ?? '',
-                ':rw12_date' => $_POST['rw12_date'] ?? null,
+                ':rv_12' => $_POST['rv_12'] ?? $_POST['rw12_no'] ?? '',
                 ':survey_type' => $_POST['survey_type'] ?? '',
-                ':plot_no' => $_POST['plot_no'] ?? '',
                 ':applicant' => $_POST['applicant'],
-                ':doc_type' => $_POST['doc_type'] ?? 'โฉนดที่ดิน',
-                ':doc_no' => $_POST['doc_no'] ?? '',
-                ':surveyor' => $_POST['surveyor'] ?? '',
-                ':survey_date' => $_POST['survey_date'] ?? null,
-                ':status' => $_POST['status'] ?? 'pending',
+                ':men' => $_POST['men'] ?? '',
+                ':status_cause' => $_POST['status'] ?? $_POST['status_cause'] ?? 'pending',
                 ':progress_type' => $_POST['progress_type'] ?? null // ส่งค่าประเภทงานมาด้วย (ถ้ามี)
             ]);
         }
@@ -170,12 +163,21 @@ try {
         throw new Exception("Invalid work type: $type");
     }
 
+    // --- Logging ---
+    require_once 'utils/logger.php';
+    $userName = $_POST['user_name'] ?? 'System';
+    $details = "เพิ่มงานใหม่: " . ($_POST['applicant'] ?? $_POST['subject'] ?? 'N/A');
+    Logger::log($userName, 'ADD', $type, $nextSeq, $details);
+    // ---------------
+
     echo json_encode(['status' => 'success']);
 
 } catch (PDOException $e) {
+    file_put_contents('save_debug.txt', date('[Y-m-d H:i:s] ') . "DB Error: " . $e->getMessage() . "\n", FILE_APPEND);
     http_response_code(500);
     echo json_encode(['status' => 'error', 'message' => 'Database Error: ' . $e->getMessage()]);
 } catch (Exception $e) {
+    file_put_contents('save_debug.txt', date('[Y-m-d H:i:s] ') . "Error: " . $e->getMessage() . "\n", FILE_APPEND);
     http_response_code(400);
     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
 }

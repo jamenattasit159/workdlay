@@ -1,5 +1,6 @@
 <?php
 include_once 'db.php';
+require_once 'utils/logger.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 
@@ -22,9 +23,9 @@ switch ($method) {
             $data = json_decode(file_get_contents("php://input"));
 
             $sql = "INSERT INTO survey_works (
-                received_seq, received_date, survey_type, applicant, summary, status_cause, men
+                received_seq, received_date, survey_type, applicant, summary, status_cause, men, rv_12
             ) VALUES (
-                :received_seq, :received_date, :survey_type, :applicant, :summary, :status_cause, :men
+                :received_seq, :received_date, :survey_type, :applicant, :summary, :status_cause, :men, :rv_12
             )";
 
             $stmt = $conn->prepare($sql);
@@ -35,9 +36,11 @@ switch ($method) {
             $stmt->bindValue(':applicant', $data->applicant ?? null);
             $stmt->bindValue(':summary', $data->summary ?? null);
             $stmt->bindValue(':status_cause', $data->status_cause ?? 'pending');
-            $stmt->bindValue(':men', $data->men ?? null);
+            $stmt->bindValue(':men', $data->men ?? '');
+            $stmt->bindValue(':rv_12', $data->rv_12 ?? null);
 
             if ($stmt->execute()) {
+                logAction('ADD', $data);
                 echo json_encode(["status" => "success", "id" => $conn->lastInsertId()]);
             } else {
                 http_response_code(503);
@@ -64,7 +67,8 @@ switch ($method) {
                             summary = :summary,
                             completion_date = :completion_date,
                             status_cause = :status_cause,
-                            men = :men
+                            men = :men,
+                            rv_12 = :rv_12
                             WHERE id = :id";
 
                     $stmt = $conn->prepare($sql);
@@ -76,15 +80,21 @@ switch ($method) {
                     $stmt->bindValue(':completion_date', (!empty($data->completion_date)) ? $data->completion_date : null);
                     $stmt->bindValue(':status_cause', $data->status_cause ?? null);
                     $stmt->bindValue(':men', $data->men ?? null);
+                    $stmt->bindValue(':rv_12', $data->rv_12 ?? null);
                     $stmt->bindValue(':id', $data->id);
 
-                } else if (isset($data->status_cause) || isset($data->status)) {
-                    // Status & Completion Date Update
+                } else if (isset($data->status_cause) || isset($data->status) || isset($data->rv_12)) {
+                    // Status, Completion Date & RV_12 Update
                     $statusValue = $data->status_cause ?? $data->status ?? null;
-                    $sql = "UPDATE survey_works SET status_cause = :status_cause, completion_date = :completion_date WHERE id = :id";
+                    $sql = "UPDATE survey_works 
+                            SET status_cause = :status_cause, 
+                                completion_date = :completion_date,
+                                rv_12 = :rv_12
+                            WHERE id = :id";
                     $stmt = $conn->prepare($sql);
                     $stmt->bindValue(':status_cause', $statusValue);
                     $stmt->bindValue(':completion_date', (!empty($data->completion_date)) ? $data->completion_date : null);
+                    $stmt->bindValue(':rv_12', $data->rv_12 ?? null);
                     $stmt->bindValue(':id', $data->id);
                 } else if (isset($data->progress_type)) {
                     // Progress Type Update
@@ -95,6 +105,7 @@ switch ($method) {
                 }
 
                 if (isset($stmt) && $stmt->execute()) {
+                    logAction('UPDATE', $data);
                     echo json_encode(["status" => "success"]);
                 } else {
                     http_response_code(503);
@@ -117,6 +128,7 @@ switch ($method) {
                 $stmt->bindParam(':id', $data->id);
 
                 if ($stmt->execute()) {
+                    logAction('DELETE', $data);
                     echo json_encode(["status" => "success"]);
                 } else {
                     http_response_code(503);
@@ -134,4 +146,31 @@ switch ($method) {
         echo json_encode(["status" => "error", "message" => "Method not allowed"]);
         break;
 }
+
+// Helper function for logging
+function logAction($action, $data)
+{
+    // require_once 'utils/logger.php'; // Moved to the top of the file
+    $userName = $data->user_name ?? 'System';
+    $itemId = $data->id ?? $data->received_seq ?? null;
+    $details = "";
+
+    if ($action === 'ADD') {
+        $details = "เพิ่มงานรังวัดใหม่: " . ($data->applicant ?? 'N/A');
+    } elseif ($action === 'UPDATE') {
+        if (isset($data->status_cause)) {
+            $details = "อัปเดตสถานะงานรังวัด (ID: $itemId) เป็น: " . $data->status_cause;
+        } else {
+            $details = "แก้ไขข้อมูลงานรังวัด (ID: $itemId)";
+        }
+    } elseif ($action === 'DELETE') {
+        $details = "ลบงานรังวัด (ID: $itemId)";
+    }
+
+    Logger::log($userName, $action, 'survey', $itemId, $details);
+}
+
+// Call logging after successful Switch operations if needed, 
+// but it's cleaner to call inside the switch. 
+// Refactoring to call inside switch instead for better control.
 ?>

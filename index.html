@@ -12,23 +12,24 @@
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- AOS Animation -->
-    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <link href="libs/aos/aos.css" rel="stylesheet">
     <!-- SweetAlert2 -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="libs/sweetalert2/sweetalert2.min.js"></script>
     <!-- SheetJS (Excel) -->
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <script src="libs/sheetjs/xlsx.full.min.js"></script>
     <!-- jsPDF & AutoTable -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
+    <script src="libs/jspdf/jspdf.umd.min.js"></script>
+    <script src="libs/jspdf/jspdf.plugin.autotable.min.js"></script>
     <!-- html2canvas for PDF screenshot -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="libs/html2canvas/html2canvas.min.js"></script>
+    <script src="libs/chartjs/chart.min.js"></script>
     <!-- jQuery (required for DataTables) -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="libs/jquery/jquery.min.js"></script>
     <!-- DataTables CSS & JS -->
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css">
-    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+    <link rel="stylesheet" href="libs/datatables/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="libs/datatables/responsive.dataTables.min.css">
+    <script src="libs/datatables/jquery.min.js"></script>
+    <script src="libs/datatables/dataTables.responsive.min.js"></script>
 
 
     <style>
@@ -139,6 +140,7 @@
         .text-gradient-indigo {
             background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
@@ -525,7 +527,7 @@
                         </path>
                     </svg>
                 </div>
-                <span class="font-medium">รายงาน KPI</span>
+                <span class="font-medium">รายงานงานเกิดใหม่</span>
             </a>
 
             <a href="old_backlog_report.html"
@@ -699,7 +701,7 @@
     </nav>
 
     <!-- Scripts -->
-    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script src="libs/aos/aos.js"></script>
 
 
     <script src="js/data.js"></script>

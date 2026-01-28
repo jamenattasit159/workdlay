@@ -38,11 +38,14 @@ try {
         'academic' => ['table' => 'academic_works', 'name' => 'กลุ่มงานวิชาการที่ดิน', 'order' => 2]
     ];
 
-    // Get total old work count (baseline)
+    // Base condition for "Old Work" as of baseline date
+    $oldWorkCondition = "received_date < '2026-01-01'";
+
+    // Total Old Work (Type 4 only, as requested: "จำนวนความต้องการจริงเอาแค่ (4) พอ")
     $totalOldWork = 0;
     foreach ($deptMap as $deptKey => $deptInfo) {
         $table = $deptInfo['table'];
-        $countSql = "SELECT COUNT(*) as cnt FROM $table WHERE received_date < '2026-01-01'";
+        $countSql = "SELECT COUNT(*) as cnt FROM $table WHERE $oldWorkCondition AND progress_type = 4 AND (completion_date IS NULL OR completion_date = '0000-00-00' OR completion_date >= '2026-01-01')";
         $stmt = $conn->query($countSql);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         $totalOldWork += (int) $row['cnt'];
@@ -51,8 +54,64 @@ try {
     // Generate monthly reports for the year (Jan to Dec)
     $months = [];
 
-    // Track previous month's remaining for each department (for rolling calculation)
-    $previousRemaining = [];
+    // Track state for Type 4 rolling balance
+    $type4Rolling = []; // [$deptKey => balance]
+
+    // Initialize state with baseline values
+    foreach ($deptMap as $deptKey => $deptInfo) {
+        $table = $deptInfo['table'];
+        $sql = "SELECT COUNT(*) as total FROM $table WHERE $oldWorkCondition AND progress_type = 4 AND (completion_date IS NULL OR completion_date = '0000-00-00' OR completion_date >= '2026-01-01')";
+        $stmt = $conn->query($sql);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        $type4Rolling[$deptKey] = (int) $row['total'];
+    }
+
+    // For year 2026 (BE 2569), add December 2568 (BE) as starting point
+    if ($reportYear == 2026) {
+        $startingMonth = [
+            'month' => '2025-12',
+            'month_label' => 'ธันวาคม 2568 (ยอดยกมา)',
+            'departments' => []
+        ];
+
+        foreach ($deptMap as $deptKey => $deptInfo) {
+            $table = $deptInfo['table'];
+
+            // Get outstanding counts for type 2 and 3 at start of 2569
+            $sql = "SELECT progress_type, COUNT(*) as total FROM $table 
+                    WHERE $oldWorkCondition 
+                    AND progress_type IN (2, 3) 
+                    AND (completion_date IS NULL OR completion_date = '0000-00-00' OR completion_date >= '2026-01-01') 
+                    GROUP BY progress_type";
+            $stmt = $conn->query($sql);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $counts = [2 => 0, 3 => 0];
+            foreach ($rows as $row) {
+                $counts[(int) $row['progress_type']] = (int) $row['total'];
+            }
+
+            $currentT4 = $type4Rolling[$deptKey];
+
+            $startingMonth['departments'][$deptKey] = [
+                'name' => $deptInfo['name'],
+                'order' => $deptInfo['order'],
+                'final_step' => $counts[2],  // (2)
+                'court_work' => $counts[3],  // (3)
+                'backlog_total' => $currentT4, // (4)
+                'backlog_target' => round($currentT4 * 0.05),
+                'completed_count' => 0,
+                'completed_percentage' => 0,
+                'remaining' => $currentT4
+            ];
+        }
+
+        uasort($startingMonth['departments'], function ($a, $b) {
+            return $a['order'] - $b['order'];
+        });
+
+        $months[] = $startingMonth;
+    }
 
     for ($m = 1; $m <= 12; $m++) {
         $yearMonth = sprintf('%04d-%02d', $reportYear, $m);
@@ -68,100 +127,52 @@ try {
         foreach ($deptMap as $deptKey => $deptInfo) {
             $table = $deptInfo['table'];
 
-            // Query for old work breakdown by progress_type
-            // progress_type: 1=ปกติ, 2=สุดขั้นตอน, 3=ศาล, 4=งานค้าง
-            $sql = "SELECT 
-                progress_type,
-                COUNT(*) as total,
-                SUM(CASE WHEN completion_date IS NOT NULL 
-                         AND completion_date != '0000-00-00' 
-                         AND completion_date >= :month_start 
-                         AND completion_date <= :month_end 
-                    THEN 1 ELSE 0 END) as completed_this_month
-            FROM $table
-            WHERE received_date < '2026-01-01'
-            GROUP BY progress_type";
-
-            $stmt = $conn->prepare($sql);
-            $stmt->execute([
-                'month_start' => $monthStart,
-                'month_end' => $monthEnd
-            ]);
-            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            // Initialize counters
-            $normalWork = 0;      // progress_type = 1 (ปกติ/งานตามโครงสร้าง)
-            $finalStep = 0;       // progress_type = 2 (สุดขั้นตอน)
-            $courtWork = 0;       // progress_type = 3 (งานศาล)
-            $backlogWork = 0;     // progress_type = 4 (งานค้าง) - initial total
-            $completedThisMonth = 0;
-            $totalDept = 0;
-
-            foreach ($rows as $row) {
-                $type = (int) $row['progress_type'];
-                $count = (int) $row['total'];
-                $completed = (int) $row['completed_this_month'];
-
-                $totalDept += $count;
-
-                // Only count completed for progress_type = 4 (งานค้าง)
-                if ($type == 4) {
-                    $completedThisMonth = $completed;
-                }
-
-                switch ($type) {
-                    case 1:
-                        $normalWork = $count;
-                        break;
-                    case 2:
-                        $finalStep = $count;
-                        break;
-                    case 3:
-                        $courtWork = $count;
-                        break;
-                    case 4:
-                        $backlogWork = $count;
-                        break;
-                }
+            // Query current outstanding T2 and T3 (those not completed by end of month)
+            $sqlT23 = "SELECT progress_type, COUNT(*) as total FROM $table 
+                       WHERE $oldWorkCondition 
+                       AND progress_type IN (2, 3) 
+                       AND (completion_date IS NULL OR completion_date = '0000-00-00' OR completion_date > :month_end) 
+                       GROUP BY progress_type";
+            $stmtT23 = $conn->prepare($sqlT23);
+            $stmtT23->execute(['month_end' => $monthEnd]);
+            $rowsT23 = $stmtT23->fetchAll(PDO::FETCH_ASSOC);
+            $countsT23 = [2 => 0, 3 => 0];
+            foreach ($rowsT23 as $row) {
+                $countsT23[(int) $row['progress_type']] = (int) $row['total'];
             }
 
-            // For first month: use initial backlog count
-            // For subsequent months: use previous month's remaining
-            if ($m == 1) {
-                // First month: backlog_total = total งานค้าง (progress_type = 4)
-                $backlogTotal = $backlogWork;
-            } else {
-                // Subsequent months: backlog_total = previous month's remaining
-                $backlogTotal = isset($previousRemaining[$deptKey]) ? $previousRemaining[$deptKey] : $backlogWork;
-            }
+            // Query T4 completions for this month
+            $sqlT4Comp = "SELECT COUNT(*) as completed FROM $table 
+                          WHERE $oldWorkCondition 
+                          AND progress_type = 4 
+                          AND completion_date >= :month_start AND completion_date <= :month_end";
+            $stmtT4Comp = $conn->prepare($sqlT4Comp);
+            $stmtT4Comp->execute(['month_start' => $monthStart, 'month_end' => $monthEnd]);
+            $rowT4Comp = $stmtT4Comp->fetch(PDO::FETCH_ASSOC);
+            $completedT4 = (int) $rowT4Comp['completed'];
 
-            // Calculate percentage completed
-            $percentage = $backlogTotal > 0 ? round(($completedThisMonth / $backlogTotal) * 100, 1) : 0;
+            $openingT4 = $type4Rolling[$deptKey];
+            $remainingT4 = max(0, $openingT4 - $completedT4);
 
-            // Calculate remaining
-            $remaining = max(0, $backlogTotal - $completedThisMonth);
+            // Calculate percentage for T4
+            $percentageT4 = $openingT4 > 0 ? round(($completedT4 / $openingT4) * 100, 1) : 0;
 
-            // Store this month's remaining for next month's calculation
-            $previousRemaining[$deptKey] = $remaining;
-
-            // Calculate backlog target (5% of total)
-            $backlogTarget = round($totalDept * 0.05);
+            // Update rolling state for next month
+            $type4Rolling[$deptKey] = $remainingT4;
 
             $monthData['departments'][$deptKey] = [
                 'name' => $deptInfo['name'],
                 'order' => $deptInfo['order'],
-                'structure_work' => $normalWork + $finalStep + $courtWork, // งานตามโครงสร้างอำนาจหน้าที่
-                'final_step' => $finalStep,          // งานสุดขั้นตอน
-                'court_work' => $courtWork,          // งานศาล
-                'backlog_total' => $backlogTotal,    // งานค้าง จำนวน (rolling from previous month)
-                'backlog_target' => $backlogTarget,  // เป้าหมาย 5%
-                'completed_count' => $completedThisMonth,   // ดำเนินการแล้วเสร็จ เรื่อง
-                'completed_percentage' => $percentage,      // ดำเนินการแล้วเสร็จ ร้อยละ
-                'remaining' => $remaining            // คงเหลือ
+                'final_step' => $countsT23[2],  // (2) Simple outstanding count
+                'court_work' => $countsT23[3],  // (3) Simple outstanding count
+                'backlog_total' => $openingT4, // (4) Rolling balance
+                'backlog_target' => round($openingT4 * 0.05),
+                'completed_count' => $completedT4,
+                'completed_percentage' => $percentageT4,
+                'remaining' => $remainingT4
             ];
         }
 
-        // Sort departments by order
         uasort($monthData['departments'], function ($a, $b) {
             return $a['order'] - $b['order'];
         });

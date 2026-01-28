@@ -141,8 +141,7 @@ window.app = {
         // Define which elements to hide for each department
         const menuMappings = {
             'survey': [
-                'nav-registration_list', 'nav-academic_list', 'nav-report', 'nav-old-backlog', 'nav-sameday-report',
-                'mobile-nav-report', 'mobile-nav-sameday-report',
+                'nav-registration_list', 'nav-academic_list',
                 'nav-add-registration', 'nav-add-academic',
                 'nav-import-registration', 'nav-import-academic',
                 'nav-sameday-registration', 'nav-sameday-academic',
@@ -150,8 +149,7 @@ window.app = {
                 'nav-completed-registration', 'nav-completed-academic'
             ],
             'registration': [
-                'nav-survey_list', 'nav-academic_list', 'nav-report', 'nav-old-backlog', 'nav-sameday-report',
-                'mobile-nav-report', 'mobile-nav-sameday-report',
+                'nav-survey_list', 'nav-academic_list',
                 'nav-add-survey', 'nav-add-academic',
                 'nav-import-survey', 'nav-import-academic',
                 'nav-sameday-survey', 'nav-sameday-academic',
@@ -159,8 +157,7 @@ window.app = {
                 'nav-completed-survey', 'nav-completed-academic'
             ],
             'academic': [
-                'nav-survey_list', 'nav-registration_list', 'nav-report', 'nav-old-backlog', 'nav-sameday-report',
-                'mobile-nav-report', 'mobile-nav-sameday-report',
+                'nav-survey_list', 'nav-registration_list',
                 'nav-add-survey', 'nav-add-registration',
                 'nav-import-survey', 'nav-import-registration',
                 'nav-sameday-survey', 'nav-sameday-registration',
@@ -173,14 +170,6 @@ window.app = {
         document.querySelectorAll('.nav-item, .nav-import-btn, .mobile-nav-item').forEach(el => {
             el.classList.remove('hidden');
         });
-
-        // Hide reports for non-admins
-        if (!isAdmin) {
-            ['nav-report', 'nav-old-backlog', 'nav-sameday-report', 'mobile-nav-report', 'mobile-nav-sameday-report'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.classList.add('hidden');
-            });
-        }
 
         // If department-specific user, hide other department menus
         if (userDept !== 'all' && menuMappings[userDept]) {
@@ -381,11 +370,11 @@ window.app = {
 
         // Permission check for staff users
         if (isStaff && userDept !== 'all') {
-            // Staff can only access their department's page and dashboard
+            // Staff can only access their department's page, dashboard, and reports
             const allowedPages = {
-                'survey': ['dashboard', 'survey_list', 'survey_form'],
-                'registration': ['dashboard', 'registration_list', 'registration_form'],
-                'academic': ['dashboard', 'academic_list', 'academic_form']
+                'survey': ['dashboard', 'survey_list', 'survey_form', 'report', 'old_backlog'],
+                'registration': ['dashboard', 'registration_list', 'registration_form', 'report', 'old_backlog'],
+                'academic': ['dashboard', 'academic_list', 'academic_form', 'report', 'old_backlog']
             };
 
             if (!allowedPages[userDept]?.includes(page)) {
@@ -463,9 +452,17 @@ window.app = {
         if (page === 'dashboard') {
             title.innerText = 'ภาพรวมการดำเนินงาน';
             content.innerHTML = await UI.renderDashboard(userDept);
+            this.initPerformanceChart();
+        } else if (page === 'logs') {
+            title.innerText = 'ตรวจสอบประวัติ (Activity Logs)';
+            content.innerHTML = await UI.renderLogs();
+            UI.initDataTable('logs-datatable', { order: [[4, 'desc']] });
         } else if (page === 'report') {
-            title.innerText = 'รายงาน KPI รายเดือน';
-            content.innerHTML = await UI.renderReport();
+            window.location.href = 'report.html';
+            return;
+        } else if (page === 'old_backlog') {
+            window.location.href = 'old_backlog_report.html';
+            return;
         } else if (page === 'survey_list') {
             title.innerText = 'งานฝ่ายรังวัด';
             this.currentSurveyPage = 1; // Reset to first page
@@ -656,19 +653,17 @@ window.app = {
             setTimeout(() => AOS.refresh(), 100);
         }
 
-        // Initialize DataTables after DOM is fully rendered
+        // Initialize DataTables after DOM is fully rendered - Remove delay to fix UI glitch
         requestAnimationFrame(() => {
-            setTimeout(() => {
-                const tableEl = document.getElementById('academic-datatable');
-                if (typeof $ !== 'undefined' && $.fn.DataTable && tableEl) {
-                    UI.initDataTable('academic-datatable', {
-                        order: [[1, 'desc']],
-                        columnDefs: [
-                            { orderable: false, targets: [5] }
-                        ]
-                    });
-                }
-            }, 100);
+            const tableEl = document.getElementById('academic-datatable');
+            if (typeof $ !== 'undefined' && $.fn.DataTable && tableEl) {
+                UI.initDataTable('academic-datatable', {
+                    order: [[1, 'desc']],
+                    columnDefs: [
+                        { orderable: false, targets: [5] }
+                    ]
+                });
+            }
         });
     },
 
@@ -781,19 +776,17 @@ window.app = {
             setTimeout(() => AOS.refresh(), 100);
         }
 
-        // Initialize DataTables after DOM is fully rendered
+        // Initialize DataTables after DOM is fully rendered - Remove delay to fix UI glitch
         requestAnimationFrame(() => {
-            setTimeout(() => {
-                const tableEl = document.getElementById('registration-datatable');
-                if (typeof $ !== 'undefined' && $.fn.DataTable && tableEl) {
-                    UI.initDataTable('registration-datatable', {
-                        order: [[1, 'desc']],
-                        columnDefs: [
-                            { orderable: false, targets: [7] }
-                        ]
-                    });
-                }
-            }, 100);
+            const tableEl = document.getElementById('registration-datatable');
+            if (typeof $ !== 'undefined' && $.fn.DataTable && tableEl) {
+                UI.initDataTable('registration-datatable', {
+                    order: [[1, 'desc']],
+                    columnDefs: [
+                        { orderable: false, targets: [7] }
+                    ]
+                });
+            }
         });
     },
 
@@ -937,19 +930,17 @@ window.app = {
             setTimeout(() => AOS.refresh(), 100);
         }
 
-        // Initialize DataTables after DOM is fully rendered
+        // Initialize DataTables after DOM is fully rendered - Remove delay to fix UI glitch
         requestAnimationFrame(() => {
-            setTimeout(() => {
-                const tableEl = document.getElementById('survey-datatable');
-                if (typeof $ !== 'undefined' && $.fn.DataTable && tableEl) {
-                    UI.initDataTable('survey-datatable', {
-                        order: [[1, 'desc']],
-                        columnDefs: [
-                            { orderable: false, targets: [0, 8] }
-                        ]
-                    });
-                }
-            }, 100);
+            const tableEl = document.getElementById('survey-datatable');
+            if (typeof $ !== 'undefined' && $.fn.DataTable && tableEl) {
+                UI.initDataTable('survey-datatable', {
+                    order: [[1, 'desc']],
+                    columnDefs: [
+                        { orderable: false, targets: [0, 9] }
+                    ]
+                });
+            }
         });
     },
 
@@ -1197,7 +1188,8 @@ window.app = {
 
         try {
             if (type === 'survey') {
-                await DataManager.updateSurveyItem({ id, status_cause: status, completion_date });
+                const rv_12 = document.getElementById('update-rv12-input')?.value;
+                await DataManager.updateSurveyItem({ id, status_cause: status, completion_date, rv_12 });
             } else if (type === 'registration') {
                 await DataManager.updateRegistrationItem({ id, status_cause: status, completion_date });
             } else if (type === 'academic') {
@@ -2652,6 +2644,190 @@ window.app = {
                 title: 'เกิดข้อผิดพลาด',
                 text: error.message || 'ไม่สามารถบันทึกข้อมูลได้'
             });
+        }
+    },
+
+    /**
+     * Export Department Data to Excel
+     * @param {string} type 'survey', 'registration', 'academic'
+     */
+    async exportDepartmentToExcel(type) {
+        const typeLabels = {
+            'survey': 'งานฝ่ายรังวัด',
+            'registration': 'งานฝ่ายทะเบียน',
+            'academic': 'งานกลุ่มงานวิชาการ'
+        };
+
+        Swal.fire({
+            title: 'กำลังสร้างไฟล์ Excel...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            let items = [];
+            let headers = [];
+            let fileName = `Export_${type}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+            if (type === 'survey') {
+                items = await DataManager.getSurveyItems();
+                // Apply current filters if any
+                if (this.surveyStatusView === 'pending') items = items.filter(i => DataManager.isPending(i));
+                else if (this.surveyStatusView === 'completed') items = items.filter(i => DataManager.isCompleted(i));
+
+                if (this.currentSurveyFilter && this.currentSurveyFilter !== 'all') {
+                    items = items.filter(i => i.survey_type === this.currentSurveyFilter);
+                }
+                if (this.surveyProgressFilter && this.surveyProgressFilter !== 'all') {
+                    const pType = parseInt(this.surveyProgressFilter, 10);
+                    items = items.filter(item => parseInt(item.progress_type, 10) === pType);
+                }
+                if (this.surveySearchTerm) {
+                    const lowerTerm = this.surveySearchTerm.toLowerCase();
+                    items = items.filter(i =>
+                        (i.applicant && i.applicant.toLowerCase().includes(lowerTerm)) ||
+                        (i.plot_no && i.plot_no.toLowerCase().includes(lowerTerm)) ||
+                        (i.received_seq && i.received_seq.toLowerCase().includes(lowerTerm))
+                    );
+                }
+
+                headers = ['วันที่รับ', 'เลข รว.12', 'ประเภท', 'ผู้ขอ', 'สรุป', 'คนคุม', 'สถานะ'];
+                items = items.map(i => [
+                    i.received_date,
+                    i.rv_12 || '-',
+                    i.survey_type || '-',
+                    i.applicant || '-',
+                    i.summary || '-',
+                    i.men || '-',
+                    i.status_cause || (DataManager.isCompleted(i) ? 'เสร็จสิ้น' : 'คงค้าง')
+                ]);
+            } else if (type === 'registration') {
+                items = await DataManager.getRegistrationItems();
+                // We don't have all filters for reg yet, but let's apply basic search
+                if (this.regSearchTerm) {
+                    const lowerTerm = this.regSearchTerm.toLowerCase();
+                    items = items.filter(i =>
+                        (i.subject && i.subject.toLowerCase().includes(lowerTerm)) ||
+                        (i.related_person && i.related_person.toLowerCase().includes(lowerTerm)) ||
+                        (i.responsible_person && i.responsible_person.toLowerCase().includes(lowerTerm))
+                    );
+                }
+
+                headers = ['วันที่รับ', 'เลขลำดับ', 'เรื่อง', 'ผู้เกี่ยวข้อง', 'สรุป', 'สถานะ/สาเหตุ', 'ผู้รับผิดชอบ'];
+                items = items.map(i => [
+                    i.received_date,
+                    i.seq_no || '-',
+                    i.subject || '-',
+                    i.related_person || '-',
+                    i.summary || '-',
+                    i.status_cause || (DataManager.isCompleted(i) ? 'เสร็จสิ้น' : 'คงค้าง'),
+                    i.responsible_person || '-'
+                ]);
+            } else if (type === 'academic') {
+                items = await DataManager.getAcademicItems();
+                // Apply basic search
+                if (this.acadSearchTerm) {
+                    const lowerTerm = this.acadSearchTerm.toLowerCase();
+                    items = items.filter(i =>
+                        (i.subject && i.subject.toLowerCase().includes(lowerTerm)) ||
+                        (i.applicant_name && i.applicant_name.toLowerCase().includes(lowerTerm))
+                    );
+                }
+
+                headers = ['วันที่รับ', 'เลขลำดับ', 'เรื่อง', 'เลขบ้าน/ที่ดิน', 'สถานะ/สาเหตุ', 'ผู้รับผิดชอบ'];
+                items = items.map(i => [
+                    i.received_date,
+                    i.seq_no || '-',
+                    i.subject || '-',
+                    i.house_land_no || '-',
+                    i.status_cause || (DataManager.isCompleted(i) ? 'เสร็จสิ้น' : 'คงค้าง'),
+                    i.responsible_person || '-'
+                ]);
+            }
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet([headers, ...items]);
+            XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+            XLSX.writeFile(wb, fileName);
+
+            Swal.fire({
+                icon: 'success',
+                title: 'ส่งออกสำเร็จ',
+                text: `บันทึกไฟล์ ${fileName} เรียบร้อยแล้ว`,
+                timer: 2000,
+                showConfirmButton: false
+            });
+        } catch (error) {
+            console.error('Export error:', error);
+            Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถส่งออกข้อมูลได้', 'error');
+        }
+    },
+
+    /**
+     * Initialize Performance Graph on Dashboard
+     */
+    async initPerformanceChart() {
+        const canvas = document.getElementById('performanceChart');
+        if (!canvas || typeof Chart === 'undefined') return;
+
+        try {
+            const response = await fetch('api/trend_stats.php');
+            const trendData = await response.json();
+
+            const labels = trendData.map(d => d.month);
+            const pendingData = trendData.map(d => d.pending);
+            const completedData = trendData.map(d => d.completed);
+
+            new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'งานที่เสร็จในเดือนนั้น',
+                            data: completedData,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            borderWidth: 3,
+                            pointBackgroundColor: '#10b981',
+                            pointRadius: 4
+                        },
+                        {
+                            label: 'งานคงค้างสะสม',
+                            data: pendingData,
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'rgba(245, 158, 11, 0.05)',
+                            fill: true,
+                            tension: 0.4,
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            pointBackgroundColor: '#f59e0b',
+                            pointRadius: 3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                font: { family: 'Prompt', weight: 'bold' }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: { beginAtZero: true },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('Chart init error:', error);
         }
     }
 };
