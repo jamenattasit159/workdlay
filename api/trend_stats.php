@@ -15,6 +15,8 @@ try {
         'academic' => 'academic_works'
     ];
 
+    $deptFilter = isset($_GET['dept']) ? $_GET['dept'] : 'all';
+
     foreach ($months as $month) {
         $monthLabel = date('M Y', strtotime($month . '-01'));
         $data = [
@@ -24,7 +26,11 @@ try {
             'pending' => 0
         ];
 
-        foreach ($tableMap as $table) {
+        foreach ($tableMap as $key => $table) {
+            if ($deptFilter !== 'all' && $deptFilter !== $key) {
+                continue;
+            }
+
             $sql = "SELECT 
                         COUNT(*) as total,
                         SUM(CASE WHEN (completion_date IS NOT NULL AND completion_date != '0000-00-00') AND LEFT(completion_date, 7) = :month1 THEN 1 ELSE 0 END) as completed,

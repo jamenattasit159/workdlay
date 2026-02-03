@@ -84,10 +84,19 @@ const DataManager = {
         const now = new Date();
         let over30 = 0;
         let over60 = 0;
+        let type2 = 0;
+        let type3 = 0;
+        let type4 = 0;
 
         allItems.forEach(item => {
             // ใช้ helper function isCompleted() แทน logic เดิม
             if (this.isCompleted(item)) return;
+
+            // Increment progress type counters
+            const pType = parseInt(item.progress_type);
+            if (pType === 2) type2++;
+            else if (pType === 3) type3++;
+            else if (pType === 4) type4++;
 
             const receivedDate = this.getSafeDate(item.received_date);
             if (!receivedDate) return;
@@ -109,10 +118,11 @@ const DataManager = {
             pendingByDept[dept] = (pendingByDept[dept] || 0) + 1;
 
             if (!pendingBreakdown[dept]) {
-                pendingBreakdown[dept] = { type2: 0, type4: 0, other: 0 };
+                pendingBreakdown[dept] = { type2: 0, type3: 0, type4: 0, other: 0 };
             }
             const pType = parseInt(item.progress_type);
             if (pType === 2) pendingBreakdown[dept].type2++;
+            else if (pType === 3) pendingBreakdown[dept].type3++;
             else if (pType === 4) pendingBreakdown[dept].type4++;
             else pendingBreakdown[dept].other++;
         });
@@ -159,7 +169,7 @@ const DataManager = {
         const kpi60Percent = totalNewWork > 0 ? (completedWithin60 / totalNewWork) * 100 : 0;
 
         return {
-            total, pending, completed, over30, over60, pendingByDept, pendingBreakdown,
+            total, pending, completed, over30, over60, type2, type3, type4, pendingByDept, pendingBreakdown,
             kpi: {
                 oldWork: { total: totalOldWork, pending: oldWorkPending, completed: oldWorkCompleted, percent: reductionPercent },
                 newWork: { total: totalNewWork, within30: kpi30Percent, within60: kpi60Percent }
@@ -311,7 +321,6 @@ const DataManager = {
 
             if (diffDays <= 30) {
                 within30Days++;
-                within60Days++; // Within 30 also counts as within 60
             } else if (diffDays <= 60) {
                 within60Days++;
             } else {

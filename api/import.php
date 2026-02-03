@@ -173,7 +173,8 @@ try {
             'ผู้ขอ' => 'applicant',
             'สรุปเรื่อง' => 'summary',
             'สาเหตุค้าง' => 'status_cause',
-            'คนคุมเรื่อง' => 'men'
+            'คนคุมเรื่อง' => 'men',
+            'เลข รว.12' => 'rv_12'
         ],
         'registration' => [
             'วันที่รับ' => 'received_date',
@@ -230,6 +231,13 @@ try {
             // Normalize date
             if (!empty($mappedRow['received_date'])) {
                 $mappedRow['received_date'] = normalizeDate($mappedRow['received_date']);
+            }
+
+            // Skip invalid or empty rows
+            // If date is empty or invalid (normalizeDate returns null), skip the row
+            if (empty($mappedRow['received_date'])) {
+                $skipped++;
+                continue;
             }
 
             // --- UPDATE MODE LOGIC ---

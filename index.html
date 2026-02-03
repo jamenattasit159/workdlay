@@ -434,7 +434,12 @@
                 <span class="font-bold">งานฝ่ายรังวัด</span>
             </button>
 
-
+            <button onclick="app.navigate('survey_dashboard')"
+                class="nav-item w-full flex items-center p-2 pl-12 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 transition-all duration-300 text-left group text-sm"
+                id="nav-survey_dashboard">
+                <i class="fas fa-chart-pie mr-2 text-indigo-400 group-hover:text-indigo-600"></i>
+                <span class="text-gray-600 group-hover:text-indigo-600">ภาพรวมฝ่ายรังวัด</span>
+            </button>
             <button onclick="app.showImportModal('survey', false)"
                 class="nav-import-btn w-full flex items-center p-2 pl-12 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 transition-all duration-300 text-left group text-sm"
                 id="nav-import-survey">
@@ -463,6 +468,14 @@
                 </div>
                 <span class="font-bold">งานฝ่ายทะเบียน</span>
             </button>
+
+            <button onclick="app.navigate('registration_dashboard')"
+                class="nav-item w-full flex items-center p-2 pl-12 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-all duration-300 text-left group text-sm"
+                id="nav-registration_dashboard">
+                <i class="fas fa-chart-pie mr-2 text-blue-400 group-hover:text-blue-600"></i>
+                <span class="text-gray-600 group-hover:text-blue-600">ภาพรวมฝ่ายทะเบียน</span>
+            </button>
+
 
 
             <button onclick="app.showImportModal('registration', false)"
@@ -494,6 +507,14 @@
                 </div>
                 <span class="font-bold">งานกลุ่มงานวิชาการ</span>
             </button>
+
+            <button onclick="app.navigate('academic_dashboard')"
+                class="nav-item w-full flex items-center p-2 pl-12 rounded-lg hover:bg-orange-50 hover:text-orange-600 transition-all duration-300 text-left group text-sm"
+                id="nav-academic_dashboard">
+                <i class="fas fa-chart-pie mr-2 text-orange-400 group-hover:text-orange-600"></i>
+                <span class="text-gray-600 group-hover:text-orange-600">ภาพรวมฝ่ายวิชาการ</span>
+            </button>
+
 
             <button onclick="app.showImportModal('academic', false)"
                 class="nav-import-btn w-full flex items-center p-2 pl-12 rounded-lg hover:bg-orange-50 hover:text-orange-600 transition-all duration-300 text-left group text-sm"

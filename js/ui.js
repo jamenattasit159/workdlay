@@ -264,37 +264,67 @@ window.UI = {
         //Filter stats based on user department
         if (userDept !== 'all') {
             let filteredItems = [];
+            let deptLabel = '';
             if (userDept === 'survey') {
                 filteredItems = surveyItems;
+                deptLabel = 'ฝ่ายรังวัด';
             } else if (userDept === 'registration') {
                 filteredItems = registrationItems;
+                deptLabel = 'ฝ่ายทะเบียน';
             } else if (userDept === 'academic') {
                 filteredItems = academicItems;
+                deptLabel = 'กลุ่มงานวิชาการ';
             }
 
             //Recalculate stats for this department only
-            const pending = filteredItems.filter(i => !i.completion_date);
-            const completed = filteredItems.filter(i => i.completion_date);
+            const pendingItems = filteredItems.filter(i => DataManager.isPending(i));
+            const completedItems = filteredItems.filter(i => DataManager.isCompleted(i));
 
             const today = new Date();
-            const over30 = pending.filter(i => {
+            const over30 = pendingItems.filter(i => {
                 const rd = this.getSafeDate(i.received_date);
                 if (!rd) return false;
-                return Math.floor((today - rd) / (1000 * 60 * 60 * 24)) > 30;
+                const days = Math.floor((today - rd) / (1000 * 60 * 60 * 24));
+                return days > 30 && days <= 60;
             }).length;
 
-            const over60 = pending.filter(i => {
+            const over60 = pendingItems.filter(i => {
                 const rd = this.getSafeDate(i.received_date);
                 if (!rd) return false;
                 return Math.floor((today - rd) / (1000 * 60 * 60 * 24)) > 60;
             }).length;
 
+            // For single department, we use pendingByDept to show Progress Type breakdown
+            const pendingBreakdown = {};
+            const pBreakdown = { type2: 0, type3: 0, type4: 0, other: 0 };
+
+            pendingItems.forEach(item => {
+                const pType = parseInt(item.progress_type);
+                if (pType === 2) pBreakdown.type2++;
+                else if (pType === 3) pBreakdown.type3++;
+                else if (pType === 4) pBreakdown.type4++;
+                else pBreakdown.other++;
+            });
+            pendingBreakdown[deptLabel] = pBreakdown;
+
             stats = {
                 total: filteredItems.length,
-                completed: completed.length,
-                pending: pending.length,
+                completed: completedItems.length,
+                pending: pendingItems.length,
                 over30: over30,
-                over60: over60
+                over60: over60,
+                pendingByDept: {
+                    'งานสุดขั้นตอน': pBreakdown.type2,
+                    'งานศาล': pBreakdown.type3,
+                    'งานค้าง (สะสม)': pBreakdown.type4,
+                    'งานปกติ/อื่นๆ': pBreakdown.other
+                },
+                type2: pBreakdown.type2,
+                type3: pBreakdown.type3,
+                type4: pBreakdown.type4,
+                pendingBreakdown: pendingBreakdown,
+                isSingleDept: true,
+                deptLabel: deptLabel
             };
         }
 
@@ -302,7 +332,35 @@ window.UI = {
         const completionRate = Math.round((stats.completed / (stats.total || 1)) * 100);
         const userName = window.app?.currentUser?.name || window.app?.currentUser?.username || 'ผู้ใช้งาน';
 
+        // Department Selection Menu definition
+        const deptsMenu = [
+            { id: 'all', label: 'ภาพรวมทั้งหมด', icon: 'fa-th-large', color: 'bg-emerald-500', text: 'text-emerald-600', hover: 'hover:bg-emerald-50', navigate: 'dashboard' },
+            { id: 'survey', label: 'ฝ่ายรังวัด', icon: 'fa-vector-square', color: 'bg-indigo-500', text: 'text-indigo-600', hover: 'hover:bg-indigo-50', navigate: 'survey_dashboard' },
+            { id: 'registration', label: 'ฝ่ายทะเบียน', icon: 'fa-file-invoice', color: 'bg-blue-500', text: 'text-blue-600', hover: 'hover:bg-blue-50', navigate: 'registration_dashboard' },
+            { id: 'academic', label: 'ฝ่ายวิชาการ', icon: 'fa-book-reader', color: 'bg-orange-500', text: 'text-orange-600', hover: 'hover:bg-orange-50', navigate: 'academic_dashboard' }
+        ];
+
+        const deptSelectorHtml = `
+            <div class="flex flex-wrap gap-2 mb-8 bg-white/40 p-1.5 rounded-2xl border border-white/60 backdrop-blur-sm inline-flex shadow-sm" data-aos="fade-right">
+                ${deptsMenu.map(d => {
+            const isActive = userDept === d.id;
+            return `
+                        <button onclick="app.navigate('${d.navigate}')" 
+                            class="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 ${isActive
+                    ? `${d.color} text-white shadow-lg`
+                    : `${d.text} ${d.hover} opacity-70 hover:opacity-100`}">
+                            <i class="fas ${d.icon} ${isActive ? 'text-white' : ''}"></i>
+                            ${d.label}
+                        </button>
+                    `;
+        }).join('')}
+            </div>
+        `;
+
         return `
+            <!-- Department Selector -->
+            ${deptSelectorHtml}
+
             <!-- Dashboard Header & Greeting -->
             <div class="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6" data-aos="fade-down">
                 <div>
@@ -339,7 +397,7 @@ window.UI = {
             </div>
 
             <!-- Primary Metric Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-10">
                 <!-- Total Task -->
                 <div class="glass-premium card-hover rounded-3xl p-6 relative overflow-hidden group" data-aos="fade-up" data-aos-delay="0">
                     <div class="absolute right-0 top-0 -mr-6 -mt-6 w-24 h-24 bg-indigo-50 rounded-full group-hover:scale-110 transition-transform duration-500 opacity-50"></div>
@@ -378,7 +436,7 @@ window.UI = {
                         <div class="w-12 h-12 rounded-2xl gradient-amber flex items-center justify-center text-white shadow-lg shadow-amber-100">
                             <i class="fas fa-hourglass-start text-lg"></i>
                         </div>
-                        <div class="text-xs font-bold text-gray-400 uppercase tracking-widest">ค้างเกิน 30 วัน</div>
+                        <div class="text-xs font-bold text-gray-400 uppercase tracking-widest">ค้าง 31 - 60 วัน</div>
                     </div>
                     <div class="text-4xl font-black text-gray-800 tracking-tight">${stats.over30}</div>
                     <div class="mt-2 text-xs text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded-full inline-block">
@@ -398,6 +456,36 @@ window.UI = {
                     <div class="text-4xl font-black text-rose-600 tracking-tight">${stats.over60}</div>
                     <div class="mt-2 text-xs text-rose-600 font-bold bg-rose-50 px-2 py-0.5 rounded-full inline-block animate-pulse">
                         ⚠️ ติดตามอย่างใกล้ชิด
+                    </div>
+                </div>
+
+                <!-- Final Step Tasks -->
+                <div class="glass-premium card-hover rounded-3xl p-6 relative overflow-hidden group" data-aos="fade-up" data-aos-delay="400">
+                    <div class="absolute right-0 top-0 -mr-6 -mt-6 w-24 h-24 bg-purple-50 rounded-full group-hover:scale-110 transition-transform duration-500 opacity-50"></div>
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="w-12 h-12 rounded-2xl gradient-purple flex items-center justify-center text-white shadow-lg shadow-purple-100">
+                            <i class="fas fa-flag-checkered text-lg"></i>
+                        </div>
+                        <div class="text-xs font-bold text-gray-400 uppercase tracking-widest">งานสุดขั้นตอน</div>
+                    </div>
+                    <div class="text-4xl font-black text-gray-800 tracking-tight">${stats.type2 || 0}</div>
+                    <div class="mt-2 text-xs text-purple-600 font-bold bg-purple-50 px-2 py-0.5 rounded-full inline-block">
+                        🏁 อยู่ในขั้นตอนสุดท้าย
+                    </div>
+                </div>
+
+                <!-- Court Tasks -->
+                <div class="glass-premium card-hover rounded-3xl p-6 relative overflow-hidden group" data-aos="fade-up" data-aos-delay="500">
+                    <div class="absolute right-0 top-0 -mr-6 -mt-6 w-24 h-24 bg-red-50 rounded-full group-hover:scale-110 transition-transform duration-500 opacity-50"></div>
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="w-12 h-12 rounded-2xl gradient-red flex items-center justify-center text-white shadow-lg shadow-red-100">
+                            <i class="fas fa-gavel text-lg"></i>
+                        </div>
+                        <div class="text-xs font-bold text-gray-400 uppercase tracking-widest">งานศาล</div>
+                    </div>
+                    <div class="text-4xl font-black text-gray-800 tracking-tight">${stats.type3 || 0}</div>
+                    <div class="mt-2 text-xs text-red-600 font-bold bg-red-50 px-2 py-0.5 rounded-full inline-block">
+                        ⚖️ รอการวินิจฉัย/ศาล
                     </div>
                 </div>
             </div>
@@ -424,8 +512,8 @@ window.UI = {
                 <div class="glass-premium rounded-3xl p-8 shadow-xl border border-gray-100">
                     <div class="flex items-center justify-between mb-8">
                         <div>
-                            <h3 class="font-black text-xl text-gray-800 tracking-tight">ภาระงานค้าง</h3>
-                            <p class="text-xs text-gray-500 font-medium">สัดส่วนงานค้างแยกตามแผนก</p>
+                            <h3 class="font-black text-xl text-gray-800 tracking-tight">${stats.isSingleDept ? 'สัดส่วนงานค้าง' : 'ภาระงานค้าง'}</h3>
+                            <p class="text-xs text-gray-500 font-medium">${stats.isSingleDept ? `แยกตามประเภทความคืบหน้า (${stats.deptLabel})` : 'สัดส่วนงานค้างแยกตามแผนก'}</p>
                         </div>
                         <div class="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
                             <i class="fas fa-chart-pie"></i>
@@ -435,21 +523,25 @@ window.UI = {
                         ${stats.pendingByDept && Object.entries(stats.pendingByDept).length > 0 ?
                 Object.entries(stats.pendingByDept)
                     .sort(([, a], [, b]) => b - a)
-                    .map(([dept, count], idx) => {
+                    .map(([label, count], idx) => {
                         const percentage = Math.round((count / (stats.pending || 1)) * 100);
                         const depts_meta = {
                             'ฝ่ายรังวัด': { icon: 'fa-vector-square', color: 'from-emerald-400 to-teal-500' },
                             'ฝ่ายทะเบียน': { icon: 'fa-file-invoice', color: 'from-blue-400 to-indigo-500' },
-                            'กลุ่มงานวิชาการ': { icon: 'fa-book-reader', color: 'from-purple-400 to-pink-500' }
+                            'กลุ่มงานวิชาการ': { icon: 'fa-book-reader', color: 'from-purple-400 to-pink-500' },
+                            'งานปกติ/อื่นๆ': { icon: 'fa-circle', color: 'from-gray-400 to-gray-500' },
+                            'งานสุดขั้นตอน': { icon: 'fa-flag-checkered', color: 'from-purple-400 to-indigo-500' },
+                            'งานศาล': { icon: 'fa-gavel', color: 'from-red-400 to-rose-500' },
+                            'งานค้าง (สะสม)': { icon: 'fa-clock', color: 'from-orange-400 to-amber-500' }
                         };
-                        const meta = depts_meta[dept] || { icon: 'fa-layer-group', color: 'from-gray-400 to-gray-500' };
+                        const meta = depts_meta[label] || depts_meta[label.replace(' (2)', '').replace(' (4)', '')] || { icon: 'fa-layer-group', color: 'from-gray-400 to-gray-500' };
 
                         return `
                                 <div>
                                     <div class="flex justify-between items-end mb-2">
                                         <div class="flex items-center">
                                             <div class="w-2 h-2 rounded-full bg-gradient-to-r ${meta.color} mr-2"></div>
-                                            <span class="text-sm font-bold text-gray-700">${dept}</span>
+                                            <span class="text-sm font-bold text-gray-700">${label}</span>
                                         </div>
                                         <div class="flex flex-col items-end">
                                             <div class="flex items-center gap-2">
@@ -457,8 +549,8 @@ window.UI = {
                                                 <span class="text-lg font-black text-gray-800">${percentage}%</span>
                                             </div>
                                             <div class="text-[9px] space-x-2 font-bold whitespace-nowrap mt-0.5">
-                                                ${stats.pendingBreakdown?.[dept]?.type2 ? `<span class="bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded border border-purple-100 italic">สุดขั้นตอน(2): ${stats.pendingBreakdown[dept].type2}</span>` : ''}
-                                                ${stats.pendingBreakdown?.[dept]?.type4 ? `<span class="bg-orange-50 text-orange-600 px-1.5 py-0.5 rounded border border-orange-100 italic">งานค้าง(4): ${stats.pendingBreakdown[dept].type4}</span>` : ''}
+                                                ${!stats.isSingleDept && stats.pendingBreakdown?.[label]?.type2 ? `<span class="bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded border border-purple-100 italic">สุดขั้นตอน(2): ${stats.pendingBreakdown[label].type2}</span>` : ''}
+                                                ${!stats.isSingleDept && stats.pendingBreakdown?.[label]?.type4 ? `<span class="bg-orange-50 text-orange-600 px-1.5 py-0.5 rounded border border-orange-100 italic">งานค้าง(4): ${stats.pendingBreakdown[label].type4}</span>` : ''}
                                             </div>
                                         </div>
                                     </div>
@@ -478,14 +570,18 @@ window.UI = {
                     <div class="flex items-center justify-between mb-8">
                         <div>
                             <h3 class="font-black text-xl text-gray-800 tracking-tight">รายการล่าสุด</h3>
-                            <p class="text-xs text-gray-500 font-medium">ความเคลื่อนไหวย้อนหลัง 8 รายการ</p>
+                            <p class="text-xs text-gray-500 font-medium">${stats.isSingleDept ? 'ความเคลื่อนไหวล่าสุดในฝ่าย' : 'ความเคลื่อนไหวรวมทุกฝ่ายย้อนหลัง 8 รายการ'}</p>
                         </div>
                         <div class="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
                             <i class="fas fa-history"></i>
                         </div>
                     </div>
                     <div class="flex-1 overflow-y-auto custom-scrollbar -mx-2 px-2">
-                        ${this.renderRecentTasks(surveyItems, registrationItems, academicItems)}
+                        ${this.renderRecentTasks(
+                userDept === 'survey' || userDept === 'all' ? surveyItems : [],
+                userDept === 'registration' || userDept === 'all' ? registrationItems : [],
+                userDept === 'academic' || userDept === 'all' ? academicItems : []
+            )}
                     </div>
                 </div>
             </div>
@@ -605,7 +701,7 @@ window.UI = {
             .slice(0, 8);
 
         if (allItems.length === 0) {
-            return '<div class="text-center text-gray-500 py-8"><i class="fas fa-circle-check text-4xl mb-2 text-emerald-500"></i><p class="text-gray-700 font-semibold">ไม่พบรายการเร่งด่วน</p><p class="text-sm text-gray-500 mt-1">ไม่พบรายการค้างเกิน 30 วัน</p></div>';
+            return '<div class="text-center text-gray-500 py-8"><i class="fas fa-circle-check text-4xl mb-2 text-emerald-500"></i><p class="text-gray-700 font-semibold">ไม่พบรายการเร่งด่วน</p><p class="text-sm text-gray-500 mt-1">ไม่พบรายการค้าง 31 วันขึ้นไป</p></div>';
         }
 
         return allItems.map(item => {
@@ -620,7 +716,7 @@ window.UI = {
             const labelTextClass = isOver60 ? 'text-red-500' : 'text-orange-500';
             const urgencyBadge = isOver60
                 ? '<span class="px-2 py-1 text-xs font-bold rounded bg-red-100 text-red-700">ค้างเกิน 60 วัน</span>'
-                : '<span class="px-2 py-1 text-xs font-bold rounded bg-orange-100 text-orange-700">ค้างเกิน 30 วัน</span>';
+                : '<span class="px-2 py-1 text-xs font-bold rounded bg-orange-100 text-orange-700">ค้าง 31 - 60 วัน</span>';
 
             return `
                 <div class="flex items-center py-3 mb-2 rounded-lg px-3 ${bgClass}">
@@ -738,10 +834,10 @@ window.UI = {
                                 <tr class="bg-blue-50/30 text-[11px] font-bold text-gray-600">
                                     <th class="px-2 py-2 border text-center w-20">(7)<br>≤30 วัน<br>(เรื่อง)</th>
                                     <th class="px-2 py-2 border text-center w-20">(7)<br>≤30 วัน<br>(%)</th>
-                                    <th class="px-2 py-2 border text-center w-20">(8)<br>≤60 วัน<br>(เรื่อง)</th>
-                                    <th class="px-2 py-2 border text-center w-20">(8)<br>≤60 วัน<br>(%)</th>
-                                    <th class="px-2 py-2 border text-center w-20">(9)<br>ยังไม่แล้วเสร็จ<br>(เรื่อง)</th>
-                                    <th class="px-2 py-2 border text-center w-20">(9)<br>ยังไม่แล้วเสร็จ<br>(%)</th>
+                                    <th class="px-2 py-2 border text-center w-20">(8)<br>31-60 วัน<br>(เรื่อง)</th>
+                                    <th class="px-2 py-2 border text-center w-20">(8)<br>31-60 วัน<br>(%)</th>
+                                    <th class="px-2 py-2 border text-center w-20">(9)<br>ค้าง >60 วัน<br>(เรื่อง)</th>
+                                    <th class="px-2 py-2 border text-center w-20">(9)<br>ค้าง >60 วัน<br>(%)</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100">

@@ -25,15 +25,18 @@ try {
         'completed' => 0,
         'over30' => 0,
         'over60' => 0,
+        'type2' => 0,
+        'type3' => 0,
+        'type4' => 0,
         'pendingByDept' => [
             'ฝ่ายรังวัด' => 0,
             'ฝ่ายทะเบียน' => 0,
             'กลุ่มงานวิชาการ' => 0
         ],
         'pendingBreakdown' => [
-            'ฝ่ายรังวัด' => ['type2' => 0, 'type4' => 0, 'other' => 0],
-            'ฝ่ายทะเบียน' => ['type2' => 0, 'type4' => 0, 'other' => 0],
-            'กลุ่มงานวิชาการ' => ['type2' => 0, 'type4' => 0, 'other' => 0]
+            'ฝ่ายรังวัด' => ['type2' => 0, 'type3' => 0, 'type4' => 0, 'other' => 0],
+            'ฝ่ายทะเบียน' => ['type2' => 0, 'type3' => 0, 'type4' => 0, 'other' => 0],
+            'กลุ่มงานวิชาการ' => ['type2' => 0, 'type3' => 0, 'type4' => 0, 'other' => 0]
         ],
         'kpi' => [
             'oldWork' => ['total' => 0, 'pending' => 0, 'completed' => 0, 'percent' => 0],
@@ -69,8 +72,9 @@ try {
                     
                     -- Pending Breakdown
                     SUM(CASE WHEN (completion_date IS NULL OR completion_date = '0000-00-00') AND progress_type = 2 THEN 1 ELSE 0 END) as type2,
+                    SUM(CASE WHEN (completion_date IS NULL OR completion_date = '0000-00-00') AND progress_type = 3 THEN 1 ELSE 0 END) as type3,
                     SUM(CASE WHEN (completion_date IS NULL OR completion_date = '0000-00-00') AND progress_type = 4 THEN 1 ELSE 0 END) as type4,
-                    SUM(CASE WHEN (completion_date IS NULL OR completion_date = '0000-00-00') AND progress_type NOT IN (2, 4) THEN 1 ELSE 0 END) as other_pending,
+                    SUM(CASE WHEN (completion_date IS NULL OR completion_date = '0000-00-00') AND progress_type NOT IN (2, 3, 4) THEN 1 ELSE 0 END) as other_pending,
 
                     -- KPI Old Work (<= 2025-12-31)
                     SUM(CASE WHEN received_date <= :baseline1 THEN 1 ELSE 0 END) as old_total,
@@ -80,7 +84,7 @@ try {
                     -- KPI New Work (>= 2026-01-01)
                     SUM(CASE WHEN received_date >= :newstart1 THEN 1 ELSE 0 END) as new_total,
                     SUM(CASE WHEN received_date >= :newstart2 AND (completion_date IS NOT NULL AND completion_date != '0000-00-00') AND DATEDIFF(completion_date, received_date) <= 30 THEN 1 ELSE 0 END) as new_within30,
-                    SUM(CASE WHEN received_date >= :newstart3 AND (completion_date IS NOT NULL AND completion_date != '0000-00-00') AND DATEDIFF(completion_date, received_date) <= 60 THEN 1 ELSE 0 END) as new_within60
+                    SUM(CASE WHEN received_date >= :newstart3 AND (completion_date IS NOT NULL AND completion_date != '0000-00-00') AND DATEDIFF(completion_date, received_date) > 30 AND DATEDIFF(completion_date, received_date) <= 60 THEN 1 ELSE 0 END) as new_within60
                 FROM $table";
 
         $stmt = $conn->prepare($sql);
@@ -102,9 +106,13 @@ try {
         $stats['completed'] += (int) $row['completed'];
         $stats['over30'] += (int) $row['over30'];
         $stats['over60'] += (int) $row['over60'];
+        $stats['type2'] += (int) $row['type2'];
+        $stats['type3'] += (int) $row['type3'];
+        $stats['type4'] += (int) $row['type4'];
 
         $stats['pendingByDept'][$label] = (int) $row['pending'];
         $stats['pendingBreakdown'][$label]['type2'] = (int) $row['type2'];
+        $stats['pendingBreakdown'][$label]['type3'] = (int) $row['type3'];
         $stats['pendingBreakdown'][$label]['type4'] = (int) $row['type4'];
         $stats['pendingBreakdown'][$label]['other'] = (int) $row['other_pending'];
 

@@ -1,7 +1,7 @@
 window.app = {
     currentUser: null,
     idleTimer: null,
-    timeoutSettings: 15 * 60 * 1000, // 15 minutes
+    timeoutSettings: 40 * 60 * 1000, // 40 minutes
     sessionMaxAge: 4 * 60 * 60 * 1000, // 24 hours - session จะหมดอายุหลังจาก 24 ชั่วโมง
 
     // State for List View
@@ -142,6 +142,7 @@ window.app = {
         const menuMappings = {
             'survey': [
                 'nav-registration_list', 'nav-academic_list',
+                'nav-registration_dashboard', 'nav-academic_dashboard',
                 'nav-add-registration', 'nav-add-academic',
                 'nav-import-registration', 'nav-import-academic',
                 'nav-sameday-registration', 'nav-sameday-academic',
@@ -150,6 +151,7 @@ window.app = {
             ],
             'registration': [
                 'nav-survey_list', 'nav-academic_list',
+                'nav-survey_dashboard', 'nav-academic_dashboard',
                 'nav-add-survey', 'nav-add-academic',
                 'nav-import-survey', 'nav-import-academic',
                 'nav-sameday-survey', 'nav-sameday-academic',
@@ -158,6 +160,7 @@ window.app = {
             ],
             'academic': [
                 'nav-survey_list', 'nav-registration_list',
+                'nav-survey_dashboard', 'nav-registration_dashboard',
                 'nav-add-survey', 'nav-add-registration',
                 'nav-import-survey', 'nav-import-registration',
                 'nav-sameday-survey', 'nav-sameday-registration',
@@ -372,9 +375,9 @@ window.app = {
         if (isStaff && userDept !== 'all') {
             // Staff can only access their department's page, dashboard, and reports
             const allowedPages = {
-                'survey': ['dashboard', 'survey_list', 'survey_form', 'report', 'old_backlog'],
-                'registration': ['dashboard', 'registration_list', 'registration_form', 'report', 'old_backlog'],
-                'academic': ['dashboard', 'academic_list', 'academic_form', 'report', 'old_backlog']
+                'survey': ['dashboard', 'survey_list', 'survey_dashboard', 'survey_form', 'report', 'old_backlog'],
+                'registration': ['dashboard', 'registration_list', 'registration_dashboard', 'registration_form', 'report', 'old_backlog'],
+                'academic': ['dashboard', 'academic_list', 'academic_dashboard', 'academic_form', 'report', 'old_backlog']
             };
 
             if (!allowedPages[userDept]?.includes(page)) {
@@ -467,17 +470,26 @@ window.app = {
             title.innerText = 'งานฝ่ายรังวัด';
             this.currentSurveyPage = 1; // Reset to first page
             await this.refreshSurveyList();
-        } else if (page === 'survey_form') {
-            title.innerText = 'บันทึกงานรังวัด';
-            content.innerHTML = UI.renderSurveyForm();
+        } else if (page === 'survey_dashboard') {
+            title.innerText = 'ภาพรวมฝ่ายรังวัด';
+            content.innerHTML = await UI.renderDashboard('survey');
+            this.initPerformanceChart('survey');
         } else if (page === 'registration_list') {
             title.innerText = 'งานฝ่ายทะเบียน';
             this.currentRegistrationPage = 1;
             await this.refreshRegistrationList();
+        } else if (page === 'registration_dashboard') {
+            title.innerText = 'ภาพรวมฝ่ายทะเบียน';
+            content.innerHTML = await UI.renderDashboard('registration');
+            this.initPerformanceChart('registration');
         } else if (page === 'academic_list') {
             title.innerText = 'งานกลุ่มงานวิชาการ';
             this.currentAcademicPage = 1;
             await this.refreshAcademicList();
+        } else if (page === 'academic_dashboard') {
+            title.innerText = 'ภาพรวมฝ่ายวิชาการ';
+            content.innerHTML = await UI.renderDashboard('academic');
+            this.initPerformanceChart('academic');
         } else if (page === 'academic_form') {
             title.innerText = 'บันทึกงานวิชาการ';
             content.innerHTML = UI.renderAcademicForm();
@@ -2766,12 +2778,12 @@ window.app = {
     /**
      * Initialize Performance Graph on Dashboard
      */
-    async initPerformanceChart() {
+    async initPerformanceChart(dept = 'all') {
         const canvas = document.getElementById('performanceChart');
         if (!canvas || typeof Chart === 'undefined') return;
 
         try {
-            const response = await fetch('api/trend_stats.php');
+            const response = await fetch(`api/trend_stats.php?dept=${dept}`);
             const trendData = await response.json();
 
             const labels = trendData.map(d => d.month);
