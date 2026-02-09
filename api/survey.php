@@ -1,6 +1,7 @@
 <?php
 include_once 'db.php';
 require_once 'utils/logger.php';
+require_once 'utils/lockdown.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 
@@ -23,9 +24,9 @@ switch ($method) {
             $data = json_decode(file_get_contents("php://input"));
 
             $sql = "INSERT INTO survey_works (
-                received_seq, received_date, survey_type, applicant, summary, status_cause, men, rv_12
+                received_seq, received_date, survey_type, applicant, summary, status_cause, men, rv_12, survey_date
             ) VALUES (
-                :received_seq, :received_date, :survey_type, :applicant, :summary, :status_cause, :men, :rv_12
+                :received_seq, :received_date, :survey_type, :applicant, :summary, :status_cause, :men, :rv_12, :survey_date
             )";
 
             $stmt = $conn->prepare($sql);
@@ -38,6 +39,7 @@ switch ($method) {
             $stmt->bindValue(':status_cause', $data->status_cause ?? 'pending');
             $stmt->bindValue(':men', $data->men ?? '');
             $stmt->bindValue(':rv_12', $data->rv_12 ?? null);
+            $stmt->bindValue(':survey_date', (!empty($data->survey_date)) ? $data->survey_date : null);
 
             if ($stmt->execute()) {
                 logAction('ADD', $data);
@@ -57,6 +59,13 @@ switch ($method) {
             $data = json_decode(file_get_contents("php://input"));
 
             if (!empty($data->id)) {
+                // Lockdown Check
+                if (!empty($data->completion_date) && isLockdownActive($data->completion_date)) {
+                    http_response_code(403);
+                    echo json_encode(["status" => "error", "message" => "ระบบล็อคการบันทึกงานย้อนหลังเดือนก่อนหน้าแล้ว"]);
+                    exit;
+                }
+
                 if (isset($data->applicant)) {
                     // Full Update
                     $sql = "UPDATE survey_works SET 
@@ -68,7 +77,8 @@ switch ($method) {
                             completion_date = :completion_date,
                             status_cause = :status_cause,
                             men = :men,
-                            rv_12 = :rv_12
+                            rv_12 = :rv_12,
+                            survey_date = :survey_date
                             WHERE id = :id";
 
                     $stmt = $conn->prepare($sql);
@@ -81,20 +91,23 @@ switch ($method) {
                     $stmt->bindValue(':status_cause', $data->status_cause ?? null);
                     $stmt->bindValue(':men', $data->men ?? null);
                     $stmt->bindValue(':rv_12', $data->rv_12 ?? null);
+                    $stmt->bindValue(':survey_date', (!empty($data->survey_date)) ? $data->survey_date : null);
                     $stmt->bindValue(':id', $data->id);
 
-                } else if (isset($data->status_cause) || isset($data->status) || isset($data->rv_12)) {
-                    // Status, Completion Date & RV_12 Update
+                } else if (isset($data->status_cause) || isset($data->status) || isset($data->rv_12) || isset($data->survey_date)) {
+                    // Status, Completion Date, RV_12 & Survey Date Update
                     $statusValue = $data->status_cause ?? $data->status ?? null;
                     $sql = "UPDATE survey_works 
                             SET status_cause = :status_cause, 
                                 completion_date = :completion_date,
-                                rv_12 = :rv_12
+                                rv_12 = :rv_12,
+                                survey_date = :survey_date
                             WHERE id = :id";
                     $stmt = $conn->prepare($sql);
                     $stmt->bindValue(':status_cause', $statusValue);
                     $stmt->bindValue(':completion_date', (!empty($data->completion_date)) ? $data->completion_date : null);
                     $stmt->bindValue(':rv_12', $data->rv_12 ?? null);
+                    $stmt->bindValue(':survey_date', (!empty($data->survey_date)) ? $data->survey_date : null);
                     $stmt->bindValue(':id', $data->id);
                 } else if (isset($data->progress_type)) {
                     // Progress Type Update

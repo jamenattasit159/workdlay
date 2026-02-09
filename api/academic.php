@@ -1,5 +1,6 @@
 <?php
 include_once 'db.php';
+require_once 'utils/lockdown.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 
@@ -57,6 +58,13 @@ switch ($method) {
             $data = json_decode(file_get_contents("php://input"));
 
             if (!empty($data->id)) {
+                // Lockdown Check
+                if (!empty($data->completion_date) && isLockdownActive($data->completion_date)) {
+                    http_response_code(403);
+                    echo json_encode(["status" => "error", "message" => "ระบบล็อคการบันทึกงานย้อนหลังเดือนก่อนหน้าแล้ว"]);
+                    exit;
+                }
+
                 if (isset($data->subject)) {
                     // Full Update
                     $sql = "UPDATE academic_works SET 

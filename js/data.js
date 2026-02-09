@@ -1,4 +1,5 @@
 const DataManager = {
+    systemSettings: null,
 
     /**
      * ตรวจสอบว่างานถือว่าเสร็จหรือไม่
@@ -22,6 +23,94 @@ const DataManager = {
      */
     isPending(item) {
         return !this.isCompleted(item);
+    },
+
+    /**
+     * ตรวจสอบว่าระบบอยู่ในช่วง Lockdown หรือไม่ (ห้ามแก้วันที่เสร็จงานย้อนหลังเดือนก่อน)
+     * เงื่อนไข: ทุกวันที่ 5 เวลา 01:00 น. เป็นต้นไป จะล็อคไม่ให้บันทึกงานของเดือนก่อนหน้า
+     * @param {string} completionDateStr - วันที่เสร็จงานที่จะบันทึก
+     * @returns {boolean} - true ถ้าถูกล็อค
+     */
+    isLockdownActive(completionDateStr) {
+        if (!completionDateStr) return false;
+
+        // Check for manual overrides from settings
+        const lockdownStatus = this.systemSettings?.lockdown_status || 'auto';
+
+        if (lockdownStatus === 'unlocked') return false; // ปลดล็อคตลอดเวลา
+        if (lockdownStatus === 'locked') {
+            // ล็อคตลอดเวลา (เช็คปี/เดือนด้วยเพื่อให้ล็อคเฉพาะงานย้อนหลัง)
+            const now = new Date();
+            const targetDate = this.getSafeDate(completionDateStr);
+            if (!targetDate) return false;
+
+            const currentMonth = now.getMonth();
+            const currentYear = now.getFullYear();
+            const targetMonth = targetDate.getMonth();
+            const targetYear = targetDate.getFullYear();
+
+            if (targetYear < currentYear) return true;
+            if (targetYear === currentYear && targetMonth < currentMonth) return true;
+            return false;
+        }
+
+        const now = new Date();
+        const currentDay = now.getDate();
+        const currentHour = now.getHours();
+
+        // ตรวจสอบว่าเข้าเงื่อนไข Lockdown หรือยัง (วันที่ 5 เวลา 01:00 เป็นต้นไป)
+        const isLockdownTime = currentDay > 5 || (currentDay === 5 && currentHour >= 1);
+
+        if (!isLockdownTime) return false;
+
+        const targetDate = this.getSafeDate(completionDateStr);
+        if (!targetDate) return false;
+
+        // ถ้าวันที่ที่จะบันทึก อยู่ในเดือนก่อนหน้า (หรือปีที่แล้ว) ถือว่าถูกล็อค
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+        const targetMonth = targetDate.getMonth();
+        const targetYear = targetDate.getFullYear();
+
+        if (targetYear < currentYear) return true;
+        if (targetYear === currentYear && targetMonth < currentMonth) return true;
+
+        return false;
+    },
+
+    async getSystemSettings() {
+        try {
+            const response = await fetch('api/settings.php');
+            const result = await response.json();
+            if (result.status === 'success') {
+                this.systemSettings = result.data;
+                return result.data;
+            }
+            return null;
+        } catch (error) {
+            console.error('Error fetching settings:', error);
+            return null;
+        }
+    },
+
+    async updateSystemSetting(key, value) {
+        try {
+            const response = await fetch('api/settings.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key, value })
+            });
+            const result = await response.json();
+            if (result.status === 'success') {
+                if (!this.systemSettings) this.systemSettings = {};
+                this.systemSettings[key] = value;
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error('Error updating setting:', error);
+            return false;
+        }
     },
 
     // --- Cache Storage ---
@@ -166,19 +255,20 @@ const DataManager = {
         });
 
         const kpi30Percent = totalNewWork > 0 ? (completedWithin30 / totalNewWork) * 100 : 0;
-        const kpi60Percent = totalNewWork > 0 ? (completedWithin60 / totalNewWork) * 100 : 0;
+        const abm30Percent = totalNewWork > 0 ? (completedWithin30 / totalNewWork) * 100 : 0;
+        const abm60Percent = totalNewWork > 0 ? (completedWithin60 / totalNewWork) * 100 : 0;
 
         return {
             total, pending, completed, over30, over60, type2, type3, type4, pendingByDept, pendingBreakdown,
-            kpi: {
+            abm: {
                 oldWork: { total: totalOldWork, pending: oldWorkPending, completed: oldWorkCompleted, percent: reductionPercent },
-                newWork: { total: totalNewWork, within30: kpi30Percent, within60: kpi60Percent }
+                newWork: { total: totalNewWork, within30: abm30Percent, within60: abm60Percent }
             }
         };
     },
 
-    // KPI Report with Date Selection
-    async getKPIReport(reportDateStr) {
+    // ABM Report with Date Selection
+    async getABMReport(reportDateStr) {
         const [surveyItems, regItems, acadItems] = await Promise.all([
             this.getSurveyItems(),
             this.getRegistrationItems(),

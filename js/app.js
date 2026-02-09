@@ -22,12 +22,19 @@ window.app = {
     registrationProgressFilter: 'all',
     academicProgressFilter: 'all',
 
+    // Month Filter State (all, 1-12)
+    surveyMonthFilter: 'all',
+    registrationMonthFilter: 'all',
+    academicMonthFilter: 'all',
+
     init() {
         console.log('App initialized v2.0');
         this.checkSession();
         this.updateDate();
         if (this.currentUser) {
             this.startIdleMonitor();
+            // Load system settings (Lockdown, etc.)
+            DataManager.getSystemSettings();
         }
 
         // Initialize AOS
@@ -147,7 +154,8 @@ window.app = {
                 'nav-import-registration', 'nav-import-academic',
                 'nav-sameday-registration', 'nav-sameday-academic',
                 'nav-import-completed-registration', 'nav-import-completed-academic',
-                'nav-completed-registration', 'nav-completed-academic'
+                'nav-completed-registration', 'nav-completed-academic',
+                'nav-reg-export'
             ],
             'registration': [
                 'nav-survey_list', 'nav-academic_list',
@@ -165,7 +173,8 @@ window.app = {
                 'nav-import-survey', 'nav-import-registration',
                 'nav-sameday-survey', 'nav-sameday-registration',
                 'nav-import-completed-survey', 'nav-import-completed-registration',
-                'nav-completed-survey', 'nav-completed-registration'
+                'nav-completed-survey', 'nav-completed-registration',
+                'nav-reg-export'
             ]
         };
 
@@ -180,6 +189,16 @@ window.app = {
                 const el = document.getElementById(menuId);
                 if (el) el.classList.add('hidden');
             });
+        }
+
+        // Admin Settings: Only for Admins
+        const adminSettingsLink = document.getElementById('nav-admin-settings');
+        if (adminSettingsLink) {
+            if (isAdmin) {
+                adminSettingsLink.classList.remove('hidden');
+            } else {
+                adminSettingsLink.classList.add('hidden');
+            }
         }
     },
 
@@ -250,11 +269,47 @@ window.app = {
             icon: 'success',
             title: `ยินดีต้อนรับ, ${user.name}`,
             text: 'เข้าสู่ระบบสำเร็จ',
-            timer: 1500,
+            timer: 1000,
             showConfirmButton: false
         }).then(() => {
-            this.showMainApp();
-            this.startIdleMonitor();
+            // Check if 3 days have passed since last cache prompt
+            const lastPrompt = localStorage.getItem('dol_last_cache_prompt');
+            const now = Date.now();
+            const threeDays = 3 * 24 * 60 * 60 * 1000;
+
+            if (!lastPrompt || (now - parseInt(lastPrompt)) > threeDays) {
+                // Add prompt for clearing cache as requested by user
+                Swal.fire({
+                    title: 'ล้างแคชข้อมูล?',
+                    text: 'คุณต้องการล้างแคชเพื่อดึงข้อมูลใหม่ล่าสุดจากเซิร์ฟเวอร์หรือไม่? (จะแสดงเมนูนี้ทุกๆ 3 วัน)',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#10B981',
+                    cancelButtonColor: '#6B7280',
+                    confirmButtonText: 'ใช่, ล้างแคช',
+                    cancelButtonText: 'ไม่ต้อง'
+                }).then((result) => {
+                    localStorage.setItem('dol_last_cache_prompt', now.toString());
+                    if (result.isConfirmed) {
+                        DataManager.clearCache();
+                        Swal.fire({
+                            title: 'ล้างแคชสำเร็จ',
+                            icon: 'success',
+                            timer: 1000,
+                            showConfirmButton: false
+                        }).then(() => {
+                            this.showMainApp();
+                            this.startIdleMonitor();
+                        });
+                    } else {
+                        this.showMainApp();
+                        this.startIdleMonitor();
+                    }
+                });
+            } else {
+                this.showMainApp();
+                this.startIdleMonitor();
+            }
         });
     },
 
@@ -349,6 +404,7 @@ window.app = {
     academicItemsPerPage: 20,
     academicSearchTerm: '',
     academicSearchTimeout: null,
+    currentAcademicSort: 'desc',
 
     // ... (navigate function remains mostly same, just ensure state reset)
 
@@ -588,6 +644,12 @@ window.app = {
         }, 300);
     },
 
+    async sortAcademicList(order) {
+        this.currentAcademicSort = order;
+        this.currentAcademicPage = 1;
+        this.refreshAcademicList();
+    },
+
     async goToAcademicPage(page) {
         this.currentAcademicPage = page;
         this.refreshAcademicList();
@@ -607,6 +669,14 @@ window.app = {
             items = items.filter(item => DataManager.isPending(item));
         } else {
             items = items.filter(item => DataManager.isCompleted(item));
+
+            // Apply Month Filter if completed
+            if (this.academicMonthFilter && this.academicMonthFilter !== 'all') {
+                items = items.filter(i => {
+                    const d = DataManager.getSafeDate(i.completion_date);
+                    return d && (d.getMonth() + 1) === parseInt(this.academicMonthFilter, 10);
+                });
+            }
         }
 
         // 0.5. Filter by Progress Type (1=ปกติ, 2=สุดขั้นตอน, 3=งานศาล)
@@ -630,35 +700,33 @@ window.app = {
             this.currentAcademicPage = maxPage;
         }
 
-        // Sorting (Default to date desc)
-        items.sort((a, b) => new Date(b.received_date) - new Date(a.received_date));
+        // Sorting
+        if (!this.currentAcademicSort) this.currentAcademicSort = 'desc';
 
-        if (listContainer) {
-            await UI.updateAcademicList(
-                items,
-                this.academicSearchTerm,
-                this.currentAcademicSubject || 'all',
-                this.currentAcademicPage,
-                this.academicItemsPerPage
-            );
-        } else {
-            content.innerHTML = await UI.renderAcademicList(
-                items,
-                this.academicSearchTerm,
-                this.currentAcademicSubject || 'all',
-                this.currentAcademicPage,
-                this.academicItemsPerPage,
-                this.academicStatusView
-            );
+        items.sort((a, b) => {
+            const idA = parseInt(a.id, 10) || 0;
+            const idB = parseInt(b.id, 10) || 0;
 
-            // Restore input focus
-            const searchInput = document.getElementById('academic-search-input');
-            if (searchInput && this.academicSearchTerm) {
-                searchInput.focus();
-                const val = searchInput.value;
-                searchInput.value = '';
-                searchInput.value = val;
-            }
+            return this.currentAcademicSort === 'asc' ? (idA - idB) : (idB - idA);
+        });
+
+        content.innerHTML = await UI.renderAcademicList(
+            items,
+            this.academicSearchTerm,
+            this.currentAcademicSort || 'desc',
+            this.currentAcademicSubject || 'all',
+            this.currentAcademicPage,
+            this.academicItemsPerPage,
+            this.academicStatusView
+        );
+
+        // Restore input focus
+        const searchInput = document.getElementById('academic-search-input');
+        if (searchInput && this.academicSearchTerm) {
+            searchInput.focus();
+            const val = searchInput.value;
+            searchInput.value = '';
+            searchInput.value = val;
         }
 
         if (typeof AOS !== 'undefined') {
@@ -670,7 +738,7 @@ window.app = {
             const tableEl = document.getElementById('academic-datatable');
             if (typeof $ !== 'undefined' && $.fn.DataTable && tableEl) {
                 UI.initDataTable('academic-datatable', {
-                    order: [[1, 'desc']],
+                    order: [],
                     columnDefs: [
                         { orderable: false, targets: [5] }
                     ]
@@ -685,8 +753,21 @@ window.app = {
         this.refreshAcademicList();
     },
 
+    async setAcademicStatusView(view) {
+        this.academicStatusView = view;
+        this.academicMonthFilter = 'all';
+        this.currentAcademicPage = 1;
+        this.refreshAcademicList();
+    },
+
     async filterAcademicProgress(progressType) {
         this.academicProgressFilter = progressType;
+        this.currentAcademicPage = 1;
+        this.refreshAcademicList();
+    },
+
+    async filterAcademicMonth(month) {
+        this.academicMonthFilter = month;
         this.currentAcademicPage = 1;
         this.refreshAcademicList();
     },
@@ -709,6 +790,13 @@ window.app = {
         this.refreshRegistrationList();
     },
 
+    async setRegistrationStatusView(view) {
+        this.registrationStatusView = view;
+        this.registrationMonthFilter = 'all';
+        this.currentRegistrationPage = 1;
+        this.refreshRegistrationList();
+    },
+
     async filterRegistrationSubject(subject) {
         this.currentRegistrationSubject = subject;
         this.currentRegistrationPage = 1;
@@ -717,6 +805,12 @@ window.app = {
 
     async filterRegistrationProgress(progressType) {
         this.registrationProgressFilter = progressType;
+        this.currentRegistrationPage = 1;
+        this.refreshRegistrationList();
+    },
+
+    async filterRegistrationMonth(month) {
+        this.registrationMonthFilter = month;
         this.currentRegistrationPage = 1;
         this.refreshRegistrationList();
     },
@@ -736,6 +830,14 @@ window.app = {
             items = items.filter(item => DataManager.isPending(item));
         } else {
             items = items.filter(item => DataManager.isCompleted(item));
+
+            // Apply Month Filter if completed
+            if (this.registrationMonthFilter && this.registrationMonthFilter !== 'all') {
+                items = items.filter(i => {
+                    const d = DataManager.getSafeDate(i.completion_date);
+                    return d && (d.getMonth() + 1) === parseInt(this.registrationMonthFilter, 10);
+                });
+            }
         }
 
         // Filter by Progress Type (1=ปกติ, 2=สุดขั้นตอน, 3=งานศาล)
@@ -749,39 +851,33 @@ window.app = {
         if (this.currentRegistrationPage > maxPage) {
             this.currentRegistrationPage = maxPage;
         }
+        // Sort by ID
+        if (!this.currentRegistrationSort) this.currentRegistrationSort = 'desc';
+        items.sort((a, b) => {
+            const idA = parseInt(a.id, 10) || 0;
+            const idB = parseInt(b.id, 10) || 0;
+            return this.currentRegistrationSort === 'asc' ? (idA - idB) : (idB - idA);
+        });
 
-        if (listContainer) {
-            // Partial Update (Optimized - Avoids destroying Input)
-            await UI.updateRegistrationList(
-                items,
-                this.registrationSearchTerm,
-                this.currentRegistrationSort,
-                this.currentRegistrationFilter,
-                this.currentRegistrationSubject || 'all',
-                this.currentRegistrationPage,
-                this.registrationItemsPerPage
-            );
-        } else {
-            // Full Render (First Load or Navigate)
-            content.innerHTML = await UI.renderRegistrationList(
-                items,
-                this.registrationSearchTerm,
-                this.currentRegistrationSort,
-                this.currentRegistrationFilter,
-                this.currentRegistrationSubject || 'all',
-                this.currentRegistrationPage,
-                this.registrationItemsPerPage,
-                this.registrationStatusView
-            );
+        // Always use renderRegistrationList to ensure sort buttons highlight correctly
+        content.innerHTML = await UI.renderRegistrationList(
+            items,
+            this.registrationSearchTerm,
+            this.currentRegistrationSort,
+            this.currentRegistrationFilter,
+            this.currentRegistrationSubject || 'all',
+            this.currentRegistrationPage,
+            this.registrationItemsPerPage,
+            this.registrationStatusView
+        );
 
-            // Restore input focus only if needed (safety check for full render)
-            const searchInput = document.getElementById('registration-search-input');
-            if (searchInput && this.registrationSearchTerm) {
-                searchInput.focus();
-                const val = searchInput.value;
-                searchInput.value = '';
-                searchInput.value = val;
-            }
+        // Restore input focus only if needed (safety check for full render)
+        const searchInput = document.getElementById('registration-search-input');
+        if (searchInput && this.registrationSearchTerm) {
+            searchInput.focus();
+            const val = searchInput.value;
+            searchInput.value = '';
+            searchInput.value = val;
         }
 
         if (typeof AOS !== 'undefined') {
@@ -793,7 +889,7 @@ window.app = {
             const tableEl = document.getElementById('registration-datatable');
             if (typeof $ !== 'undefined' && $.fn.DataTable && tableEl) {
                 UI.initDataTable('registration-datatable', {
-                    order: [[1, 'desc']],
+                    order: [],
                     columnDefs: [
                         { orderable: false, targets: [7] }
                     ]
@@ -833,8 +929,21 @@ window.app = {
         this.refreshSurveyList();
     },
 
+    async setSurveyStatusView(view) {
+        this.surveyStatusView = view;
+        this.surveyMonthFilter = 'all';
+        this.currentSurveyPage = 1;
+        this.refreshSurveyList();
+    },
+
     async filterSurveyProgress(progressType) {
         this.surveyProgressFilter = progressType;
+        this.currentSurveyPage = 1;
+        this.refreshSurveyList();
+    },
+
+    async filterSurveyMonth(month) {
+        this.surveyMonthFilter = month;
         this.currentSurveyPage = 1;
         this.refreshSurveyList();
     },
@@ -859,6 +968,14 @@ window.app = {
             items = items.filter(item => DataManager.isPending(item));
         } else {
             items = items.filter(item => DataManager.isCompleted(item));
+
+            // Apply Month Filter if completed
+            if (this.surveyMonthFilter && this.surveyMonthFilter !== 'all') {
+                items = items.filter(i => {
+                    const d = DataManager.getSafeDate(i.completion_date);
+                    return d && (d.getMonth() + 1) === parseInt(this.surveyMonthFilter, 10);
+                });
+            }
         }
 
         // 0.5. Filter by Progress Type (1=ปกติ, 2=สุดขั้นตอน, 3=งานศาล)
@@ -888,53 +1005,34 @@ window.app = {
             this.currentSurveyPage = maxPage;
         }
 
-        // 3. Sort
+        // 3. Sort by created_at
         if (!this.currentSurveySort) this.currentSurveySort = 'desc'; // Default newest first
 
         items.sort((a, b) => {
-            // Helper to parsing dates safely since we have logic in UI but here we just need simple sort?
-            // Ideally we should use UI.getSafeDate ?? But app.js doesn't have it.
-            // Let's rely on standard Date parsing as before, or use the raw string comparison if format is ISO.
-            // But 'received_date' is likely YYYY-MM-DD.
-            const dateA = new Date(a.received_date);
-            const dateB = new Date(b.received_date);
+            const idA = parseInt(a.id, 10) || 0;
+            const idB = parseInt(b.id, 10) || 0;
 
-            if (this.currentSurveySort === 'asc') {
-                return dateA - dateB;
-            } else {
-                return dateB - dateA;
-            }
+            return this.currentSurveySort === 'asc' ? (idA - idB) : (idB - idA);
         });
 
-        // Render
-        if (listContainer) {
-            await UI.updateSurveyList(
-                items,
-                this.surveySearchTerm,
-                this.currentSurveySort,
-                this.currentSurveyFilter,
-                this.currentSurveyPage,
-                this.surveyItemsPerPage
-            );
-        } else {
-            content.innerHTML = await UI.renderSurveyList(
-                items,
-                this.surveySearchTerm,
-                this.currentSurveySort,
-                this.currentSurveyFilter,
-                this.currentSurveyPage,
-                this.surveyItemsPerPage,
-                this.surveyStatusView
-            );
+        // Always use renderSurveyList to ensure sort buttons highlight correctly
+        content.innerHTML = await UI.renderSurveyList(
+            items,
+            this.surveySearchTerm,
+            this.currentSurveySort,
+            this.currentSurveyFilter,
+            this.currentSurveyPage,
+            this.surveyItemsPerPage,
+            this.surveyStatusView
+        );
 
-            // Restore input focus only if needed (safety check for full render)
-            const searchInput = document.getElementById('survey-search-input');
-            if (searchInput && this.surveySearchTerm) {
-                searchInput.focus();
-                const val = searchInput.value;
-                searchInput.value = '';
-                searchInput.value = val;
-            }
+        // Restore input focus
+        const searchInput = document.getElementById('survey-search-input');
+        if (searchInput && this.surveySearchTerm) {
+            searchInput.focus();
+            const val = searchInput.value;
+            searchInput.value = '';
+            searchInput.value = val;
         }
 
         // Refresh AOS
@@ -947,7 +1045,7 @@ window.app = {
             const tableEl = document.getElementById('survey-datatable');
             if (typeof $ !== 'undefined' && $.fn.DataTable && tableEl) {
                 UI.initDataTable('survey-datatable', {
-                    order: [[1, 'desc']],
+                    order: [],
                     columnDefs: [
                         { orderable: false, targets: [0, 9] }
                     ]
@@ -1014,6 +1112,162 @@ window.app = {
         }
     },
 
+    async openSurveyRegModal() {
+        const now = new Date();
+        const yearMonth = now.toISOString().slice(0, 7);
+
+        try {
+            const response = await fetch(`api/survey_reg_logs.php?year_month=${yearMonth}`);
+            const data = await response.json();
+            const logs = data.logs || [];
+            const summary = data.summary || { total_count: 0 };
+
+            let logsHtml = logs.map(log => `
+                <div class="flex justify-between items-center p-3 hover:bg-gray-50 border-b border-gray-100 last:border-0 rounded-lg transition-colors">
+                    <div class="text-left">
+                        <p class="font-bold text-gray-700">${new Date(log.record_date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                        <p class="text-xs text-gray-400">${log.notes || '-'}</p>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <span class="text-lg font-black text-blue-600">${log.count}</span>
+                        <button onclick="app.deleteSurveyRegLog(${log.id})" class="text-red-400 hover:text-red-600 transition-colors p-2">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+            if (logs.length === 0) {
+                logsHtml = '<div class="text-center py-8 text-gray-400">ยังไม่มีการบันทึกข้อมูลในเดือนนี้</div>';
+            }
+
+            Swal.fire({
+                title: 'ยอดรับงานจากฝ่ายทะเบียน',
+                html: `
+                    <div class="mb-6 p-4 bg-blue-50 rounded-2xl flex justify-between items-center border border-blue-100 shadow-inner">
+                        <span class="text-blue-700 font-bold">รวมยอดทั้งหมดเดือนนี้</span>
+                        <span class="text-2xl font-black text-blue-700">${(summary.total_count || 0).toLocaleString()}</span>
+                    </div>
+                    
+                    <div class="space-y-4 mb-6">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="text-left">
+                                <label class="block text-xs font-bold text-gray-500 mb-1 ml-1">วันที่รับงาน</label>
+                                <input type="date" id="swal-reg-date" value="${now.toISOString().split('T')[0]}" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all text-sm">
+                            </div>
+                            <div class="text-left">
+                                <label class="block text-xs font-bold text-gray-500 mb-1 ml-1">จำนวนงาน (เรื่อง)</label>
+                                <input type="number" id="swal-reg-count" placeholder="0" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all text-sm font-bold">
+                            </div>
+                        </div>
+                        <div class="text-left">
+                            <label class="block text-xs font-bold text-gray-500 mb-1 ml-1">หมายเหตุ</label>
+                            <input type="text" id="swal-reg-notes" placeholder="ระบุรายละเอียดเพิ่มเติม (ถ้ามี)" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all text-sm">
+                        </div>
+                        <button onclick="app.saveSurveyRegLog()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold shadow-lg shadow-blue-600/20 transform hover:-translate-y-0.5 transition-all">
+                            <i class="fas fa-save mr-2"></i> บันทึกข้อมูล
+                        </button>
+                    </div>
+
+                    <div class="text-left">
+                        <h4 class="text-xs font-black text-gray-400 uppercase tracking-wider mb-3 px-1">ประวัติการบันทึกเดือนนี้</h4>
+                        <div class="max-h-60 overflow-y-auto px-1">
+                            ${logsHtml}
+                        </div>
+                    </div>
+                `,
+                showConfirmButton: false,
+                showCloseButton: true,
+                width: '500px',
+                padding: '2rem',
+                customClass: {
+                    container: 'kpi-modal-container',
+                    popup: 'rounded-3xl shadow-2xl border-0'
+                }
+            });
+
+        } catch (error) {
+            console.error(error);
+            Swal.fire('ผิดพลาด', 'ไม่สามารถโหลดข้อมูลได้', 'error');
+        }
+    },
+
+    async saveSurveyRegLog() {
+        const record_date = document.getElementById('swal-reg-date').value;
+        const countInput = document.getElementById('swal-reg-count');
+        const count = parseInt(countInput.value);
+        const notes = document.getElementById('swal-reg-notes').value;
+
+        if (!count || count <= 0) {
+            Swal.fire('กรุณาตรวจสอบข้อมูล', 'ระบุจำนวนงานที่ถูกต้อง', 'warning');
+            return;
+        }
+
+        try {
+            const response = await fetch('api/survey_reg_logs.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    record_date,
+                    count,
+                    notes,
+                    created_by: this.currentUser?.name || 'ฝ่ายรังวัด'
+                })
+            });
+
+            if (response.ok) {
+                // Refresh modal with current list
+                this.openSurveyRegModal();
+
+                // Show small success toast instead of whole Swal
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true
+                });
+                Toast.fire({
+                    icon: 'success',
+                    title: 'บันทึกสำเร็จ'
+                });
+            } else {
+                Swal.fire('ผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
+            }
+        } catch (error) {
+            Swal.fire('ผิดพลาด', error.message, 'error');
+        }
+    },
+
+    async deleteSurveyRegLog(id) {
+        const result = await Swal.fire({
+            title: 'ยืนยันการลบ?',
+            text: "ข้อมูลนี้จะถูกลบออกจากรายงาน KPI ด้วย",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#EF4444',
+            confirmButtonText: 'ลบข้อมูล',
+            cancelButtonText: 'ยกเลิก'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const response = await fetch('api/survey_reg_logs.php', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
+
+                if (response.ok) {
+                    this.openSurveyRegModal(); // Refresh modal
+                }
+            } catch (error) {
+                Swal.fire('ผิดพลาด', error.message, 'error');
+            }
+        }
+    },
+
+
     async handleSaveWork() {
         if (!this.currentAddType) return;
 
@@ -1034,6 +1288,18 @@ window.app = {
 
         if (!isValid) {
             Swal.fire('กรุณากรอกข้อมูล', 'โปรดระบุข้อมูลในช่องที่จำเป็น', 'warning');
+            return;
+        }
+
+        // Lockdown Check
+        const completionDate = formData.get('received_date');
+        if (DataManager.isLockdownActive(completionDate)) {
+            Swal.fire({
+                icon: 'error',
+                title: 'ไม่สามารถบันทึกข้อมูลได้',
+                text: 'เนื่องจากเลยกำหนดการรายงานประจำเดือน (วันที่ 5 เวลา 01:00 น.) จึงไม่สามารถบันทึกงานย้อนหลังของเดือนที่ผ่านมาได้',
+                confirmButtonColor: '#EF4444'
+            });
             return;
         }
 
@@ -1198,10 +1464,22 @@ window.app = {
         const status = document.getElementById('update-status-input').value;
         const completion_date = document.getElementById('update-completion-date').value;
 
+        // Lockdown Check
+        if (completion_date && DataManager.isLockdownActive(completion_date)) {
+            Swal.fire({
+                icon: 'error',
+                title: 'ไม่สามารถแก้ไขข้อมูลได้',
+                text: 'สถานะ "เสร็จสิ้น" ของเดือนที่ผ่านมาถูกล็อคแล้ว (เลยกำหนดแจ้งงานประจำเดือนทุกวันที่ 5)',
+                confirmButtonColor: '#EF4444'
+            });
+            return;
+        }
+
         try {
             if (type === 'survey') {
                 const rv_12 = document.getElementById('update-rv12-input')?.value;
-                await DataManager.updateSurveyItem({ id, status_cause: status, completion_date, rv_12 });
+                const survey_date = document.getElementById('update-survey-date')?.value;
+                await DataManager.updateSurveyItem({ id, status_cause: status, completion_date, rv_12, survey_date });
             } else if (type === 'registration') {
                 await DataManager.updateRegistrationItem({ id, status_cause: status, completion_date });
             } else if (type === 'academic') {
@@ -1301,8 +1579,8 @@ window.app = {
         await this.refreshAcademicList();
     },
 
-    // KPI Report Date Handler
-    async updateKPIReport(dateValue) {
+    // ABM Report Date Handler
+    async updateABMReport(dateValue) {
         const content = document.getElementById('app-content');
         if (content) {
             content.innerHTML = await UI.renderReport(dateValue);
@@ -1322,11 +1600,12 @@ window.app = {
         const yearBE = year + 543;
 
         // Get KPI data with the current report date
-        const reportDate = document.getElementById('kpi-report-date')?.value || null;
-        const kpiData = await DataManager.getKPIReport(reportDate);
+        const abmReportDate = document.getElementById('abm-report-month')?.value || null;
+        const abmData = await DataManager.getABMReport(abmReportDate);
+        if (!abmData || !abmData.oldWork) return;
 
         // Find the month data
-        const monthData = kpiData.oldWork.monthlyProgress.find(m => m.yearAD === year && m.monthNum === month);
+        const monthData = abmData.oldWork.monthlyProgress.find(m => m.yearAD === year && m.monthNum === month);
 
         if (!monthData || !monthData.items || monthData.items.length === 0) {
             Swal.fire('ไม่มีข้อมูล', `ไม่พบงานที่เสร็จในเดือน ${monthName} ${yearBE}`, 'info');
@@ -1393,11 +1672,11 @@ window.app = {
         });
 
         try {
-            const reportDate = document.getElementById('kpi-report-date')?.value || null;
-            const kpiData = await DataManager.getKPIReport(reportDate);
+            const reportDate = document.getElementById('abm-report-date')?.value || null;
+            const abmData = await DataManager.getABMReport(reportDate);
 
             // Generate the professional HTML template
-            const reportHtml = UI.renderOfficialPrintTemplate(kpiData);
+            const reportHtml = UI.renderOfficialPrintTemplate(abmData);
 
             // Create a temporary iframe or open a new window for printing
             const printWindow = window.open('', '_blank', 'width=1000,height=800');
@@ -1444,39 +1723,39 @@ window.app = {
         });
 
         try {
-            const reportDate = document.getElementById('kpi-report-date')?.value || null;
-            const kpiData = await DataManager.getKPIReport(reportDate);
+            const reportDate = document.getElementById('abm-report-month')?.value || null;
+            const abmReport = await DataManager.getABMReport(reportDate);
 
             // Create workbook
             const wb = XLSX.utils.book_new();
 
             // Sheet 1: Summary
             const summaryData = [
-                ['รายงาน KPI งานค้าง - สนง.ที่ดินจังหวัดอ่างทอง'],
-                ['วันที่รายงาน: ' + (kpiData.reportDate || new Date().toLocaleDateString('th-TH'))],
+                ['รายงาน ABM งานค้าง - Ang Thong ABM'],
+                ['วันที่รายงาน: ' + (abmReport.reportDate || new Date().toLocaleDateString('th-TH'))],
                 [''],
                 ['=== โซน 1: งานเก่า (ก่อน ม.ค. 2569) ==='],
-                ['งานเก่าทั้งหมด (Baseline)', kpiData.oldWork.baseline.total],
-                ['ดำเนินการเสร็จแล้ว', kpiData.oldWork.summary.totalCompleted],
-                ['คงเหลือ', kpiData.oldWork.summary.remaining],
-                ['% ลดลง', kpiData.oldWork.summary.currentPercent.toFixed(1) + '%'],
+                ['งานเก่าทั้งหมด (Baseline)', abmReport.oldWork.baseline.total],
+                ['ดำเนินการเสร็จแล้ว', abmReport.oldWork.summary.totalCompleted],
+                ['คงเหลือ', abmReport.oldWork.summary.remaining],
+                ['% ลดลง', abmReport.oldWork.summary.currentPercent.toFixed(1) + '%'],
                 [''],
                 ['=== โซน 2: งานใหม่ (ตั้งแต่ ม.ค. 2569) ==='],
-                ['งานใหม่ทั้งหมด', kpiData.newWork.total],
-                ['เสร็จแล้ว', kpiData.newWork.completed],
-                ['รอดำเนินการ', kpiData.newWork.pending],
-                ['เสร็จใน 30 วัน', kpiData.newWork.breakdown.within30Days + ' (' + kpiData.newWork.percentages.within30.toFixed(1) + '%)'],
-                ['เสร็จใน 60 วัน', kpiData.newWork.breakdown.within60Days + ' (' + kpiData.newWork.percentages.within60.toFixed(1) + '%)']
+                ['งานใหม่ทั้งหมด', abmReport.newWork.total],
+                ['เสร็จแล้ว', abmReport.newWork.completed],
+                ['รอดำเนินการ', abmReport.newWork.pending],
+                ['เสร็จใน 30 วัน', abmReport.newWork.breakdown.within30Days + ' (' + abmReport.newWork.percentages.within30.toFixed(1) + '%)'],
+                ['เสร็จใน 60 วัน', abmReport.newWork.breakdown.within60Days + ' (' + abmReport.newWork.percentages.within60.toFixed(1) + '%)']
             ];
             const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
             XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
 
             // Sheet 2: Old Work Monthly
-            if (kpiData.oldWork.monthlyProgress && kpiData.oldWork.monthlyProgress.length > 0) {
+            if (abmReport.oldWork.monthlyProgress && abmReport.oldWork.monthlyProgress.length > 0) {
                 const thaiMonths = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
                     'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
                 const monthlyHeaders = ['เดือน', 'งานค้างต้นเดือน', 'เสร็จในเดือน', 'งานค้างสิ้นเดือน', '% ลดลง', 'ผลการประเมิน'];
-                const monthlyRows = kpiData.oldWork.monthlyProgress.map(m => [
+                const monthlyRows = abmReport.oldWork.monthlyProgress.map(m => [
                     thaiMonths[m.monthNum - 1] + ' ' + m.year,
                     m.backlogStart,
                     m.completedThisMonth,
@@ -1489,11 +1768,11 @@ window.app = {
             }
 
             // Sheet 3: Old Work Details (รายละเอียดงานเก่าที่เสร็จแล้ว - เหมือน PDF ภาคผนวก)
-            if (kpiData.oldWork.monthlyProgress && kpiData.oldWork.monthlyProgress.length > 0) {
+            if (abmReport.oldWork.monthlyProgress && abmReport.oldWork.monthlyProgress.length > 0) {
                 const oldWorkDetailsHeaders = ['เดือน/ปี', 'ลำดับ', 'ฝ่าย', 'เรื่อง/ผู้ขอ', 'วันที่รับ', 'วันที่เสร็จ'];
                 const oldWorkDetailsRows = [];
 
-                kpiData.oldWork.monthlyProgress.forEach(m => {
+                abmReport.oldWork.monthlyProgress.forEach(m => {
                     if (m.items && m.items.length > 0) {
                         m.items.forEach((item, idx) => {
                             oldWorkDetailsRows.push([
@@ -1515,9 +1794,9 @@ window.app = {
             }
 
             // Sheet 4: New Work Details (รายละเอียดงานใหม่ที่เสร็จแล้ว)
-            if (kpiData.newWork.completedItems && kpiData.newWork.completedItems.length > 0) {
+            if (abmReport.newWork.completedItems && abmReport.newWork.completedItems.length > 0) {
                 const newWorkDetailsHeaders = ['ลำดับ', 'ฝ่าย', 'เรื่อง/ผู้ขอ', 'วันที่รับ', 'วันที่เสร็จ', 'จำนวนวัน', 'สถานะ'];
-                const newWorkDetailsRows = kpiData.newWork.completedItems.map((item, idx) => {
+                const newWorkDetailsRows = abmReport.newWork.completedItems.map((item, idx) => {
                     const days = item.daysToComplete || '-';
                     let status = 'เสร็จสิ้น';
 
@@ -1547,7 +1826,7 @@ window.app = {
             }
 
             // Save
-            XLSX.writeFile(wb, 'KPI_Report_' + new Date().toISOString().split('T')[0] + '.xlsx');
+            XLSX.writeFile(wb, 'ABM_Report_' + new Date().toISOString().split('T')[0] + '.xlsx');
 
             Swal.fire({
                 icon: 'success',
@@ -2063,10 +2342,10 @@ window.app = {
         window.location.href = `api/template.php?type=${workType}&format=${format}`;
     },
 
-    // ==================== KPI ACTION PLAN ====================
+    // ==================== ABM ACTION PLAN ====================
 
-    // Load KPI data from API
-    async loadKPIData(date = null) {
+    // Load ABM data from API
+    async loadABMData(date = null) {
         try {
             const today = new Date();
             // Use provided date or current month
@@ -2076,8 +2355,8 @@ window.app = {
 
             console.log('Loading KPI Data for:', yearMonth); // Debug
 
-            const response = await fetch(`api/kpi_report.php?years_month=${yearMonth}&department=all`);
-            if (!response.ok) throw new Error('Failed to load KPI data');
+            const response = await fetch(`api/abm_report.php?years_month=${yearMonth}&department=all`);
+            if (!response.ok) throw new Error('Failed to load ABM data');
 
             return await response.json();
         } catch (error) {
@@ -2093,8 +2372,8 @@ window.app = {
         }
     },
 
-    // Save KPI Note
-    async saveKPINote(yearMonth, dept, note) {
+    // Save ABM Note
+    async saveABMNote(yearMonth, dept, note) {
         try {
             const response = await fetch('api/kpi_report.php', {
                 method: 'POST',
@@ -2129,7 +2408,7 @@ window.app = {
     },
 
     // Show modal to save manually completed work today
-    async showKPISaveCompletionModal(defaultDept = 'survey') {
+    async showABMSaveCompletionModal(defaultDept = 'survey') {
         Swal.fire({
             title: 'บันทึกงานเสร็จวันนี้',
             html: `
@@ -2159,11 +2438,11 @@ window.app = {
             }
         }).then(async (result) => {
             if (result.isConfirmed) {
-                const monthInput = document.getElementById('kpi-report-month');
+                const monthInput = document.getElementById('abm-report-month');
                 const yearMonth = monthInput ? monthInput.value : new Date().toISOString().slice(0, 7);
 
                 try {
-                    const response = await fetch('api/kpi_report.php', {
+                    const response = await fetch('api/abm_report.php', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -2183,7 +2462,7 @@ window.app = {
                         timer: 1500,
                         showConfirmButton: false
                     }).then(() => {
-                        this.updateKPIReport(yearMonth + '-01');
+                        this.updateABMReport(yearMonth + '-01');
                     });
                 } catch (error) {
                     console.error('Error saving KPI completion:', error);
@@ -2203,7 +2482,7 @@ window.app = {
                 // But generally we re-render the whole report view
                 // Actually, renderReport in UI returns the HTML string.
                 // We need to fetch data first, then call UI.renderKPIActionPlan?
-                // Wait, UI.renderReport does the fetching AND returning HTML? No, renderReport calls DataManager (now app.loadKPIData).
+                // Wait, UI.renderReport does the fetching AND returning HTML? No, renderReport calls DataManager (now app.loadABMData).
 
                 // Let's rely on UI.renderReport to fetch data if we pass the date?
                 // In UI.js: renderReport(reportDate) calls fetch.
@@ -2683,27 +2962,40 @@ window.app = {
 
             if (type === 'survey') {
                 items = await DataManager.getSurveyItems();
-                // Apply current filters if any
+                // Apply status filter (pending/completed)
                 if (this.surveyStatusView === 'pending') items = items.filter(i => DataManager.isPending(i));
-                else if (this.surveyStatusView === 'completed') items = items.filter(i => DataManager.isCompleted(i));
+                else if (this.surveyStatusView === 'completed') {
+                    items = items.filter(i => DataManager.isCompleted(i));
+                    // Apply month filter (based on completion_date)
+                    if (this.surveyMonthFilter && this.surveyMonthFilter !== 'all') {
+                        items = items.filter(i => {
+                            const d = DataManager.getSafeDate(i.completion_date);
+                            return d && (d.getMonth() + 1) === parseInt(this.surveyMonthFilter, 10);
+                        });
+                    }
+                }
 
+                // Apply type filter (subject)
                 if (this.currentSurveyFilter && this.currentSurveyFilter !== 'all') {
                     items = items.filter(i => i.survey_type === this.currentSurveyFilter);
                 }
+                // Apply progress type filter (Final Step, etc.)
                 if (this.surveyProgressFilter && this.surveyProgressFilter !== 'all') {
                     const pType = parseInt(this.surveyProgressFilter, 10);
                     items = items.filter(item => parseInt(item.progress_type, 10) === pType);
                 }
+                // Apply search term
                 if (this.surveySearchTerm) {
                     const lowerTerm = this.surveySearchTerm.toLowerCase();
                     items = items.filter(i =>
                         (i.applicant && i.applicant.toLowerCase().includes(lowerTerm)) ||
                         (i.plot_no && i.plot_no.toLowerCase().includes(lowerTerm)) ||
-                        (i.received_seq && i.received_seq.toLowerCase().includes(lowerTerm))
+                        (i.received_seq && i.received_seq.toLowerCase().includes(lowerTerm)) ||
+                        (i.rv_12 && i.rv_12.toLowerCase().includes(lowerTerm))
                     );
                 }
 
-                headers = ['วันที่รับ', 'เลข รว.12', 'ประเภท', 'ผู้ขอ', 'สรุป', 'คนคุม', 'สถานะ'];
+                headers = ['วันที่รับ', 'เลข รว.12', 'ประเภท', 'ผู้ขอ', 'สรุป', 'คนคุม', 'สถานะ/สาเหตุ'];
                 items = items.map(i => [
                     i.received_date,
                     i.rv_12 || '-',
@@ -2715,13 +3007,38 @@ window.app = {
                 ]);
             } else if (type === 'registration') {
                 items = await DataManager.getRegistrationItems();
-                // We don't have all filters for reg yet, but let's apply basic search
-                if (this.regSearchTerm) {
-                    const lowerTerm = this.regSearchTerm.toLowerCase();
+                // Apply status filter (pending/completed)
+                if (this.registrationStatusView === 'pending') items = items.filter(i => DataManager.isPending(i));
+                else if (this.registrationStatusView === 'completed') {
+                    items = items.filter(i => DataManager.isCompleted(i));
+                    // Apply month filter
+                    if (this.registrationMonthFilter && this.registrationMonthFilter !== 'all') {
+                        items = items.filter(i => {
+                            const d = DataManager.getSafeDate(i.completion_date);
+                            return d && (d.getMonth() + 1) === parseInt(this.registrationMonthFilter, 10);
+                        });
+                    }
+                }
+
+                // Apply subject filter
+                if (this.currentRegistrationSubject && this.currentRegistrationSubject !== 'all') {
+                    items = items.filter(i => i.subject === this.currentRegistrationSubject);
+                }
+
+                // Apply progress type filter
+                if (this.registrationProgressFilter && this.registrationProgressFilter !== 'all') {
+                    const pType = parseInt(this.registrationProgressFilter, 10);
+                    items = items.filter(item => parseInt(item.progress_type, 10) === pType);
+                }
+
+                // Apply search term
+                if (this.registrationSearchTerm) {
+                    const lowerTerm = this.registrationSearchTerm.toLowerCase();
                     items = items.filter(i =>
                         (i.subject && i.subject.toLowerCase().includes(lowerTerm)) ||
                         (i.related_person && i.related_person.toLowerCase().includes(lowerTerm)) ||
-                        (i.responsible_person && i.responsible_person.toLowerCase().includes(lowerTerm))
+                        (i.responsible_person && i.responsible_person.toLowerCase().includes(lowerTerm)) ||
+                        (i.seq_no && String(i.seq_no).toLowerCase().includes(lowerTerm))
                     );
                 }
 
@@ -2737,12 +3054,38 @@ window.app = {
                 ]);
             } else if (type === 'academic') {
                 items = await DataManager.getAcademicItems();
-                // Apply basic search
-                if (this.acadSearchTerm) {
-                    const lowerTerm = this.acadSearchTerm.toLowerCase();
+                // Apply status filter (pending/completed)
+                if (this.academicStatusView === 'pending') items = items.filter(i => DataManager.isPending(i));
+                else if (this.academicStatusView === 'completed') {
+                    items = items.filter(i => DataManager.isCompleted(i));
+                    // Apply month filter
+                    if (this.academicMonthFilter && this.academicMonthFilter !== 'all') {
+                        items = items.filter(i => {
+                            const d = DataManager.getSafeDate(i.completion_date);
+                            return d && (d.getMonth() + 1) === parseInt(this.academicMonthFilter, 10);
+                        });
+                    }
+                }
+
+                // Apply subject filter
+                if (this.currentAcademicSubject && this.currentAcademicSubject !== 'all') {
+                    items = items.filter(i => i.subject === this.currentAcademicSubject);
+                }
+
+                // Apply progress type filter
+                if (this.academicProgressFilter && this.academicProgressFilter !== 'all') {
+                    const pType = parseInt(this.academicProgressFilter, 10);
+                    items = items.filter(item => parseInt(item.progress_type, 10) === pType);
+                }
+
+                // Apply search term
+                if (this.academicSearchTerm) {
+                    const lowerTerm = this.academicSearchTerm.toLowerCase();
                     items = items.filter(i =>
                         (i.subject && i.subject.toLowerCase().includes(lowerTerm)) ||
-                        (i.applicant_name && i.applicant_name.toLowerCase().includes(lowerTerm))
+                        (i.related_person && i.related_person.toLowerCase().includes(lowerTerm)) ||
+                        (i.applicant_name && i.applicant_name.toLowerCase().includes(lowerTerm)) ||
+                        (i.seq_no && String(i.seq_no).toLowerCase().includes(lowerTerm))
                     );
                 }
 
@@ -2765,7 +3108,7 @@ window.app = {
             Swal.fire({
                 icon: 'success',
                 title: 'ส่งออกสำเร็จ',
-                text: `บันทึกไฟล์ ${fileName} เรียบร้อยแล้ว`,
+                text: `บันทึกไฟล์ ${fileName} เรียบร้อยแล้ว (${items.length} รายการ)`,
                 timer: 2000,
                 showConfirmButton: false
             });

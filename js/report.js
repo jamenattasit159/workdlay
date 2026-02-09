@@ -1,13 +1,15 @@
 /**
  * Report Page Application
- * Separate JavaScript for the KPI Report page to improve performance
+ * Separate JavaScript for the ABM Report page to improve performance
  */
 
 window.reportApp = {
     // Cache for loaded data
     cache: {},
     currentYearMonth: null,
+    reportType: 'yearly',
     isLoading: false,
+    activeCacheKey: null,
     updateDebounceTimer: null,
 
     /**
@@ -34,18 +36,79 @@ window.reportApp = {
         // Set current date display
         this.updateDateDisplay();
 
-        // Set default date to current month
+        // Set current date to current month
         const today = new Date();
         const defaultMonth = today.toISOString().slice(0, 7);
-        const monthInput = document.getElementById('kpi-report-month');
+        const monthInput = document.getElementById('abm-report-month');
+        const typeInput = document.getElementById('report-type');
+
         if (monthInput) {
             monthInput.value = defaultMonth;
             this.currentYearMonth = defaultMonth;
         }
 
-        // Load initial data
-        this.loadReport(defaultMonth);
+        if (typeInput) {
+            this.reportType = typeInput.value;
+            this.updateRangeUI(this.reportType);
+        }
+
+        // Show Initial Selection Message
+        this.renderEmptyState();
     },
+
+    /**
+     * Change report type
+     */
+    onReportTypeChange(type) {
+        this.reportType = type;
+        this.updateRangeUI(type);
+        // Only trigger update if it's Monthly or Yearly (Range needs end date)
+        if (type !== 'range') {
+            this.updateReport();
+        }
+    },
+
+    /**
+     * Update UI elements based on report type
+     */
+    updateRangeUI(type) {
+        const endMonthContainer = document.getElementById('end-month-container');
+        const endMonthInput = document.getElementById('abm-report-end-month');
+        const labelStart = document.getElementById('label-start-date');
+
+        if (type === 'range') {
+            endMonthContainer.classList.remove('hidden');
+            if (labelStart) labelStart.innerHTML = '<i class="fas fa-calendar-alt mr-1"></i>เริ่มต้น:';
+            // Set default end month to today if empty
+            if (endMonthInput && !endMonthInput.value) {
+                endMonthInput.value = new Date().toISOString().slice(0, 7);
+            }
+        } else {
+            endMonthContainer.classList.add('hidden');
+            if (labelStart) labelStart.innerHTML = '<i class="fas fa-calendar-alt mr-1"></i>ประจำช่วงเวลา:';
+        }
+    },
+
+    /**
+     * Render empty state message
+     */
+    renderEmptyState() {
+        const container = document.getElementById('report-data');
+        if (container) {
+            container.innerHTML = `
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center" data-aos="fade-up">
+                    <div class="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-calendar-check text-3xl text-emerald-500"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">กรุณาเลือกช่วงเวลาที่ต้องการรายงาน</h3>
+                    <p class="text-gray-500 max-w-sm mx-auto">ระบุรูปแบบรายงานและช่วงเวลาด้านบน แล้วกดปุ่ม "อัปเดตข้อมูล" เพื่อแสดงผลงานสรุปผลการดำเนินงาน</p>
+                </div>
+            `;
+            container.classList.remove('hidden');
+            document.getElementById('loading-skeleton').classList.add('hidden');
+        }
+    },
+
 
     /**
      * Update the date display in header
@@ -68,12 +131,23 @@ window.reportApp = {
      * Update report based on selected month (with debounce)
      */
     updateReport() {
-        const monthInput = document.getElementById('kpi-report-month');
-        const selectedMonth = monthInput.value;
+        const monthInput = document.getElementById('abm-report-month');
+        const endMonthInput = document.getElementById('abm-report-end-month');
 
-        if (selectedMonth === this.currentYearMonth && this.cache[selectedMonth]) {
+        if (!monthInput) {
+            console.error('Month input element not found: abm-report-month');
+            return;
+        }
+
+        const selectedMonth = monthInput.value;
+        const endMonth = (this.reportType === 'range' && endMonthInput) ? endMonthInput.value : '';
+
+        const cacheKey = `${selectedMonth}_${endMonth}_${this.reportType}`;
+
+        if (selectedMonth === this.currentYearMonth && this.cache[cacheKey]) {
             // Already loaded, just re-render
-            this.renderReport(this.cache[selectedMonth]);
+            this.activeCacheKey = cacheKey;
+            this.renderReport(this.cache[cacheKey]);
             return;
         }
 
@@ -81,7 +155,7 @@ window.reportApp = {
         clearTimeout(this.updateDebounceTimer);
         this.updateDebounceTimer = setTimeout(() => {
             this.currentYearMonth = selectedMonth;
-            this.loadReport(selectedMonth);
+            this.loadReport(selectedMonth, this.reportType, endMonth);
         }, 300);
     },
 
@@ -118,25 +192,31 @@ window.reportApp = {
     },
 
     /**
-     * Load KPI report data from API
+     * Load ABM report data from API
      */
-    async loadReport(yearMonth) {
+    async loadReport(yearMonth, reportType, endMonth = '') {
+        const cacheKey = `${yearMonth}_${endMonth}_${reportType}`;
         // Check cache first
-        if (this.cache[yearMonth]) {
-            this.renderReport(this.cache[yearMonth]);
+        if (this.cache[cacheKey]) {
+            this.activeCacheKey = cacheKey;
+            this.renderReport(this.cache[cacheKey]);
             return;
         }
 
         this.showLoading();
 
         try {
-            const response = await fetch(`api/kpi_report.php?years_month=${yearMonth}`);
+            let url = `api/abm_report.php?years_month=${yearMonth}&report_type=${reportType}`;
+            if (endMonth) url += `&end_month=${endMonth}`;
+
+            const response = await fetch(url);
             if (!response.ok) throw new Error('Failed to load report data');
 
             const data = await response.json();
 
             // Cache the data
-            this.cache[yearMonth] = data;
+            this.cache[cacheKey] = data;
+            this.activeCacheKey = cacheKey;
 
             // Render report
             this.renderReport(data);
@@ -153,16 +233,16 @@ window.reportApp = {
     },
 
     /**
-     * Render the KPI report
+     * Render the ABM report
      */
-    renderReport(kpiData) {
+    renderReport(abmReport) {
         const user = JSON.parse(localStorage.getItem('dol_user')) || {};
         const isAdmin = user.role === 'superadmin' || user.role === 'admin';
 
         const container = document.getElementById('report-data');
-        const trend = kpiData.trend || [];
+        const trend = abmReport.trend || [];
         let depts = [
-            { id: 'academic', label: 'ฝ่ายวิชาการ' },
+            { id: 'academic', label: 'กลุ่มงานวิชาการ' },
             { id: 'registration', label: 'ฝ่ายทะเบียน' },
             { id: 'survey', label: 'ฝ่ายรังวัด' }
         ];
@@ -175,7 +255,7 @@ window.reportApp = {
         // Track running balances
         let deptBalances = { academic: 0, registration: 0, survey: 0 };
         let deptBalancesType2 = { academic: 0, registration: 0, survey: 0 };
-        let deptBalancesType4 = { academic: 0, registration: 0, survey: 0 };
+        let deptBalancesType3 = { academic: 0, registration: 0, survey: 0 };
 
         let html = `<div class="space-y-8">`;
 
@@ -193,43 +273,57 @@ window.reportApp = {
                 const intake = dData.intake || 0;
                 const comp30 = dData.comp30 || 0;
                 const comp60 = dData.comp60 || 0;
-                const pendingCurrent = dData.pending || 0;
+                const pendingMonth = dData.pending || 0; // This month's new pending
 
                 const pct30 = intake > 0 ? ((comp30 / intake) * 100).toFixed(2) : "0.00";
                 const pct60 = intake > 0 ? ((comp60 / intake) * 100).toFixed(2) : "0.00";
 
                 const prevBal = deptBalances[dept.id];
-                const currentBal = prevBal + pendingCurrent;
+                const currentBal = prevBal + pendingMonth;
                 deptBalances[dept.id] = currentBal;
 
-                // Track breakdown balances
+                // Track breakdown balances (Cumulative)
                 const pType2 = dData.pending_type2 || 0;
-                const pType4 = dData.pending_type4 || 0;
-                const currentBalType2 = (deptBalancesType2[dept.id] || 0) + pType2;
-                const currentBalType4 = (deptBalancesType4[dept.id] || 0) + pType4;
-                deptBalancesType2[dept.id] = currentBalType2;
-                deptBalancesType4[dept.id] = currentBalType4;
+                const pType3 = dData.pending_type3 || 0;
+                deptBalancesType2[dept.id] = (deptBalancesType2[dept.id] || 0) + pType2;
+                deptBalancesType3[dept.id] = (deptBalancesType3[dept.id] || 0) + pType3;
+
+                const currentBalType2 = deptBalancesType2[dept.id];
+                const currentBalType3 = deptBalancesType3[dept.id];
+
+                const surveyReg = dData.survey_reg || 0;
+                let intakeDisplay = intake.toLocaleString();
 
                 return `
                     <tr class="hover:bg-gray-50 transition-colors">
                         <td class="px-3 py-3 border font-bold text-gray-700 bg-gray-50/50">${dept.label}</td>
+                        <!-- รับใหม่ -->
+                        <td class="px-3 py-3 border text-center font-bold text-gray-800">${intakeDisplay}</td>
                         <!-- (7) 30 วัน -->
                         <td class="px-3 py-3 border text-center font-bold text-blue-600">${comp30.toLocaleString()}</td>
                         <td class="px-3 py-3 border text-center font-medium text-gray-600">${pct30} %</td>
                         <!-- (8) 60 วัน -->
                         <td class="px-3 py-3 border text-center font-bold text-indigo-600">${comp60.toLocaleString()}</td>
                         <td class="px-3 py-3 border text-center font-medium text-gray-600">${pct60} %</td>
-                        <!-- (11) งานก่อนหน้า -->
+                        
+                        <!-- งานไม่แล้วเสร็จ breakdown -->
+                        <!-- ก่อนหน้า -->
                         <td class="px-3 py-3 border text-center font-bold text-gray-500 bg-gray-50/30">${prevBal.toLocaleString()}</td>
+                        <!-- เดือนนี้ -->
+                        <td class="px-3 py-3 border text-center font-bold text-blue-500 bg-blue-50/10">${pendingMonth.toLocaleString()}</td>
                         <!-- (2) สุดขั้นตอน -->
                         <td class="px-3 py-3 border text-center font-bold text-purple-600 bg-purple-50/20">${currentBalType2.toLocaleString()}</td>
-                        <!-- (4) งานค้าง -->
-                        <td class="px-3 py-3 border text-center font-bold text-orange-600 bg-orange-50/20">${currentBalType4.toLocaleString()}</td>
+                        <!-- (3) งานศาล -->
+                        <td class="px-3 py-3 border text-center font-bold text-orange-600 bg-orange-50/20">${currentBalType3.toLocaleString()}</td>
                         <!-- (12) รวมทั้งหมด -->
                         <td class="px-3 py-3 border text-center font-black text-emerald-600 bg-emerald-50/30 cursor-pointer hover:underline" 
                             title="คลิกเพื่อดูรายละเอียดงานค้าง"
                             onclick="reportApp.showPendingDetails('${dept.id}', '${monthItem.month}', ${currentBal})">
                             ${currentBal.toLocaleString()}
+                        </td>
+                        <!-- งานรับเรื่องจากทะเบียน -->
+                        <td class="px-3 py-3 border text-center font-bold text-blue-700 bg-blue-50/10">
+                            ${dept.id === 'survey' ? (surveyReg > 0 ? surveyReg.toLocaleString() : '-') : '-'}
                         </td>
                         <!-- หมายเหตุ -->
                         <td class="px-3 py-3 border text-xs text-gray-500 min-w-[150px]">
@@ -237,26 +331,31 @@ window.reportApp = {
                                 class="w-full bg-transparent border-none focus:ring-0 text-xs text-gray-600 placeholder-gray-300 p-0" 
                                 placeholder="ระบุสาเหตุ..." 
                                 value="${dData.notes || ''}" 
-                                onchange="reportApp.saveKPINote('${monthItem.month}', '${dept.id}', this.value)">
+                                onchange="reportApp.saveABMNote('${monthItem.month}', '${dept.id}', this.value)">
                         </td>
                     </tr>
                 `;
             }).join('');
 
             // Calculate totals for all departments in this month
-            let totalComp30 = 0, totalIntake = 0, totalComp60 = 0;
-            let totalPrevBal = 0, totalCurType2 = 0, totalCurType4 = 0, totalCurTotal = 0;
+            let totalComp30 = 0, totalIntake = 0, totalComp60 = 0, totalPendingMonth = 0;
+            let totalPrevBal = 0, totalCurType2 = 0, totalCurType3 = 0, totalCurTotal = 0, totalSurveyReg = 0;
 
             depts.forEach(dept => {
                 const dData = monthItem.depts[dept.id] || {};
-                totalIntake += (dData.intake || 0);
+                const intake = (dData.intake || 0);
+                totalIntake += intake;
                 totalComp30 += (dData.comp30 || 0);
                 totalComp60 += (dData.comp60 || 0);
+                totalPendingMonth += (dData.pending || 0);
+                if (dept.id === 'survey') totalSurveyReg += (dData.survey_reg || 0);
 
-                totalPrevBal += (deptBalances[dept.id] - (dData.pending || 0));
+                // For totals, we need to track cumulative balances correctly
+                // The balances are already updated in the map() above for each dept
                 totalCurType2 += deptBalancesType2[dept.id];
-                totalCurType4 += deptBalancesType4[dept.id];
+                totalCurType3 += deptBalancesType3[dept.id];
                 totalCurTotal += deptBalances[dept.id];
+                totalPrevBal += (deptBalances[dept.id] - (dData.pending || 0));
             });
 
             const totalPct30 = totalIntake > 0 ? ((totalComp30 / totalIntake) * 100).toFixed(2) : "0.00";
@@ -265,20 +364,23 @@ window.reportApp = {
             const totalHtml = `
                 <tr class="bg-gray-100/80 font-black text-gray-800 border-t-2 border-gray-300">
                     <td class="px-3 py-3 border text-center bg-gray-200">รวมทุกฝ่าย</td>
+                    <td class="px-3 py-3 border text-center">${totalIntake.toLocaleString()}</td>
                     <td class="px-3 py-3 border text-center text-blue-700">${totalComp30.toLocaleString()}</td>
                     <td class="px-3 py-3 border text-center">${totalPct30} %</td>
                     <td class="px-3 py-3 border text-center text-indigo-700">${totalComp60.toLocaleString()}</td>
                     <td class="px-3 py-3 border text-center">${totalPct60} %</td>
                     <td class="px-3 py-3 border text-center text-gray-600">${totalPrevBal.toLocaleString()}</td>
+                    <td class="px-3 py-3 border text-center text-blue-600">${totalPendingMonth.toLocaleString()}</td>
                     <td class="px-3 py-3 border text-center text-purple-700">${totalCurType2.toLocaleString()}</td>
-                    <td class="px-3 py-3 border text-center text-orange-700">${totalCurType4.toLocaleString()}</td>
+                    <td class="px-3 py-3 border text-center text-orange-700">${totalCurType3.toLocaleString()}</td>
                     <td class="px-3 py-3 border text-center text-emerald-700">${totalCurTotal.toLocaleString()}</td>
+                    <td class="px-3 py-3 border text-center text-blue-700 font-black bg-blue-50/20">${totalSurveyReg > 0 ? totalSurveyReg.toLocaleString() : '-'}</td>
                     <td class="px-3 py-3 border bg-gray-200"></td>
                 </tr>
             `;
 
             html += `
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
                     <div class="bg-gray-100/50 px-6 py-3 border-b border-gray-200">
                         <h4 class="font-black text-gray-800">เดือน${monthLabel} ${isFirstMonth ? '(เดือนเริ่มต้น)' : ''}</h4>
                     </div>
@@ -288,14 +390,16 @@ window.reportApp = {
                                 <!-- Row 1 -->
                                 <tr class="bg-blue-100/50 text-gray-800 font-bold">
                                     <th rowspan="3" class="px-4 py-3 border text-center w-32">ฝ่าย</th>
-                                    <th colspan="8" class="px-2 py-2 border text-center bg-blue-200/30 font-black">ปริมาณงานเกิดใหม่<sup>(5)</sup> ประจำเดือน</th>
+                                    <th colspan="10" class="px-2 py-2 border text-center bg-blue-200/30 font-black">ปริมาณงานเกิดใหม่<sup>(5)</sup> ประจำเดือน</th>
+                                    <th rowspan="3" class="px-4 py-3 border text-center w-32">งานรับเรื่องจากทะเบียน</th>
                                     <th rowspan="3" class="px-4 py-3 border text-center w-48">หมายเหตุ</th>
                                 </tr>
                                 <!-- Row 2 -->
                                 <tr class="bg-blue-50/50 text-gray-700 font-bold text-[11px]">
+                                    <th rowspan="2" class="px-2 py-2 border text-center w-16">รับใหม่</th>
                                     <th colspan="2" class="px-2 py-2 border text-center">งานที่ดำเนินการแล้วเสร็จภายใน 30 วัน <sup>(7)</sup><br><span class="text-blue-600 font-medium text-[10px]">(เป้าหมาย > 80%)</span></th>
                                     <th colspan="2" class="px-2 py-2 border text-center">งานที่ดำเนินการแล้วเสร็จภายใน 60 วัน <sup>(8)</sup><br><span class="text-indigo-600 font-medium text-[10px]">(เป้าหมาย = 100%)</span></th>
-                                    <th colspan="4" class="px-2 py-2 border text-center bg-blue-50">งานที่อยู่ระหว่างดำเนินการ (สะสม)</th>
+                                    <th colspan="5" class="px-2 py-2 border text-center bg-blue-50">งานที่อยู่ระหว่างดำเนินการ (สะสม)</th>
                                 </tr>
                                 <!-- Row 3 -->
                                 <tr class="bg-blue-50/30 text-[10px] font-bold text-gray-600">
@@ -303,10 +407,11 @@ window.reportApp = {
                                     <th class="px-1 py-2 border text-center w-14">ร้อยละ</th>
                                     <th class="px-1 py-2 border text-center w-14">เรื่อง</th>
                                     <th class="px-1 py-2 border text-center w-14">ร้อยละ</th>
-                                    <th class="px-1 py-2 border text-center w-20 bg-blue-50/50">ก่อนหน้า</th>
-                                    <th class="px-1 py-2 border text-center w-20 text-purple-600">สุดขั้นตอน (2)</th>
-                                    <th class="px-1 py-2 border text-center w-20 text-orange-600">งานค้าง (4)</th>
-                                    <th class="px-1 py-2 border text-center w-20 bg-emerald-50 text-emerald-700">รวมทั้งหมด</th>
+                                    <th class="px-1 py-2 border text-center w-16 bg-blue-50/50">ก่อนหน้า</th>
+                                    <th class="px-1 py-2 border text-center w-16 text-blue-600">เดือนนี้</th>
+                                    <th class="px-1 py-2 border text-center w-16 text-purple-600">สุดขั้นตอน (2)</th>
+                                    <th class="px-1 py-2 border text-center w-16 text-orange-600">งานศาล (3)</th>
+                                    <th class="px-1 py-2 border text-center w-16 bg-emerald-50 text-emerald-700 font-black">รวมทั้งหมด</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100">
@@ -316,7 +421,7 @@ window.reportApp = {
                         </table>
                     </div>
                 </div>
-                การตรวจสอบและยืนยันจาก............................ เจ้าพนักงานที่ดิน
+                <!-- Verification text moved inside table or handled per month -->
             `;
         });
 
@@ -326,11 +431,11 @@ window.reportApp = {
     },
 
     /**
-     * Save KPI Note
+     * Save ABM Note
      */
-    async saveKPINote(yearMonth, dept, note) {
+    async saveABMNote(yearMonth, dept, note) {
         try {
-            const response = await fetch('api/kpi_report.php', {
+            const response = await fetch('api/abm_report.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -392,7 +497,7 @@ window.reportApp = {
         });
 
         try {
-            const response = await fetch(`api/kpi_details.php?department=${dept}&year_month=${yearMonth}&type=pending`);
+            const response = await fetch(`api/abm_details.php?department=${dept}&year_month=${yearMonth}&type=pending`);
             const result = await response.json();
 
             if (result.status !== 'success') throw new Error(result.error || 'Failed to load details');
@@ -406,10 +511,10 @@ window.reportApp = {
                         <td class="px-2 py-2 text-gray-900 font-medium">${item.applicant_name ? String(item.applicant_name).replace(/</g, '&lt;') : '-'}</td>
                         <td class="px-2 py-2 text-gray-600">${item.work_name ? String(item.work_name).replace(/</g, '&lt;') : '-'}</td>
                         <td class="px-2 py-2 text-center">
-                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${item.progress_type == 4 ? 'bg-orange-100 text-orange-700' :
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${item.progress_type == 3 ? 'bg-orange-100 text-orange-700' :
                         item.progress_type == 2 ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'
                     }">
-                                ${item.progress_type == 4 ? 'งานค้าง' : item.progress_type == 2 ? 'สุดขั้นตอน' : 'ปกติ'}
+                                ${item.progress_type == 3 ? 'งานศาล' : item.progress_type == 2 ? 'สุดขั้นตอน' : 'ปกติ'}
                             </span>
                         </td>
                     </tr>
@@ -477,8 +582,8 @@ window.reportApp = {
      * Export to Excel
      */
     exportToExcel() {
-        const yearMonth = this.currentYearMonth;
-        const data = this.cache[yearMonth];
+        const key = this.activeCacheKey;
+        const data = this.cache[key];
 
         if (!data || !data.trend || data.trend.length === 0) {
             Swal.fire({
@@ -496,6 +601,7 @@ window.reportApp = {
             didOpen: () => Swal.showLoading()
         });
 
+        const yearMonth = this.currentYearMonth || 'Report';
         try {
             const wb = XLSX.utils.book_new();
             const depts = [
@@ -509,7 +615,7 @@ window.reportApp = {
                 const monthLabel = date.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
 
                 const rows = [
-                    ['รายงานสรุปผลการดำเนินงาน KPI - ' + monthLabel],
+                    ['รายงานสรุปผลการดำเนินงาน ABM - ' + monthLabel],
                     [],
                     ['ฝ่าย', 'เสร็จภายใน 30 วัน', '%', 'เสร็จภายใน 60 วัน', '%', 'ยังไม่แล้วเสร็จ', '%', 'หมายเหตุ']
                 ];
@@ -537,7 +643,7 @@ window.reportApp = {
                 XLSX.utils.book_append_sheet(wb, ws, monthLabel.slice(0, 31));
             });
 
-            const filename = `KPI_Report_${yearMonth}.xlsx`;
+            const filename = `ABM_Report_${yearMonth}.xlsx`;
             XLSX.writeFile(wb, filename);
 
             Swal.fire({
@@ -561,8 +667,9 @@ window.reportApp = {
      * Export to PDF using browser print
      */
     exportToPDF() {
-        const yearMonth = this.currentYearMonth;
-        const data = this.cache[yearMonth];
+        const key = this.activeCacheKey;
+        const data = this.cache[key];
+        const yearMonth = this.currentYearMonth || 'Report';
 
         if (!data || !data.trend || data.trend.length === 0) {
             Swal.fire({
@@ -590,7 +697,7 @@ window.reportApp = {
                 <!DOCTYPE html>
                 <html>
                 <head>
-                    <title>รายงาน KPI - ${yearMonth}</title>
+                    <title>ABM Report - Ang Thong ABM - ${yearMonth}</title>
                     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
                     <style>
                         body { font-family: 'Sarabun', sans-serif; padding: 20px; }
@@ -602,7 +709,7 @@ window.reportApp = {
                     </style>
                 </head>
                 <body>
-                    <h2>รายงานสรุปผลการดำเนินงานตามโครงการงานค้างและงานกิดใหม่ สำนักงานที่ดินจังหวัดอ่างทอง</h2>
+                    <h2>รายงานสรุปผลการดำเนินงานตามโครงการงานค้างและงานเกิดใหม่ สำนักงานที่ดินจังหวัดอ่างทอง</h2>
                     <br>
                     ${printContent}
                 </body>

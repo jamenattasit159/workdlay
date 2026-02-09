@@ -1,13 +1,10 @@
-/**
- * Old Work Backlog Report Application
- * รายงานงานค้างเก่า (ตั้งแต่ 31 ธ.ค. 2568 ลงไป)
- */
-
 window.backlogApp = {
     // Cache for loaded data
     cache: {},
-    currentYear: null,
+    currentYearMonth: null,
+    reportType: 'yearly',
     isLoading: false,
+    activeCacheKey: null,
 
     /**
      * Initialize the report page
@@ -33,14 +30,75 @@ window.backlogApp = {
         // Set current date display
         this.updateDateDisplay();
 
-        // Set default year (2026 = พ.ศ. 2569)
+        // Set default month
         const today = new Date();
-        const defaultYear = today.getFullYear();
-        document.getElementById('report-year').value = defaultYear;
-        this.currentYear = defaultYear;
+        const defaultMonth = today.toISOString().slice(0, 7);
+        const monthInput = document.getElementById('report-month');
+        const typeInput = document.getElementById('report-type');
 
-        // Load initial data
-        this.loadReport(defaultYear);
+        if (monthInput) {
+            monthInput.value = defaultMonth;
+            this.currentYearMonth = defaultMonth;
+        }
+
+        if (typeInput) {
+            this.reportType = typeInput.value;
+            this.updateRangeUI(this.reportType);
+        }
+
+        // Show Initial Selection Message
+        this.renderEmptyState();
+    },
+
+    /**
+     * Change report type
+     */
+    onReportTypeChange(type) {
+        this.reportType = type;
+        this.updateRangeUI(type);
+        if (type !== 'range') {
+            this.updateReport();
+        }
+    },
+
+    /**
+     * Update UI elements based on report type
+     */
+    updateRangeUI(type) {
+        const endMonthContainer = document.getElementById('end-month-container');
+        const endMonthInput = document.getElementById('report-end-month');
+        const labelStart = document.getElementById('label-start-date');
+
+        if (type === 'range') {
+            endMonthContainer.classList.remove('hidden');
+            if (labelStart) labelStart.innerHTML = '<i class="fas fa-calendar-alt mr-1"></i>เริ่มต้น:';
+            if (endMonthInput && !endMonthInput.value) {
+                endMonthInput.value = new Date().toISOString().slice(0, 7);
+            }
+        } else {
+            endMonthContainer.classList.add('hidden');
+            if (labelStart) labelStart.innerHTML = '<i class="fas fa-calendar-alt mr-1"></i>ประจำช่วงเวลา:';
+        }
+    },
+
+    /**
+     * Render empty state message
+     */
+    renderEmptyState() {
+        const container = document.getElementById('report-data');
+        if (container) {
+            container.innerHTML = `
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center" data-aos="fade-up">
+                    <div class="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-clock-rotate-left text-3xl text-orange-500"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">กรุณาเลือกช่วงเวลาที่ต้องการรายงานงานค้างเก่า</h3>
+                    <p class="text-gray-500 max-w-sm mx-auto">ระบุรูปแบบรายงานและช่วงเวลาด้านบน แล้วกดปุ่ม "อัปเดตข้อมูล" เพื่อแสดงความก้าวหน้างานค้าง</p>
+                </div>
+            `;
+            container.classList.remove('hidden');
+            document.getElementById('loading-skeleton').classList.add('hidden');
+        }
     },
 
     /**
@@ -61,19 +119,23 @@ window.backlogApp = {
     },
 
     /**
-     * Update report based on selected year
+     * Update report based on selected timeframe
      */
     updateReport() {
-        const yearSelect = document.getElementById('report-year');
-        const selectedYear = yearSelect.value;
+        const monthInput = document.getElementById('report-month');
+        const endMonthInput = document.getElementById('report-end-month');
+        const selectedMonth = monthInput.value;
+        const endMonth = this.reportType === 'range' ? endMonthInput.value : '';
 
-        if (selectedYear === this.currentYear && this.cache[selectedYear]) {
-            this.renderReport(this.cache[selectedYear]);
+        const cacheKey = `${selectedMonth}_${endMonth}_${this.reportType}`;
+
+        if (selectedMonth === this.currentYearMonth && this.cache[cacheKey]) {
+            this.activeCacheKey = cacheKey;
+            this.renderReport(this.cache[cacheKey]);
             return;
         }
 
-        this.currentYear = selectedYear;
-        this.loadReport(selectedYear);
+        this.loadReport(selectedMonth, this.reportType, endMonth);
     },
 
     /**
@@ -109,26 +171,34 @@ window.backlogApp = {
     /**
      * Load report data from API
      */
-    async loadReport(year) {
-        if (this.cache[year]) {
-            this.renderReport(this.cache[year]);
+    async loadReport(yearMonth, reportType, endMonth = '') {
+        const cacheKey = `${yearMonth}_${endMonth}_${reportType}`;
+        if (this.cache[cacheKey]) {
+            this.activeCacheKey = cacheKey;
+            this.renderReport(this.cache[cacheKey]);
             return;
         }
 
         this.showLoading();
 
         try {
-            const response = await fetch(`api/old_work_backlog.php?year=${year}`);
+            let url = `api/old_work_backlog.php?start_month=${yearMonth}&report_type=${reportType}`;
+            if (endMonth) url += `&end_month=${endMonth}`;
+
+            const response = await fetch(url);
             if (!response.ok) throw new Error('Failed to load report data');
 
             const data = await response.json();
 
             // Cache the data
-            this.cache[year] = data;
+            this.cache[cacheKey] = data;
+            this.activeCacheKey = cacheKey;
+
+            this.currentYearMonth = yearMonth;
 
             // Update total old work display
-            document.getElementById('total-old-work').textContent =
-                (data.total_old_work || 0).toLocaleString();
+            const totalEl = document.getElementById('total-old-work');
+            if (totalEl) totalEl.textContent = (data.total_old_work || 0).toLocaleString();
 
             // Render report
             this.renderReport(data);
@@ -150,7 +220,6 @@ window.backlogApp = {
     renderReport(data) {
         const user = JSON.parse(localStorage.getItem('dol_user')) || {};
         const isAdmin = user.role === 'superadmin' || user.role === 'admin';
-        const userRole = user.role;
 
         const container = document.getElementById('report-data');
         const months = data.months || [];
@@ -173,7 +242,7 @@ window.backlogApp = {
             if (!hasData && index > 2) return; // Show at least first 3 months
 
             html += `
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden month-block">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden month-block mb-6" data-aos="fade-up">
                     <div class="month-header px-6 py-3">
                         <h4 class="font-black text-lg flex items-center">
                             <i class="fas fa-calendar-day mr-2"></i>
@@ -184,40 +253,40 @@ window.backlogApp = {
                         <table class="report-table">
                             <thead>
                                 <tr>
-                                    <th rowspan="2" class="w-12">ลำดับ</th>
-                                    <th rowspan="2" class="min-w-[200px]">ภารกิจตามโครงสร้าง<br>อำนาจหน้าที่<sup>(1)</sup></th>
-                                    <th rowspan="2" class="w-20">งานสุดขั้นตอน<sup>(2)</sup></th>
-                                    <th rowspan="2" class="w-20">งานศาล<sup>(3)</sup></th>
-                                    <th colspan="4" class="bg-amber-200/50">งานค้าง (เป้าหมาย 5% ตามแผนฯ)</th>
+                                    <th rowspan="2" class="w-12 text-center text-xs">ลำดับ</th>
+                                    <th rowspan="2" class="min-w-[200px] text-center text-xs">ภารกิจตามโครงสร้าง<br>อำนาจหน้าที่<sup>(1)</sup></th>
+                                    <th rowspan="2" class="w-20 text-center text-xs">งานสุดขั้นตอน<sup>(2)</sup></th>
+                                    <th rowspan="2" class="w-20 text-center text-xs">งานศาล<sup>(3)</sup></th>
+                                    <th colspan="4" class="text-xs">งานค้าง (เป้าหมาย 5% ตามแผนฯ)</th>
                                 </tr>
                                 <tr>
-                                    <th class="w-20 bg-amber-100/50">จำนวน<sup>(4)</sup></th>
-                                    <th colspan="2" class="bg-amber-100/50">ดำเนินการแล้วเสร็จ<br><span class="text-xs font-normal">(เรื่อง / ร้อยละ)</span></th>
-                                    <th class="w-20 bg-amber-100/50">คงเหลือ</th>
+                                    <th class="w-20 text-center text-xs">จำนวน<sup>(4)</sup></th>
+                                    <th colspan="2" class="text-center text-xs">ดำเนินการแล้วเสร็จ<br><span class="text-[10px] font-normal">(เรื่อง / ร้อยละ)</span></th>
+                                    <th class="w-20 text-center text-xs">คงเหลือ</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 ${this.renderDepartmentRows(depts)}
-                                <tr class="bg-orange-50 font-bold">
-                                    <td colspan="2" class="text-right">รวม</td>
-                                    <td>${this.sumField(depts, 'final_step').toLocaleString()}</td>
-                                    <td>${this.sumField(depts, 'court_work').toLocaleString()}</td>
-                                    <td>${this.sumField(depts, 'backlog_total').toLocaleString()}</td>
-                                    <td>${this.sumField(depts, 'completed_count').toLocaleString()}</td>
-                                    <td>${this.calcAvgPercentage(depts)}%</td>
-                                    <td class="text-red-600">${this.sumField(depts, 'remaining').toLocaleString()}</td>
+                                <tr class="bg-orange-50 font-bold border-t border-gray-300">
+                                    <td colspan="2" class="text-center py-2">รวม</td>
+                                    <td class="text-center">${this.sumField(depts, 'final_step').toLocaleString()}</td>
+                                    <td class="text-center">${this.sumField(depts, 'court_work').toLocaleString()}</td>
+                                    <td class="text-center">${this.sumField(depts, 'backlog_total').toLocaleString()}</td>
+                                    <td class="text-center">${this.sumField(depts, 'completed_count').toLocaleString()}</td>
+                                    <td class="text-center text-blue-600">${this.calcAvgPercentage(depts)}%</td>
+                                    <td class="text-center text-red-600 font-black">${this.sumField(depts, 'remaining').toLocaleString()}</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
-                    <div class="signature-line px-6 py-2 bg-gray-50 border-t border-gray-200 text-sm text-gray-500">
+                    <div class="signature-line px-6 py-2 bg-gray-50 border-t border-gray-100 text-xs text-gray-400">
                         <i class="fas fa-user-check mr-1"></i> การตรวจสอบและยืนยันจาก............................ เจ้าพนักงานที่ดิน
                     </div>
                 </div>
             `;
         });
 
-        container.innerHTML = html;
+        container.innerHTML = html || '<div class="p-8 text-center text-gray-400">ไม่พบข้อมูลในช่วงเวลาที่เลือก</div>';
         this.hideLoading();
     },
 
@@ -233,19 +302,19 @@ window.backlogApp = {
 
         depts.forEach(dept => {
             const pct = dept.completed_percentage || 0;
-            const pctClass = pct >= 80 ? 'text-green-600' : (pct >= 50 ? 'text-yellow-600' : 'text-red-600');
+            const pctClass = pct >= 10 ? 'text-green-600' : (pct >= 5 ? 'text-orange-600' : 'text-red-600');
 
             html += `
                 <tr>
-                    <td>${index++}</td>
-                    <td class="text-left font-medium">${dept.name}</td>
-                    <td>${dept.final_step.toLocaleString()}</td>
-                    <td>${dept.court_work.toLocaleString()}</td>
-                    <td class="font-bold text-orange-700">${dept.backlog_total.toLocaleString()}</td>
-                    <td class="font-bold text-blue-600">${dept.completed_count.toLocaleString()}</td>
-                    <td class="${pctClass} font-bold">${pct}%</td>
-                    <td class="font-bold ${dept.remaining > 0 ? 'text-red-600' : 'text-green-600'}">
-                        ${dept.remaining.toLocaleString()}
+                    <td class="text-center py-2">${index++}</td>
+                    <td class="text-left font-medium px-4">${dept.name}</td>
+                    <td class="text-center">${dept.final_step.toLocaleString()}</td>
+                    <td class="text-center">${dept.court_work.toLocaleString()}</td>
+                    <td class="text-center font-bold text-orange-700">${dept.backlog_total ? dept.backlog_total.toLocaleString() : '0'}</td>
+                    <td class="text-center font-bold text-blue-600">${dept.completed_count ? dept.completed_count.toLocaleString() : '0'}</td>
+                    <td class="text-center ${pctClass} font-bold">${pct.toFixed(2)}%</td>
+                    <td class="text-center font-bold ${dept.remaining > 0 ? 'text-red-600' : 'text-green-600'}">
+                        ${dept.remaining ? dept.remaining.toLocaleString() : '0'}
                     </td>
                 </tr>
             `;
@@ -268,15 +337,15 @@ window.backlogApp = {
         const totalBacklog = this.sumField(depts, 'backlog_total');
         const totalCompleted = this.sumField(depts, 'completed_count');
         if (totalBacklog === 0) return 0;
-        return ((totalCompleted / totalBacklog) * 100).toFixed(1);
+        return ((totalCompleted / totalBacklog) * 100).toFixed(2);
     },
 
     /**
      * Export to Excel
      */
     exportToExcel() {
-        const year = this.currentYear;
-        const data = this.cache[year];
+        const key = this.activeCacheKey;
+        const data = this.cache[key];
 
         if (!data || !data.months || data.months.length === 0) {
             Swal.fire({
@@ -294,6 +363,7 @@ window.backlogApp = {
             didOpen: () => Swal.showLoading()
         });
 
+        const year = this.currentYearMonth ? this.currentYearMonth.split('-')[0] : '';
         try {
             const wb = XLSX.utils.book_new();
 
@@ -339,7 +409,7 @@ window.backlogApp = {
                 XLSX.utils.book_append_sheet(wb, ws, sheetName);
             });
 
-            const filename = `OldBacklog_Report_${year}.xlsx`;
+            const filename = `OldBacklog_Report_${year || 'Range'}.xlsx`;
             XLSX.writeFile(wb, filename);
 
             Swal.fire({
@@ -363,8 +433,8 @@ window.backlogApp = {
      * Export to PDF using browser print
      */
     exportToPDF() {
-        const year = this.currentYear;
-        const data = this.cache[year];
+        const key = this.activeCacheKey;
+        const data = this.cache[key];
 
         if (!data || !data.months || data.months.length === 0) {
             Swal.fire({
@@ -383,6 +453,7 @@ window.backlogApp = {
             didOpen: () => Swal.showLoading()
         });
 
+        const year = this.currentYearMonth ? this.currentYearMonth.split('-')[0] : '';
         setTimeout(() => {
             const printContent = document.getElementById('report-data').innerHTML;
             const printWindow = window.open('', '_blank');
@@ -391,7 +462,7 @@ window.backlogApp = {
                 <!DOCTYPE html>
                 <html>
                 <head>
-                    <title>รายงานงานค้างเก่า - ${year}</title>
+                    <title>Old Backlog Report - Ang Thong ABM - ${year || 'Range'}</title>
                     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
                     <style>
                         body { font-family: 'Sarabun', sans-serif; padding: 5px; margin: 0; }
@@ -412,8 +483,10 @@ window.backlogApp = {
                     </style>
                 </head>
                 <body>
-                    <h2>รายงานงานค้างเก่า สำนักงานที่ดินจังหวัดอ่างทอง</h2>
-                    <p>ยอดยกมา ณ วันที่ 31 ธ.ค. 68 จำนวน ${data.total_old_work.toLocaleString()} เรื่อง</p>
+                    <h2 style="text-align: center;">รายงานสรุปผลงานค้างเก่า (ยอดยกมา)</h2>
+                    <h3 style="text-align: center; margin-top: 5px;">สำนักงานที่ดินจังหวัดอ่างทอง</h3>
+                   
+                    <hr>
                     ${printContent}
                 </body>
                 </html>

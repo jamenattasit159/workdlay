@@ -11,6 +11,19 @@ if ($_SERVER['REQUEST_METHOD'] != 'POST') {
 $type = $_POST['type'] ?? '';
 $isCompleted = isset($_POST['is_completed']) && $_POST['is_completed'] === '1';
 
+// Lockdown Check Logic
+require_once 'utils/lockdown.php';
+
+// Validate completion date if is_completed is set
+if ($isCompleted) {
+    $completionDate = $_POST['received_date'] ?? date('Y-m-d');
+    if (isLockdownActive($completionDate)) {
+        http_response_code(403);
+        echo json_encode(['status' => 'error', 'message' => 'ระบบล็อคการบันทึกงานย้อนหลังเดือนก่อนหน้าแล้ว (เลยกำหนดแจ้งงานประจำเดือนทุกวันที่ 5)']);
+        exit;
+    }
+}
+
 // Debug log
 file_put_contents('save_debug.txt', date('[Y-m-d H:i:s] ') . "POST: " . json_encode($_POST) . "\n", FILE_APPEND);
 
@@ -31,9 +44,9 @@ try {
         // ถ้าเป็นงานเสร็จ ให้ใส่ completion_date และ progress_type
         if ($isCompleted) {
             $sql = "INSERT INTO survey_works 
-                    (received_seq, received_date, rv_12, survey_type, applicant, men, status_cause, completion_date, progress_type, created_at, updated_at) 
+                    (received_seq, received_date, rv_12, survey_type, applicant, men, status_cause, completion_date, progress_type, survey_date, created_at, updated_at) 
                     VALUES 
-                    (:received_seq, :received_date, :rv_12, :survey_type, :applicant, :men, :status_cause, :completion_date, :progress_type, NOW(), NOW())";
+                    (:received_seq, :received_date, :rv_12, :survey_type, :applicant, :men, :status_cause, :completion_date, :progress_type, :survey_date, NOW(), NOW())";
 
             $stmt = $conn->prepare($sql);
             $stmt->execute([
@@ -45,13 +58,14 @@ try {
                 ':men' => $_POST['men'] ?? '',
                 ':status_cause' => 'เสร็จสิ้น',
                 ':completion_date' => $_POST['received_date'], // ใช้วันที่รับเรื่องเป็นวันเสร็จ
-                ':progress_type' => $_POST['progress_type'] ?? 1 // ประเภทงานที่เลือกมา (ปกติ/สุดขั้นตอน/ศาล)
+                ':progress_type' => $_POST['progress_type'] ?? 1, // ประเภทงานที่เลือกมา (ปกติ/สุดขั้นตอน/ศาล)
+                ':survey_date' => !empty($_POST['survey_date']) ? $_POST['survey_date'] : null
             ]);
         } else {
             $sql = "INSERT INTO survey_works 
-                    (received_seq, received_date, rv_12, survey_type, applicant, men, status_cause, progress_type, created_at, updated_at) 
+                    (received_seq, received_date, rv_12, survey_type, applicant, men, status_cause, progress_type, survey_date, created_at, updated_at) 
                     VALUES 
-                    (:received_seq, :received_date, :rv_12, :survey_type, :applicant, :men, :status_cause, :progress_type, NOW(), NOW())";
+                    (:received_seq, :received_date, :rv_12, :survey_type, :applicant, :men, :status_cause, :progress_type, :survey_date, NOW(), NOW())";
 
             $stmt = $conn->prepare($sql);
             $stmt->execute([
@@ -62,7 +76,8 @@ try {
                 ':applicant' => $_POST['applicant'],
                 ':men' => $_POST['men'] ?? '',
                 ':status_cause' => $_POST['status'] ?? $_POST['status_cause'] ?? 'pending',
-                ':progress_type' => $_POST['progress_type'] ?? null // ส่งค่าประเภทงานมาด้วย (ถ้ามี)
+                ':progress_type' => $_POST['progress_type'] ?? null, // ส่งค่าประเภทงานมาด้วย (ถ้ามี)
+                ':survey_date' => !empty($_POST['survey_date']) ? $_POST['survey_date'] : null
             ]);
         }
 
