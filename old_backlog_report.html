@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>รายงานงานค้างเก่า - สนง.ที่ดินจังหวัดอ่างทอง</title>
+    <title>Old Backlog Report - Ang Thong ABM</title>
     <!-- TailwindCSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap"
@@ -180,23 +180,40 @@
                     <h3 class="font-bold text-gray-800 text-xl flex items-center">
                         <i class="fas fa-file-alt mr-2 text-orange-500"></i>
                         ปริมาณงานที่ยังดำเนินการไม่แล้วเสร็จ
-                        <span id="total-old-work" class="text-orange-600 mx-2">...</span> เรื่อง
+
                     </h3>
                     <p class="text-sm text-gray-500">
                         <i class="fas fa-calendar-alt mr-1"></i> (ยอดยกมา ณ วันที่ 31 ธ.ค. 68)
                     </p>
                 </div>
                 <div class="flex flex-wrap items-center gap-3">
-                    <!-- Year Picker -->
+                    <!-- Report Type Selector -->
+                    <div class="flex items-center gap-2 bg-orange-50 p-2 rounded-xl border border-orange-100">
+                        <label class="text-sm font-bold text-orange-700 whitespace-nowrap"><i
+                                class="fas fa-layer-group mr-1"></i>รูปแบบ:</label>
+                        <select id="report-type" onchange="backlogApp.onReportTypeChange(this.value)"
+                            class="px-3 py-2 rounded-lg border border-orange-200 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm font-medium bg-white">
+                            <option value="monthly">รายเดือน</option>
+                            <option value="yearly" selected>รายปี (สะสม)</option>
+                            <option value="range">ช่วงเวลา</option>
+                        </select>
+                    </div>
+
+                    <!-- Date Picker -->
                     <div
                         class="flex items-center gap-2 bg-gradient-to-r from-orange-50 to-amber-50 p-2 rounded-xl border border-orange-100">
-                        <label class="text-sm font-bold text-orange-700"><i
-                                class="fas fa-calendar-alt mr-1"></i>ปีที่รายงาน:</label>
-                        <select id="report-year"
+                        <label id="label-start-date" class="text-sm font-bold text-orange-700 whitespace-nowrap"><i
+                                class="fas fa-calendar-alt mr-1"></i>ประจำช่วงเวลา:</label>
+                        <input type="month" id="report-month"
                             class="px-3 py-2 rounded-lg border border-orange-200 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm font-medium bg-white">
-                            <option value="2026">2569</option>
-                            <option value="2025">2568</option>
-                        </select>
+
+                        <!-- End Month Picker (Hidden by default) -->
+                        <div id="end-month-container" class="hidden flex items-center gap-2">
+                            <span class="text-orange-400 font-bold">ถึง</span>
+                            <input type="month" id="report-end-month"
+                                class="px-3 py-2 rounded-lg border border-orange-200 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm font-medium bg-white">
+                        </div>
+
                         <button onclick="backlogApp.updateReport()"
                             class="px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg font-bold text-sm hover:from-orange-600 hover:to-amber-700 transition-all shadow-md hover:shadow-lg flex items-center"
                             id="btn-update">

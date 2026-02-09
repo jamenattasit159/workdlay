@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบบริหารจัดการงานค้าง - สนง.ที่ดินจังหวัดอ่างทอง</title>
+    <title>Ang Thong Active Backlog Management (ABM)</title>
     <!-- TailwindCSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap"
@@ -390,7 +390,7 @@
                     </button>
 
                     <div class="text-center text-xs text-gray-400 mt-4">
-                        &copy; 2025 Dol Angthong Management System
+                        &copy; 2025 Ang Thong ABM System
                     </div>
                 </div>
             </form>
@@ -403,9 +403,9 @@
         <div
             class="p-6 text-center border-b border-gray-100 bg-gradient-to-br from-emerald-500 to-teal-500 text-white relative overflow-hidden">
             <div class="absolute top-0 left-0 w-full h-full bg-white opacity-10 blur-xl"></div>
-            <h1 class="text-xl font-bold tracking-wider relative z-10">DOL Ang Thong</h1>
+            <h1 class="text-xl font-bold tracking-wider relative z-10">Ang Thong ABM</h1>
             <div id="user-info" class="relative z-10 mt-2">
-                <p class="text-xs text-emerald-100 font-light">ระบบติดตามงานค้าง</p>
+                <p class="text-xs text-emerald-100 font-light">Active Backlog Management</p>
             </div>
         </div>
 
@@ -571,8 +571,26 @@
                 <span class="font-medium">รายงานงานเกิดเสร็จวันเดียว</span>
             </a>
 
+            <a href="registration_abm_export.html"
+                class="nav-item w-full flex items-center p-3 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 transition-all duration-300 text-left group hidden"
+                id="nav-reg-export">
+                <div
+                    class="p-2 bg-gray-100 rounded-lg group-hover:bg-indigo-100 mr-3 transition-colors text-gray-500 group-hover:text-indigo-600">
+                    <i class="fas fa-file-export w-5 h-5 flex items-center justify-center"></i>
+                </div>
+                <span class="font-medium">ตรวจสอบยอดทะเบียน (ABM)</span>
+            </a>
 
-            <!-- Update Status Link -->
+
+            <a href="admin_settings.html"
+                class="nav-item w-full flex items-center p-3 rounded-lg hover:bg-slate-50 hover:text-indigo-600 transition-all duration-300 text-left group hidden"
+                id="nav-admin-settings">
+                <div
+                    class="p-2 bg-gray-100 rounded-lg group-hover:bg-indigo-100 mr-3 transition-colors text-gray-500 group-hover:text-indigo-600">
+                    <i class="fas fa-shield-alt w-5 h-5 flex items-center justify-center"></i>
+                </div>
+                <span class="font-medium">ตั้งค่าระบบ (Admin)</span>
+            </a>
 
 
 
@@ -595,7 +613,7 @@
         </nav>
 
         <div class="p-4 border-t border-gray-200 text-xs text-gray-400 text-center bg-gray-50">
-            &copy; 2025 สนง.ที่ดิน จ.อ่างทอง
+            &copy; 2025 Ang Thong Active Backlog Management
         </div>
     </aside>
 
@@ -608,7 +626,7 @@
                     <h2 id="page-title" class="text-2xl font-bold text-gray-800 tracking-tight" data-aos="fade-down">
                         ภาพรวม</h2>
                     <p class="text-sm text-gray-400 mt-1" data-aos="fade-down" data-aos-delay="100">
-                        ระบบบริหารจัดการงานค้างเพื่อการติดตามและรายงานผล หาพบปัญหาให้ตะโกนเรียก Admin ดังๆ</p>
+                        Ang Thong Active Backlog Management (ABM) เพื่อการติดตามและรายงานผล</p>
                 </div>
                 <div class="px-4 py-2 bg-emerald-50 text-emerald-700 rounded-full text-sm font-medium border border-emerald-100 shadow-sm"
                     id="current-date" data-aos="fade-left"></div>

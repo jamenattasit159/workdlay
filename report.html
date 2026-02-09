@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>รายงาน KPI - สนง.ที่ดินจังหวัดอ่างทอง</title>
+    <title>ABM Report - Ang Thong ABM</title>
     <!-- TailwindCSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap"
@@ -146,18 +146,38 @@
                 data-aos="fade-up">
                 <div>
                     <h3 class="font-bold text-gray-800 text-xl"><i
-                            class="fas fa-chart-line mr-2 text-emerald-500"></i>รายงานสรุปผลการดำเนินงาน KPI</h3>
+                            class="fas fa-chart-line mr-2 text-emerald-500"></i>รายงานสรุปผลการดำเนินงาน ABM</h3>
                     <p class="text-sm text-gray-500"><i class="fas fa-calendar-alt mr-1"></i> สรุปผลงานรายเดือน (Action
                         Plan)</p>
                 </div>
                 <div class="flex flex-wrap items-center gap-3">
+                    <!-- Report Type Selector -->
+                    <div class="flex items-center gap-2 bg-emerald-50 p-2 rounded-xl border border-emerald-100">
+                        <label class="text-sm font-bold text-emerald-700 whitespace-nowrap"><i
+                                class="fas fa-layer-group mr-1"></i>รูปแบบ:</label>
+                        <select id="report-type" onchange="reportApp.onReportTypeChange(this.value)"
+                            class="px-3 py-2 rounded-lg border border-emerald-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm font-medium bg-white">
+                            <option value="monthly">รายเดือน</option>
+                            <option value="yearly" selected>รายปี (สะสม)</option>
+                            <option value="range">ช่วงเวลา</option>
+                        </select>
+                    </div>
+
                     <!-- Date Picker -->
                     <div
                         class="flex items-center gap-2 bg-gradient-to-r from-indigo-50 to-blue-50 p-2 rounded-xl border border-indigo-100">
-                        <label class="text-sm font-bold text-indigo-700"><i
-                                class="fas fa-calendar-alt mr-1"></i>ปีที่รายงาน:</label>
-                        <input type="month" id="kpi-report-month"
+                        <label id="label-start-date" class="text-sm font-bold text-indigo-700 whitespace-nowrap"><i
+                                class="fas fa-calendar-alt mr-1"></i>ประจำช่วงเวลา:</label>
+                        <input type="month" id="abm-report-month"
                             class="px-3 py-2 rounded-lg border border-indigo-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm font-medium bg-white">
+
+                        <!-- End Month Picker (Hidden by default) -->
+                        <div id="end-month-container" class="hidden flex items-center gap-2">
+                            <span class="text-indigo-400 font-bold">ถึง</span>
+                            <input type="month" id="abm-report-end-month"
+                                class="px-3 py-2 rounded-lg border border-indigo-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm font-medium bg-white">
+                        </div>
+
                         <button onclick="reportApp.updateReport()"
                             class="px-4 py-2 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-lg font-bold text-sm hover:from-indigo-600 hover:to-blue-700 transition-all shadow-md hover:shadow-lg flex items-center"
                             id="btn-update">

@@ -7,6 +7,11 @@ window.UI = {
         4: { name: 'งานค้าง', icon: 'fa-clock', color: 'orange' }
     },
 
+    thaiMonths: [
+        'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+        'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+    ],
+
     //DataTables Thai Language Config
     dataTableThaiLang: {
         search: "ค้นหา:",
@@ -736,10 +741,10 @@ window.UI = {
         }).join('');
     },
 
-    //Render Monthly KPI Report (สถิติรายเดือนแยกตามฝ่าย)
-    //Render Monthly KPI Report (ตารางตามเดือน แยกตามฝ่าย - ตามรูปภาพตัวอย่าง)
-    async renderMonthlyKPIReport(kpiData, currentYearMonth = '') {
-        const trend = kpiData.trend || [];
+    //Render Monthly ABM Report (สถิติรายเดือนแยกตามฝ่าย)
+    //Render Monthly ABM Report (ตารางตามเดือน แยกตามฝ่าย - ตามรูปภาพตัวอย่าง)
+    async renderMonthlyABMReport(abmData, currentYearMonth = '') {
+        const trend = abmData.trend || [];
         const depts = [
             { id: 'academic', label: 'ฝ่ายวิชาการ' },
             { id: 'registration', label: 'ฝ่ายทะเบียน' }, // มักจะเรียกฝ่ายทะเบียน หรือฝ่ายบริหารในบางแผนก
@@ -810,7 +815,7 @@ window.UI = {
                                 class="w-full bg-transparent border-none focus:ring-0 text-xs text-gray-600 placeholder-gray-300 p-0" 
                                 placeholder="ระบุสาเหตุ..." 
                                 value="${dData.notes || ''}" 
-                                onchange="app.saveKPINote('${monthItem.month}', '${dept.id}', this.value)">
+                                onchange="app.saveABMNote('${monthItem.month}', '${dept.id}', this.value)">
                         </td>
                     </tr>
                 `;
@@ -854,15 +859,15 @@ window.UI = {
     },
 
     async renderReport(reportDate = null) {
-        //Get KPI data based on selected date
-        const kpiData = await app.loadKPIData(reportDate);
-
-        //Get current date for date picker default
+        //Get ABM data based on selected date
+        const abmReport = await DataManager.getABMReport(reportDate);
+        this.renderStats(abmReport.stats, reportDate);
+        this.renderABMReport(abmReport, reportDate);
         const today = new Date();
         const datePickerValue = reportDate || today.toISOString().split('T')[0];
 
         //Render Monthly Report Content
-        const monthlyReportContent = await this.renderMonthlyKPIReport(kpiData, datePickerValue.slice(0, 7));
+        const monthlyReportContent = await this.renderMonthlyABMReport(abmData, datePickerValue.slice(0, 7));
 
         return `
             <div class="space-y-6" data-aos="fade-up">
@@ -876,9 +881,9 @@ window.UI = {
                         <!-- Date Picker -->
                         <div class="flex items-center gap-2 bg-gradient-to-r from-indigo-50 to-blue-50 p-2 rounded-xl border border-indigo-100">
                             <label class="text-sm font-bold text-indigo-700"><i class="fas fa-calendar-alt mr-1"></i>ปีที่รายงาน:</label>
-                            <input type="month" id="kpi-report-month" value="${datePickerValue.slice(0, 7)}" 
+                            <input type="month" id="abm-report-month" value="${datePickerValue.slice(0, 7)}" 
                                 class="px-3 py-2 rounded-lg border border-indigo-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm font-medium bg-white">
-                            <button onclick="app.updateKPIReport(document.getElementById('kpi-report-month').value + '-01')" 
+                            <button onclick="app.updateABMReport(document.getElementById('abm-report-month').value + '-01')" 
                                 class="px-4 py-2 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-lg font-bold text-sm hover:from-indigo-600 hover:to-blue-700 transition-all shadow-md hover:shadow-lg flex items-center">
                                 <i class="fas fa-sync-alt mr-1.5"></i> อัปเดตข้อมูล
                             </button>
@@ -978,7 +983,16 @@ window.UI = {
     async renderSurveyList(allItems, searchTerm = '', sortOrder = 'desc', filterType = 'all', page = 1, limit = 20, statusView = 'pending') {
         const fullItems = await DataManager.getSurveyItems();
         const surveyTypes = [...new Set(fullItems.map(i => i.survey_type).filter(Boolean))];
-        const totalItems = allItems.length;
+
+        // Process data (Sort by ID)
+        let processedItems = [...allItems];
+        processedItems.sort((a, b) => {
+            const idA = parseInt(a.id, 10) || 0;
+            const idB = parseInt(b.id, 10) || 0;
+            return sortOrder === 'asc' ? (idA - idB) : (idB - idA);
+        });
+
+        const totalItems = processedItems.length;
 
         let html = `
             <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4" data-aos="fade-down">
@@ -1022,19 +1036,43 @@ window.UI = {
                         <option value="4" ${app.surveyProgressFilter === '4' ? 'selected' : ''}>งานค้าง</option>
                     </select>
 
+                    <!-- Month Filter (Completed Only) -->
+                    ${statusView === 'completed' ? `
+                    <select onchange="app.filterSurveyMonth(this.value)" class="py-2 pl-3 pr-8 rounded-lg border border-indigo-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer bg-indigo-50">
+                        <option value="all" ${app.surveyMonthFilter === 'all' ? 'selected' : ''}>-- ทุกเดือน (เสร็จ) --</option>
+                        ${this.thaiMonths.map((m, i) => `<option value="${i + 1}" ${parseInt(app.surveyMonthFilter) === (i + 1) ? 'selected' : ''}>${m}</option>`).join('')}
+                    </select>
+                    ` : ''}
+
+                    <div class="flex bg-indigo-50 p-1.5 rounded-2xl mr-2 shadow-inner border border-indigo-100">
+                        <button onclick="app.sortSurveyList('desc')" 
+                            class="px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 flex items-center ${sortOrder === 'desc' ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-300 transform scale-105' : 'text-indigo-400 hover:text-indigo-600 hover:bg-white/50'}">
+                            <i class="fas fa-arrow-down-9-1 mr-2 scale-110"></i> ใหม่ไปเก่า
+                        </button>
+                        <button onclick="app.sortSurveyList('asc')" 
+                            class="px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 flex items-center ${sortOrder === 'asc' ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-300 transform scale-105' : 'text-indigo-400 hover:text-indigo-600 hover:bg-white/50'}">
+                            <i class="fas fa-arrow-up-1-9 mr-2 scale-110"></i> เก่ามาใหม่
+                        </button>
+                    </div>
+
                     <button onclick="app.exportDepartmentToExcel('survey')" class="bg-white border border-indigo-200 text-indigo-600 px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-indigo-50 transition-all shadow-sm flex items-center justify-center whitespace-nowrap">
                         <i class="fas fa-file-excel mr-2"></i> ส่งออก Excel
+                    </button>
+
+                    <button onclick="app.openSurveyRegModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg hover:shadow-blue-500/30 transform hover:-translate-y-0.5 flex items-center justify-center whitespace-nowrap">
+                        <i class="fas fa-file-import mr-2"></i> บันทึกยอดรับจากทะเบียน
                     </button>
 
                     <button onclick="app.openAddModal('survey')" class="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg hover:shadow-indigo-500/30 transform hover:-translate-y-0.5 flex items-center justify-center whitespace-nowrap">
                         <i class="fas fa-plus mr-2"></i> เพิ่มงาน
                     </button>
+
                 </div>
                 </div>
             </div>
 
             <div id="survey-list-container" class="space-y-4" data-aos="fade-up">
-                ${this.renderSurveyItems(allItems)}
+                ${this.renderSurveyItems(processedItems)}
             </div>`;
         return html;
     },
@@ -1314,15 +1352,11 @@ window.UI = {
                 return (b.subject || '').localeCompare(a.subject || '');
             }
 
-            //Date Sorting
-            const dateA = this.getSafeDate(a.received_date);
-            const dateB = this.getSafeDate(b.received_date);
+            //Sort by ID
+            const idA = parseInt(a.id, 10) || 0;
+            const idB = parseInt(b.id, 10) || 0;
 
-            //Handle invalid dates
-            if (!dateA) return 1;
-            if (!dateB) return -1;
-
-            return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+            return sortOrder === 'asc' ? (idA - idB) : (idB - idA);
         });
 
         return processedItems;
@@ -1331,7 +1365,16 @@ window.UI = {
     async renderRegistrationList(items, searchTerm = '', sortOrder = 'desc', filterType = 'all', subjectFilter = 'all', page = 1, limit = 20, statusView = 'pending') {
         const fullItems = await DataManager.getRegistrationItems();
         const subjects = [...new Set(fullItems.map(i => i.subject).filter(Boolean))];
-        const totalItems = items.length;
+
+        // Process data (Sort by ID inside here)
+        const processedItems = this.processRegistrationData(items, searchTerm, sortOrder, filterType);
+
+        let displayItems = processedItems;
+        if (subjectFilter && subjectFilter !== 'all') {
+            displayItems = displayItems.filter(i => i.subject === subjectFilter);
+        }
+
+        const totalItems = displayItems.length;
 
         let html = `
             <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4" data-aos="fade-down">
@@ -1375,6 +1418,25 @@ window.UI = {
                         <option value="4" ${app.registrationProgressFilter === '4' ? 'selected' : ''}>งานค้าง</option>
                     </select>
 
+                    <!-- Month Filter (Completed Only) -->
+                    ${statusView === 'completed' ? `
+                    <select onchange="app.filterRegistrationMonth(this.value)" class="py-2 pl-3 pr-8 rounded-lg border border-blue-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer bg-blue-50">
+                        <option value="all" ${app.registrationMonthFilter === 'all' ? 'selected' : ''}>-- ทุกเดือน (เสร็จ) --</option>
+                        ${this.thaiMonths.map((m, i) => `<option value="${i + 1}" ${parseInt(app.registrationMonthFilter) === (i + 1) ? 'selected' : ''}>${m}</option>`).join('')}
+                    </select>
+                    ` : ''}
+
+                    <div class="flex bg-blue-50 p-1.5 rounded-2xl mr-2 shadow-inner border border-blue-100">
+                        <button onclick="app.sortRegistrationList('desc')" 
+                            class="px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 flex items-center ${sortOrder === 'desc' ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-300 transform scale-105' : 'text-blue-400 hover:text-blue-600 hover:bg-white/50'}">
+                            <i class="fas fa-arrow-down-9-1 mr-2 scale-110"></i> ใหม่ไปเก่า
+                        </button>
+                        <button onclick="app.sortRegistrationList('asc')" 
+                            class="px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 flex items-center ${sortOrder === 'asc' ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-300 transform scale-105' : 'text-blue-400 hover:text-blue-600 hover:bg-white/50'}">
+                            <i class="fas fa-arrow-up-1-9 mr-2 scale-110"></i> เก่ามาใหม่
+                        </button>
+                    </div>
+
                     <button onclick="app.exportDepartmentToExcel('registration')" class="bg-white border border-blue-200 text-blue-600 px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-blue-50 transition-all shadow-sm flex items-center justify-center whitespace-nowrap">
                         <i class="fas fa-file-excel mr-2"></i> ส่งออก Excel
                     </button>
@@ -1386,7 +1448,7 @@ window.UI = {
             </div>
 
             <div id="registration-list-container" class="space-y-4" data-aos="fade-up">
-                ${this.renderRegistrationItems(items)}
+                ${this.renderRegistrationItems(displayItems)}
             </div>`;
         return html;
     },
@@ -1541,10 +1603,24 @@ window.UI = {
     },
 
     //--- Academic Department Views ---
-    async renderAcademicList(items, searchTerm = '', subjectFilter = 'all', page = 1, limit = 20, statusView = 'pending') {
+    async renderAcademicList(items, searchTerm = '', sortOrder = 'desc', subjectFilter = 'all', page = 1, limit = 20, statusView = 'pending') {
         const fullItems = await DataManager.getAcademicItems();
         const subjects = [...new Set(fullItems.map(i => i.subject).filter(Boolean))];
-        const totalItems = items.length;
+
+        // Process data (Sort by ID)
+        let processedItems = [...items];
+        processedItems.sort((a, b) => {
+            const idA = parseInt(a.id, 10) || 0;
+            const idB = parseInt(b.id, 10) || 0;
+            return sortOrder === 'asc' ? (idA - idB) : (idB - idA);
+        });
+
+        let displayItems = processedItems;
+        if (subjectFilter && subjectFilter !== 'all') {
+            displayItems = displayItems.filter(i => i.subject === subjectFilter);
+        }
+
+        const totalItems = displayItems.length;
 
         let html = `
                             <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4" data-aos="fade-down">
@@ -1588,7 +1664,26 @@ window.UI = {
                         <option value="4" ${app.academicProgressFilter === '4' ? 'selected' : ''}>งานค้าง</option>
                     </select>
 
-                    <button onclick="app.exportDepartmentToExcel('academic')" class="bg-white border border-orange-200 text-orange-600 px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-orange-50 transition-all shadow-sm flex items-center justify-center whitespace-nowrap">
+                    <!-- Month Filter (Completed Only) -->
+                    ${statusView === 'completed' ? `
+                    <select onchange="app.filterAcademicMonth(this.value)" class="py-2 pl-3 pr-8 rounded-lg border border-orange-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 cursor-pointer bg-orange-50">
+                        <option value="all" ${app.academicMonthFilter === 'all' ? 'selected' : ''}>-- ทุกเดือน (เสร็จ) --</option>
+                        ${this.thaiMonths.map((m, i) => `<option value="${i + 1}" ${parseInt(app.academicMonthFilter) === (i + 1) ? 'selected' : ''}>${m}</option>`).join('')}
+                    </select>
+                    ` : ''}
+
+                    <div class="flex bg-orange-50 p-1.5 rounded-2xl mr-2 shadow-inner border border-orange-100">
+                        <button onclick="app.sortAcademicList('desc')" 
+                            class="px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 flex items-center ${sortOrder === 'desc' ? 'bg-orange-600 text-white shadow-md ring-2 ring-orange-300 transform scale-105' : 'text-orange-400 hover:text-orange-600 hover:bg-white/50'}">
+                            <i class="fas fa-arrow-down-9-1 mr-2 scale-110"></i> ใหม่ไปเก่า
+                        </button>
+                        <button onclick="app.sortAcademicList('asc')" 
+                            class="px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 flex items-center ${sortOrder === 'asc' ? 'bg-orange-600 text-white shadow-md ring-2 ring-orange-300 transform scale-105' : 'text-orange-400 hover:text-orange-600 hover:bg-white/50'}">
+                            <i class="fas fa-arrow-up-1-9 mr-2 scale-110"></i> เก่ามาใหม่
+                        </button>
+                    </div>
+
+                <button onclick="app.exportDepartmentToExcel('academic')" class="bg-white border border-orange-200 text-orange-600 px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-orange-50 transition-all shadow-sm flex items-center justify-center whitespace-nowrap">
                         <i class="fas fa-file-excel mr-2"></i> ส่งออก Excel
                     </button>
 
@@ -1599,7 +1694,7 @@ window.UI = {
             </div>
 
             <div id="academic-list-container" class="space-y-4" data-aos="fade-up">
-                ${this.renderAcademicItems(items)}
+                ${this.renderAcademicItems(displayItems)}
             </div>`;
         return html;
     },
@@ -1872,6 +1967,10 @@ window.UI = {
                             <label class="block text-sm font-semibold text-gray-700 mb-2">คนคุมเรื่อง</label>
                             <input type="text" name="men" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 p-3 bg-white" placeholder="ชื่อผู้รับผิดชอบ">
                         </div>
+                        <div class="group">
+                            <label class="block text-sm font-semibold text-amber-700 mb-2">วันที่นัดรังวัด</label>
+                            <input type="date" name="survey_date" class="w-full border-amber-300 rounded-lg shadow-sm focus:ring-amber-500 focus:border-amber-500 p-3 bg-amber-50">
+                        </div>
                     </div>
                     
                     <div class="mt-8">
@@ -1968,6 +2067,11 @@ window.UI = {
                             <label class="block text-xs font-bold text-emerald-700 mb-2">วันที่ทำรายการเสร็จ</label>
                             <input type="date" id="update-completion-date" value="${item.completion_date || ''}" 
                                 class="w-full border-emerald-200 rounded-xl shadow-sm p-3 text-sm focus:ring-2 focus:ring-emerald-400 focus:border-transparent">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-amber-700 mb-2">วันที่นัดรังวัด</label>
+                            <input type="date" id="update-survey-date" value="${item.survey_date || ''}" 
+                                class="w-full border-amber-200 rounded-xl shadow-sm p-3 text-sm focus:ring-2 focus:ring-amber-400 focus:border-transparent">
                         </div>
                     </div>
                     <div class="mt-4 flex flex-wrap gap-2">
@@ -2407,9 +2511,9 @@ window.UI = {
 
     /**
      * สำหรับฉีด HTML รายงานแบบทางการเพื่อใช้สั่งพิมพ์ (Official PDF)
-     */renderOfficialPrintTemplate(kpiData) {
-        //ใช้สำเนาของ kpiData เพื่อจัดการจัดรูปแบบ
-        const dateStr = kpiData.reportDate || new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+     */renderOfficialPrintTemplate(abmReport) {
+        //ใช้สำเนาของ abmReport เพื่อจัดการจัดรูปแบบ
+        const dateStr = abmReport.reportDate || new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
 
         //รูปสัญลักษณ์ครุฑ (URL จาก Wikimedia - เป็นมาตรฐานที่หน่วยงานรัฐใช้บ่อยในเว็บ)
         const garudaUrl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Garuda_Emblem_of_Thailand.svg/100px-Garuda_Emblem_of_Thailand.svg.png';
@@ -2419,7 +2523,7 @@ window.UI = {
         <html lang="th">
             <head>
                 <meta charset="UTF-8">
-                    <title>รายงานผลงานเกิดใหม่ - ${dateStr}</title>
+                    <title>ABM Report - ${dateStr}</title>
                     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
                         <style>
                             @page {size: A4; margin: 15mm; }
@@ -2530,7 +2634,7 @@ window.UI = {
                             <div class="official-header">
                                 <img src="${garudaUrl}" class="garuda">
                                     <div class="title-main">รายงานผลการดำเนินงานตามตัวชี้วัด</div>
-                                    <div class="title-sub">สำนักงานที่ดินจังหวัดอ่างทอง</div>
+                                    <div class="title-sub">Ang Thong Active Backlog Management (ABM)</div>
                             </div>
 
                             <div class="report-meta">
@@ -2542,19 +2646,19 @@ window.UI = {
                             <div class="summary-box">
                                 <div class="summary-item">
                                     <span class="summary-label">งานค้างยกมา (Baseline)</span>
-                                    <span class="summary-value">${kpiData.oldWork.baseline.total}</span>
+                                    <span class="summary-value">${abmReport.oldWork.baseline.total}</span>
                                 </div>
                                 <div class="summary-item">
                                     <span class="summary-label">ดำเนินการเสร็จสิ้นสะสม</span>
-                                    <span class="summary-value">${kpiData.oldWork.summary.totalCompleted}</span>
+                                    <span class="summary-value">${abmReport.oldWork.summary.totalCompleted}</span>
                                 </div>
                                 <div class="summary-item">
                                     <span class="summary-label">คงเหลือรอกำเนินการ</span>
-                                    <span class="summary-value">${kpiData.oldWork.summary.remaining}</span>
+                                    <span class="summary-value">${abmReport.oldWork.summary.remaining}</span>
                                 </div>
                                 <div class="summary-item">
                                     <span class="summary-label">ร้อยละที่ลดลง (สะสม)</span>
-                                    <span class="summary-value">${kpiData.oldWork.summary.currentPercent.toFixed(1)}%</span>
+                                    <span class="summary-value">${abmReport.oldWork.summary.currentPercent.toFixed(1)}%</span>
                                 </div>
                             </div>
 
@@ -2570,7 +2674,7 @@ window.UI = {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    ${kpiData.oldWork.monthlyProgress.map(m => `
+                                    ${abmReport.oldWork.monthlyProgress.map(m => `
                         <tr>
                             <td class="text-left">${m.month} ${m.year}</td>
                             <td>${m.backlogStart.toLocaleString()}</td>
@@ -2586,19 +2690,19 @@ window.UI = {
                             <div class="summary-box">
                                 <div class="summary-item">
                                     <span class="summary-label">จำนวนงานรับใหม่</span>
-                                    <span class="summary-value">${kpiData.newWork.total}</span>
+                                    <span class="summary-value">${abmReport.newWork.total}</span>
                                 </div>
                                 <div class="summary-item">
                                     <span class="summary-label">ดำเนินการเสร็จสิ้น</span>
-                                    <span class="summary-value">${kpiData.newWork.completed}</span>
+                                    <span class="summary-value">${abmReport.newWork.completed}</span>
                                 </div>
                                 <div class="summary-item">
                                     <span class="summary-label">รอดำเนินการ</span>
-                                    <span class="summary-value">${kpiData.newWork.pending}</span>
+                                    <span class="summary-value">${abmReport.newWork.pending}</span>
                                 </div>
                                 <div class="summary-item" style="background-color: #f9f9f9;">
                                     <span class="summary-label">ร้อยละความสำเร็จรวม</span>
-                                    <span class="summary-value">${kpiData.newWork.percentages.within60.toFixed(1)}%</span>
+                                    <span class="summary-value">${abmReport.newWork.percentages.within60.toFixed(1)}%</span>
                                 </div>
                             </div>
 
@@ -2615,17 +2719,17 @@ window.UI = {
                                 <tbody>
                                     <tr>
                                         <td class="text-left">การดำเนินการเสร็จสิ้นภายในระยะเวลา ๓๐ วัน</td>
-                                        <td>${kpiData.newWork.breakdown.within30Days}</td>
-                                        <td>${kpiData.newWork.percentages.within30.toFixed(1)}%</td>
+                                        <td>${abmReport.newWork.breakdown.within30Days}</td>
+                                        <td>${abmReport.newWork.percentages.within30.toFixed(1)}%</td>
                                         <td>ไม่น้อยกว่าร้อยละ ๘๐</td>
-                                        <td>${kpiData.newWork.percentages.achieved30 ? 'ผ่านเกณฑ์' : 'ไม่ผ่านเกณฑ์'}</td>
+                                        <td>${abmReport.newWork.percentages.achieved30 ? 'ผ่านเกณฑ์' : 'ไม่ผ่านเกณฑ์'}</td>
                                     </tr>
                                     <tr>
                                         <td class="text-left">การดำเนินการเสร็จสิ้นภายในระยะเวลา ๖๐ วัน</td>
-                                        <td>${kpiData.newWork.breakdown.within60Days}</td>
-                                        <td>${kpiData.newWork.percentages.within60.toFixed(1)}%</td>
+                                        <td>${abmReport.newWork.breakdown.within60Days}</td>
+                                        <td>${abmReport.newWork.percentages.within60.toFixed(1)}%</td>
                                         <td>ร้อยละ ๑๐๐</td>
-                                        <td>${kpiData.newWork.percentages.achieved60 ? 'ผ่านเกณฑ์' : 'ไม่ผ่านเกณฑ์'}</td>
+                                        <td>${abmReport.newWork.percentages.achieved60 ? 'ผ่านเกณฑ์' : 'ไม่ผ่านเกณฑ์'}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -2633,7 +2737,7 @@ window.UI = {
                             <div style="page-break-before: always;"></div>
                             <h2>ภาคผนวก: รายละเอียดรายการงานที่ดำเนินการเสร็จสิ้น (งานค้างสะสม)</h2>
 
-                            ${kpiData.oldWork.monthlyProgress.map(m => m.items && m.items.length > 0 ? `
+                            ${abmReport.oldWork.monthlyProgress.map(m => m.items && m.items.length > 0 ? `
                 <div style="margin-top: 15px;">
                     <strong>ประจำเดือน ${m.month} ${m.year} (ทั้งสิ้น ${m.items.length} รายการ)</strong>
                     <table>
