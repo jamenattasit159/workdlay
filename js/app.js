@@ -1291,9 +1291,9 @@ window.app = {
             return;
         }
 
-        // Lockdown Check
+        // Lockdown Check (async - fetch fresh settings from server)
         const completionDate = formData.get('received_date');
-        if (DataManager.isLockdownActive(completionDate)) {
+        if (await DataManager.isLockdownActive(completionDate)) {
             Swal.fire({
                 icon: 'error',
                 title: 'ไม่สามารถบันทึกข้อมูลได้',
@@ -1443,6 +1443,15 @@ window.app = {
     async quickUpdateStatus(id, type, status) {
         const today = new Date().toISOString().split('T')[0];
         try {
+            // Get old data for history before updating
+            let items = [];
+            if (type === 'survey') items = await DataManager.getSurveyItems();
+            else if (type === 'registration') items = await DataManager.getRegistrationItems();
+            else if (type === 'academic') items = await DataManager.getAcademicItems();
+
+            const oldItem = items.find(i => i.id == id);
+            const oldStatus = oldItem ? (oldItem.status_cause || oldItem.status || '-') : '-';
+
             if (type === 'survey') {
                 await DataManager.updateSurveyItem({ id, status_cause: status, completion_date: today });
             } else if (type === 'registration') {
@@ -1450,6 +1459,9 @@ window.app = {
             } else if (type === 'academic') {
                 await DataManager.updateAcademicItem({ id, status_cause: status, completion_date: today });
             }
+
+            // Log to status history
+            await this.addStatusHistory(id, type, 'ทำเครื่องหมายเสร็จ', oldStatus, 'เสร็จสิ้น');
 
             Swal.fire('สำเร็จ', 'อัปเดตสถานะเป็น "เสร็จสิ้น" เรียบร้อยแล้ว', 'success');
             document.getElementById('detail-modal').classList.add('hidden');
@@ -1460,12 +1472,73 @@ window.app = {
         }
     },
 
+    async sendToRegistration(id, type) {
+        let status = document.getElementById('update-status-input').value;
+        const rv_12 = document.getElementById('update-rv12-input')?.value;
+        const survey_date = document.getElementById('update-survey-date')?.value;
+        let completion_date = document.getElementById('update-completion-date').value;
+
+        // Use today's date if not specified
+        if (!completion_date) {
+            const today = new Date();
+            completion_date = today.toISOString().split('T')[0];
+        }
+
+        // Default status if empty
+        if (!status) {
+            status = 'ส่งฝ่ายทะเบียน';
+        }
+
+        try {
+            // Get old data for history
+            let items = [];
+            if (type === 'survey') items = await DataManager.getSurveyItems();
+            else if (type === 'registration') items = await DataManager.getRegistrationItems();
+            else if (type === 'academic') items = await DataManager.getAcademicItems();
+
+            const oldItem = items.find(i => i.id == id);
+            const oldStatus = oldItem ? (oldItem.status_cause || oldItem.status || '-') : '-';
+
+            if (type === 'survey') {
+                await DataManager.updateSurveyItem({
+                    id,
+                    status_cause: status,
+                    rv_12,
+                    survey_date,
+                    completion_date
+                });
+            } else if (type === 'registration') {
+                await DataManager.updateRegistrationItem({ id, status_cause: status, completion_date });
+            } else if (type === 'academic') {
+                await DataManager.updateAcademicItem({ id, status_cause: status, completion_date });
+            }
+
+            // Log history
+            await this.addStatusHistory(id, type, 'ส่งฝ่ายทะเบียน', oldStatus, status);
+
+            Swal.fire({
+                icon: 'success',
+                title: 'สำเร็จ',
+                text: 'บันทึกและส่งฝ่ายทะเบียนเรียบร้อยแล้ว',
+                timer: 1500,
+                showConfirmButton: false
+            });
+
+            document.getElementById('detail-modal').classList.add('hidden');
+            this.refreshLists(type);
+
+        } catch (error) {
+            console.error(error);
+            Swal.fire('Error', 'ไม่สามารถดำเนินการได้', 'error');
+        }
+    },
+
     async saveStatusUpdate(id, type) {
         const status = document.getElementById('update-status-input').value;
         const completion_date = document.getElementById('update-completion-date').value;
 
-        // Lockdown Check
-        if (completion_date && DataManager.isLockdownActive(completion_date)) {
+        // Lockdown Check (async - fetch fresh settings from server)
+        if (completion_date && await DataManager.isLockdownActive(completion_date)) {
             Swal.fire({
                 icon: 'error',
                 title: 'ไม่สามารถแก้ไขข้อมูลได้',
@@ -1476,6 +1549,15 @@ window.app = {
         }
 
         try {
+            // Get old data for history before updating
+            let items = [];
+            if (type === 'survey') items = await DataManager.getSurveyItems();
+            else if (type === 'registration') items = await DataManager.getRegistrationItems();
+            else if (type === 'academic') items = await DataManager.getAcademicItems();
+
+            const oldItem = items.find(i => i.id == id);
+            const oldStatus = oldItem ? (oldItem.status_cause || oldItem.status || '-') : '-';
+
             if (type === 'survey') {
                 const rv_12 = document.getElementById('update-rv12-input')?.value;
                 const survey_date = document.getElementById('update-survey-date')?.value;
@@ -1484,6 +1566,11 @@ window.app = {
                 await DataManager.updateRegistrationItem({ id, status_cause: status, completion_date });
             } else if (type === 'academic') {
                 await DataManager.updateAcademicItem({ id, status_cause: status, completion_date });
+            }
+
+            // Add to status history if status text has changed
+            if (status !== oldStatus) {
+                await this.addStatusHistory(id, type, 'อัปเดตสถานะ', oldStatus, status);
             }
 
             Swal.fire('สำเร็จ', 'บันทึกการเปลี่ยนแปลงเรียบร้อยแล้ว', 'success');

@@ -1,1 +1,2 @@
 [2026-02-06 05:43:59] POST: {"received_date":"2026-02-13","status":"-","rv_12":"-","survey_type":"-","applicant":"-","men":"-","type":"survey"}
+[2026-02-12 04:03:03] POST: {"received_date":"2026-02-10","status":"\u0e23\u0e31\u0e1a\u0e40\u0e23\u0e37\u0e48\u0e2d\u0e07","rv_12":"154\/2569","survey_type":"\u0e2a\u0e2d\u0e1a\u0e40\u0e02\u0e15","applicant":"\u0e2d\u0e19\u0e38","men":"\u0e1b\u0e31\u0e19","type":"survey"}

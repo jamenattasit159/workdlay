@@ -29,10 +29,13 @@ const DataManager = {
      * ตรวจสอบว่าระบบอยู่ในช่วง Lockdown หรือไม่ (ห้ามแก้วันที่เสร็จงานย้อนหลังเดือนก่อน)
      * เงื่อนไข: ทุกวันที่ 5 เวลา 01:00 น. เป็นต้นไป จะล็อคไม่ให้บันทึกงานของเดือนก่อนหน้า
      * @param {string} completionDateStr - วันที่เสร็จงานที่จะบันทึก
-     * @returns {boolean} - true ถ้าถูกล็อค
+     * @returns {Promise<boolean>} - true ถ้าถูกล็อค
      */
-    isLockdownActive(completionDateStr) {
+    async isLockdownActive(completionDateStr) {
         if (!completionDateStr) return false;
+
+        // Always fetch fresh settings from server to avoid cache issues
+        await this.getSystemSettings();
 
         // Check for manual overrides from settings
         const lockdownStatus = this.systemSettings?.lockdown_status || 'auto';
@@ -80,7 +83,8 @@ const DataManager = {
 
     async getSystemSettings() {
         try {
-            const response = await fetch('api/settings.php');
+            const baseUrl = window.API_CONFIG?.getBaseUrl() || 'api';
+            const response = await fetch(`${baseUrl}/settings${baseUrl.includes('localhost') ? '' : '.php'}`);
             const result = await response.json();
             if (result.status === 'success') {
                 this.systemSettings = result.data;
@@ -95,7 +99,8 @@ const DataManager = {
 
     async updateSystemSetting(key, value) {
         try {
-            const response = await fetch('api/settings.php', {
+            const baseUrl = window.API_CONFIG?.getBaseUrl() || 'api';
+            const response = await fetch(`${baseUrl}/settings${baseUrl.includes('localhost') ? '' : '.php'}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ key, value })
@@ -135,7 +140,8 @@ const DataManager = {
         }
 
         try {
-            const response = await fetch('api/stats.php');
+            const baseUrl = window.API_CONFIG?.getBaseUrl() || 'api';
+            const response = await fetch(`${baseUrl}/stats${baseUrl.includes('localhost') ? '' : '.php'}`);
             if (!response.ok) throw new Error('Stats API failed');
             const stats = await response.json();
 
@@ -481,7 +487,11 @@ const DataManager = {
     },
 
     // --- Survey Department API ---
-    surveyApiUrl: 'api/survey.php',
+    // URL is now dynamic based on API_CONFIG
+    get surveyApiUrl() {
+        const baseUrl = window.API_CONFIG?.getBaseUrl() || 'api';
+        return `${baseUrl}/survey${baseUrl.includes('localhost') ? '' : '.php'}`;
+    },
 
     async getSurveyItems() {
         const now = Date.now();
@@ -554,7 +564,11 @@ const DataManager = {
     },
 
     // --- Registration Department API ---
-    registrationApiUrl: 'api/registration.php',
+    // URL is now dynamic based on API_CONFIG
+    get registrationApiUrl() {
+        const baseUrl = window.API_CONFIG?.getBaseUrl() || 'api';
+        return `${baseUrl}/registration${baseUrl.includes('localhost') ? '' : '.php'}`;
+    },
 
     async getRegistrationItems() {
         const now = Date.now();
@@ -636,7 +650,11 @@ const DataManager = {
     },
 
     // --- Academic Department API ---
-    academicApiUrl: 'api/academic.php',
+    // URL is now dynamic based on API_CONFIG
+    get academicApiUrl() {
+        const baseUrl = window.API_CONFIG?.getBaseUrl() || 'api';
+        return `${baseUrl}/academic${baseUrl.includes('localhost') ? '' : '.php'}`;
+    },
 
     async getAcademicItems() {
         const now = Date.now();

@@ -1,12 +1,38 @@
 <?php
 /**
- * Stats API
+ * Stats API - Optimized with Caching
  * คำนวณยอดสรุปจากหลังบ้านเพื่อให้ Dashboard ทำงานได้รวดเร็ว
+ * 
+ * ⚡ Optimizations:
+ * 1. File-based caching (ลด DB queries ซ้ำๆ)
+ * 2. Single aggregated SQL query per table
+ * 3. Prepared statements
  */
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 
 include_once 'db.php';
+
+// ⚡ Cache Configuration
+$CACHE_ENABLED = true;
+$CACHE_TTL = 30; // seconds (ปรับได้)
+$CACHE_DIR = __DIR__ . '/cache';
+$CACHE_FILE = $CACHE_DIR . '/stats_cache.json';
+
+// Create cache directory if not exists
+if ($CACHE_ENABLED && !is_dir($CACHE_DIR)) {
+    @mkdir($CACHE_DIR, 0755, true);
+}
+
+// Check cache first
+if ($CACHE_ENABLED && file_exists($CACHE_FILE)) {
+    $cacheAge = time() - filemtime($CACHE_FILE);
+    if ($cacheAge < $CACHE_TTL) {
+        // Return cached data
+        echo file_get_contents($CACHE_FILE);
+        exit();
+    }
+}
 
 try {
     $department = $_GET['department'] ?? 'all';
@@ -140,7 +166,15 @@ try {
     unset($stats['kpi']['newWork']['_within30']);
     unset($stats['kpi']['newWork']['_within60']);
 
-    echo json_encode($stats);
+    // Prepare JSON output
+    $output = json_encode($stats);
+
+    // ⚡ Save to cache for next request
+    if ($CACHE_ENABLED && $department === 'all') {
+        @file_put_contents($CACHE_FILE, $output);
+    }
+
+    echo $output;
 
 } catch (Exception $e) {
     http_response_code(500);

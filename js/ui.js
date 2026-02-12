@@ -44,7 +44,7 @@ window.UI = {
 
         try {
             //Destroy existing instance if any
-            if ($.fn.DataTable.isDataTable(tableSelector)) {
+            if (window.jQuery && $.fn.DataTable && $.fn.DataTable.isDataTable(tableSelector)) {
                 $(tableSelector).DataTable().clear().destroy();
                 //Remove DataTable wrapper elements
                 const wrapper = document.getElementById(tableId + '_wrapper');
@@ -97,7 +97,7 @@ window.UI = {
     destroyDataTable(tableId) {
         const tableSelector = '#' + tableId;
         try {
-            if ($.fn.DataTable.isDataTable(tableSelector)) {
+            if (window.jQuery && $.fn.DataTable && $.fn.DataTable.isDataTable(tableSelector)) {
                 $(tableSelector).DataTable().clear().destroy();
             }
             if (this.dataTableInstances[tableId]) {
@@ -109,7 +109,7 @@ window.UI = {
     },
 
     //Render Progress Type Checkboxes
-    renderProgressTypeCheckboxes(currentType, itemId, workType) {
+    renderProgressTypeCheckboxes(currentType, itemId, workType, receivedDate = null) {
         const types = [
             { id: 2, label: 'งานสุดขั้นตอน', icon: 'fa-flag-checkered', color: 'purple', desc: 'อยู่ในขั้นตอนสุดท้าย' },
             { id: 3, label: 'งานศาล', icon: 'fa-gavel', color: 'red', desc: 'รอคำสั่งศาล/ดำเนินการทางกฎหมาย' },
@@ -120,26 +120,34 @@ window.UI = {
             <div class="bg-gradient-to-br from-slate-50 to-slate-100 p-4 rounded-2xl border border-slate-200 shadow-sm">
                 <h4 class="font-extrabold text-slate-800 mb-3 flex items-center text-sm">
                     <i class="fas fa-tags mr-2 text-slate-600"></i> หมวดหมู่ความคืบหน้า
+                    <span class="ml-2 text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">สุดขั้นตอน/งานศาล: ลดออกได้เท่านั้น</span>
                 </h4>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    ${types.map(t => `
-                        <label class="relative flex items-start p-3 rounded-xl cursor-pointer transition-all duration-200 
-                            ${currentType == t.id ? `bg-${t.color}-100 border-2 border-${t.color}-400 shadow-md` : 'bg-white border border-gray-200 hover:border-gray-300 hover:shadow'}">
+                    ${types.map(t => {
+            // Type 2/3: disabled unless currently checked (allow uncheck only)
+            const isType23 = (t.id === 2 || t.id === 3);
+            const isCurrentlyThis = (currentType == t.id);
+            const disabled = isType23 && !isCurrentlyThis;
+            return `
+                        <label class="relative flex items-start p-3 rounded-xl transition-all duration-200 
+                            ${disabled ? 'opacity-40 cursor-not-allowed bg-gray-100 border border-gray-200' :
+                    (isCurrentlyThis ? `bg-${t.color}-100 border-2 border-${t.color}-400 shadow-md cursor-pointer` : 'bg-white border border-gray-200 hover:border-gray-300 hover:shadow cursor-pointer')}">
                             <input type="checkbox" 
                                 id="progress-type-${t.id}"
-                                ${currentType == t.id ? 'checked' : ''} 
+                                ${isCurrentlyThis ? 'checked' : ''} 
+                                ${disabled ? 'disabled' : ''}
                                 onchange="app.updateProgressType('${itemId}', '${workType}', ${t.id}, this.checked)"
-                                class="h-5 w-5 rounded border-gray-300 text-${t.color}-600 focus:ring-${t.color}-500 mt-0.5">
+                                class="h-5 w-5 rounded border-gray-300 text-${t.color}-600 focus:ring-${t.color}-500 mt-0.5 ${disabled ? 'cursor-not-allowed' : ''}">
                             <div class="ml-3">
                                 <div class="flex items-center">
                                     <i class="fas ${t.icon} text-${t.color}-500 mr-2 text-sm"></i>
                                     <span class="font-bold text-sm text-gray-800">${t.label}</span>
                                 </div>
-                                <p class="text-xs text-gray-500 mt-0.5">${t.desc}</p>
+                                <p class="text-xs text-gray-500 mt-0.5">${disabled ? 'ไม่สามารถเพิ่มเข้าหมวดนี้ได้' : (isType23 && isCurrentlyThis ? 'คลิกเพื่อยกเลิกหมวดนี้' : t.desc)}</p>
                             </div>
-                            ${currentType == t.id ? `<span class="absolute top-1 right-1 w-3 h-3 bg-${t.color}-500 rounded-full animate-pulse"></span>` : ''}
+                            ${isCurrentlyThis ? `<span class="absolute top-1 right-1 w-3 h-3 bg-${t.color}-500 rounded-full animate-pulse"></span>` : ''}
                         </label>
-                    `).join('')}
+                    `}).join('')}
                 </div>
             </div>
         `;
@@ -1879,11 +1887,10 @@ window.UI = {
                             </div>
                             <div class="group">
                                 <label class="block text-gray-700 font-semibold mb-2">ประเภทความคืบหน้า</label>
-                                <select name="progress_type" class="w-full border-gray-200 bg-gray-50 rounded-lg p-3 border focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all outline-none">
-                                    <option value="1">ปกติ</option>
-                                    <option value="2">สุดขั้นตอน</option>
-                                    <option value="3">งานศาล</option>
-                                </select>
+                                <input type="hidden" name="progress_type" value="1">
+                                <div class="w-full border-gray-200 bg-gray-100 rounded-lg p-3 border text-gray-500 text-sm">
+                                    <i class="fas fa-info-circle mr-1"></i> งานใหม่ — ตั้งเป็น "ปกติ" อัตโนมัติ
+                                </div>
                             </div>
                         </div>
 
@@ -1953,11 +1960,10 @@ window.UI = {
                         </div>
                         <div class="group">
                             <label class="block text-sm font-semibold text-gray-700 mb-2">ประเภทความคืบหน้า</label>
-                            <select name="progress_type" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 p-3 bg-white">
-                                <option value="1">ปกติ</option>
-                                <option value="2">สุดขั้นตอน</option>
-                                <option value="3">งานศาล</option>
-                            </select>
+                            <input type="hidden" name="progress_type" value="1">
+                            <div class="w-full border-gray-200 bg-gray-100 rounded-lg p-3 border text-gray-500 text-sm">
+                                <i class="fas fa-info-circle mr-1"></i> งานใหม่ — ตั้งเป็น "ปกติ" อัตโนมัติ
+                            </div>
                         </div>
                         <div class="group">
                             <label class="block text-sm font-semibold text-gray-700 mb-2">เลข รว.12</label>
@@ -2043,7 +2049,7 @@ window.UI = {
                 </div>
 
                 <!-- Progress Type Checkboxes -->
-                ${this.renderProgressTypeCheckboxes(progressType, item.id, 'survey')}
+                ${this.renderProgressTypeCheckboxes(progressType, item.id, 'survey', item.received_date)}
 
                 <!-- Status Management Tool -->
                 <div class="bg-emerald-50 p-5 rounded-2xl border border-emerald-100 shadow-sm">
@@ -2075,8 +2081,8 @@ window.UI = {
                         </div>
                     </div>
                     <div class="mt-4 flex flex-wrap gap-2">
-                        <button onclick="app.quickUpdateStatus('${item.id}', 'survey', 'completed')" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold hover:bg-emerald-700 transition shadow-md">
-                            <i class="fas fa-check-double mr-2"></i> เสร็จสิ้นวันนี้
+                        <button onclick="app.sendToRegistration('${item.id}', 'survey')" class="px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-bold hover:bg-teal-700 transition shadow-md">
+                            <i class="fas fa-paper-plane mr-2"></i> บันทึกส่งฝ่ายทะเบียน
                         </button>
                         <button onclick="app.saveStatusUpdate('${item.id}', 'survey')" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 transition shadow-md">
                             <i class="fas fa-save mr-2"></i> บันทึก
@@ -2155,7 +2161,7 @@ window.UI = {
                 </div>
 
                 <!-- Progress Type Checkboxes -->
-                ${this.renderProgressTypeCheckboxes(progressType, item.id, 'registration')}
+                ${this.renderProgressTypeCheckboxes(progressType, item.id, 'registration', item.received_date)}
 
                 <!-- Status Management Tool -->
                 <div class="bg-indigo-50 p-5 rounded-2xl border border-indigo-100 shadow-sm">
@@ -2256,7 +2262,7 @@ window.UI = {
                 </div>
 
                 <!-- Progress Type Checkboxes -->
-                ${this.renderProgressTypeCheckboxes(progressType, item.id, 'academic')}
+                ${this.renderProgressTypeCheckboxes(progressType, item.id, 'academic', item.received_date)}
 
                 <!-- Status Management Tool -->
                 <div class="bg-orange-50 p-5 rounded-2xl border border-orange-100 shadow-sm">

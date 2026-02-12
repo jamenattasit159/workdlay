@@ -1,0 +1,63 @@
+# ============================================
+# Emerald Solstice - Performance Optimization
+# ============================================
+
+# Enable Gzip Compression (ลดขนาดไฟล์ 60-80%)
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html
+    AddOutputFilterByType DEFLATE text/plain
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE text/javascript
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE application/json
+    AddOutputFilterByType DEFLATE application/xml
+</IfModule>
+
+# Browser Caching (ลดการโหลดซ้ำ)
+<IfModule mod_expires.c>
+    ExpiresActive On
+    
+    # API responses - ไม่ cache
+    ExpiresByType application/json "access plus 0 seconds"
+    
+    # Static files - cache นาน
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/gif "access plus 1 year"
+    ExpiresByType image/webp "access plus 1 year"
+    ExpiresByType image/svg+xml "access plus 1 year"
+    ExpiresByType font/woff2 "access plus 1 year"
+    ExpiresByType font/woff "access plus 1 year"
+</IfModule>
+
+# Security Headers
+<IfModule mod_headers.c>
+    # Cache Control for API
+    <FilesMatch "\.php$">
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+    </FilesMatch>
+    
+    # Cache Control for Static Files
+    <FilesMatch "\.(css|js|png|jpg|jpeg|gif|webp|svg|woff|woff2)$">
+        Header set Cache-Control "public, max-age=31536000"
+    </FilesMatch>
+    
+    # Security
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+</IfModule>
+
+# Prevent directory listing
+Options -Indexes
+
+# UTF-8 encoding
+AddDefaultCharset UTF-8
+
+# PHP Settings (ถ้า host รองรับ)
+<IfModule mod_php.c>
+    php_value max_execution_time 30
+    php_value memory_limit 128M
+    php_flag display_errors Off
+</IfModule>

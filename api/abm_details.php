@@ -52,16 +52,22 @@ try {
     $sql = "";
     if ($type === 'pending') {
         if ($department === 'survey') {
-            // ฝ่ายรังวัด: งานค้าง = งานที่มี (status_cause = นัดรังวัด OR completion_date มีค่า) แต่ยังไม่เสร็จในเดือนนี้
-            $sql = "SELECT id, received_date, $applicantCol AS applicant_name, $workNameCol AS work_name, status_cause, completion_date, progress_type, $seqCol AS seq_no 
+            // ฝ่ายรังวัด: งานค้างสะสมทั้งหมด ณ สิ้นเดือนที่เลือก
+            // = งานที่นับเป็น Intake (survey_date ตั้งแต่ต้นปี 69 ถึงสิ้นเดือนนั้น) ที่ยังไม่เสร็จ ณ สิ้นเดือนนั้น
+            $sql = "SELECT id, received_date, survey_date, $applicantCol AS applicant_name, $workNameCol AS work_name, status_cause, completion_date, progress_type, $seqCol AS seq_no 
                     FROM $table 
-                    WHERE received_date >= :start_date
+                    WHERE survey_date >= '2026-01-01'
+                    AND survey_date <= :end_date
                     AND (
                         status_cause LIKE '%นัดรังวัด%' 
                         OR (completion_date IS NOT NULL AND completion_date != '0000-00-00')
                     )
-                    AND (completion_date IS NULL OR completion_date = '0000-00-00' OR DATE_FORMAT(completion_date, '%Y-%m') != :year_month)
-                    ORDER BY received_date DESC";
+                    AND (
+                        completion_date IS NULL 
+                        OR completion_date = '0000-00-00' 
+                        OR completion_date > :end_date2
+                    )
+                    ORDER BY survey_date DESC";
         } else {
             // ฝ่ายทะเบียน/วิชาการ: งานค้าง = งานที่ยังไม่เสร็จ
             $sql = "SELECT id, received_date, $applicantCol AS applicant_name, $workNameCol AS work_name, status_cause, completion_date, progress_type, $seqCol AS seq_no 
@@ -71,14 +77,29 @@ try {
                     ORDER BY received_date DESC";
         }
     } else if ($type === 'comp30') {
-        $sql = "SELECT id, received_date, $applicantCol AS applicant_name, $workNameCol AS work_name, completion_date, progress_type, $seqCol AS seq_no 
-                FROM $table 
-                WHERE received_date BETWEEN :start_day_month AND :end_date
-                AND completion_date IS NOT NULL AND completion_date != '0000-00-00'
-                AND DATEDIFF(completion_date, received_date) <= 30
-                ORDER BY received_date DESC";
-        $startDayMonth = $yearMonth . '-01';
-        $params = ['start_day_month' => $startDayMonth, 'end_date' => $endDate];
+        if ($department === 'survey') {
+            // งานปี 69 (received_date >= 2026-01-01) ที่เสร็จในเดือนนี้
+            $sql = "SELECT id, received_date, survey_date, $applicantCol AS applicant_name, $workNameCol AS work_name, completion_date, progress_type, $seqCol AS seq_no 
+                    FROM $table 
+                    WHERE received_date >= :new_work_start 
+                    AND completion_date BETWEEN :start_day_month AND :end_date
+                    AND completion_date IS NOT NULL AND completion_date != '0000-00-00'
+                    ORDER BY completion_date DESC";
+            $params = [
+                'new_work_start' => '2026-01-01',
+                'start_day_month' => $yearMonth . '-01',
+                'end_date' => $endDate
+            ];
+        } else {
+            $sql = "SELECT id, received_date, $applicantCol AS applicant_name, $workNameCol AS work_name, completion_date, progress_type, $seqCol AS seq_no 
+                    FROM $table 
+                    WHERE received_date BETWEEN :start_day_month AND :end_date
+                    AND completion_date IS NOT NULL AND completion_date != '0000-00-00'
+                    AND DATEDIFF(completion_date, received_date) <= 30
+                    ORDER BY received_date DESC";
+            $startDayMonth = $yearMonth . '-01';
+            $params = ['start_day_month' => $startDayMonth, 'end_date' => $endDate];
+        }
     } else if ($type === 'comp60') {
         $sql = "SELECT id, received_date, $applicantCol AS applicant_name, $workNameCol AS work_name, completion_date, progress_type, $seqCol AS seq_no 
                 FROM $table 
@@ -90,12 +111,20 @@ try {
         $startDayMonth = $yearMonth . '-01';
         $params = ['start_day_month' => $startDayMonth, 'end_date' => $endDate];
     } else if ($type === 'all') {
-        $sql = "SELECT id, received_date, $applicantCol AS applicant_name, $workNameCol AS work_name, completion_date, progress_type, $seqCol AS seq_no 
-                FROM $table 
-                WHERE received_date BETWEEN :start_day_month AND :end_date
-                ORDER BY received_date DESC";
-        $startDayMonth = $yearMonth . '-01';
-        $params = ['start_day_month' => $startDayMonth, 'end_date' => $endDate];
+        if ($department === 'survey') {
+            $sql = "SELECT id, received_date, survey_date, $applicantCol AS applicant_name, $workNameCol AS work_name, completion_date, progress_type, $seqCol AS seq_no 
+                    FROM $table 
+                    WHERE survey_date BETWEEN :start_date AND :end_date
+                    ORDER BY survey_date DESC";
+            $params = []; // Handled below
+        } else {
+            $sql = "SELECT id, received_date, $applicantCol AS applicant_name, $workNameCol AS work_name, completion_date, progress_type, $seqCol AS seq_no 
+                    FROM $table 
+                    WHERE received_date BETWEEN :start_day_month AND :end_date
+                    ORDER BY received_date DESC";
+            $startDayMonth = $yearMonth . '-01';
+            $params = ['start_day_month' => $startDayMonth, 'end_date' => $endDate];
+        }
     }
 
     if (!$sql) {
@@ -105,14 +134,24 @@ try {
     }
 
     $stmt = $conn->prepare($sql);
-    if ($type === 'pending') {
-        if ($department === 'survey') {
-            $stmt->execute(['start_date' => $startDate, 'year_month' => $yearMonth]);
+    if ($department === 'survey') {
+        // Special parameters for Survey
+        if ($type === 'pending') {
+            $stmt->execute(['end_date' => $endDate, 'end_date2' => $endDate]);
+        } else if ($type === 'comp30') {
+            // comp30 uses default params defined above
+            $stmt->execute($params);
         } else {
-            $stmt->execute(['start_date' => $startDate]);
+            // all
+            $stmt->execute(['start_date' => $yearMonth . '-01', 'end_date' => $endDate]);
         }
     } else {
-        $stmt->execute($params);
+        // Standard parameters for others
+        if ($type === 'pending') {
+            $stmt->execute(['start_date' => $startDate]);
+        } else {
+            $stmt->execute($params);
+        }
     }
 
     $results = $stmt->fetchAll(PDO::FETCH_ASSOC);

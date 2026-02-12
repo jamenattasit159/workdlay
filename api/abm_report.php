@@ -332,18 +332,18 @@ try {
 
             // Query 1: นับงานรับใหม่ (Intake) - unique jobs ที่มี (status_cause = นัดรังวัด OR completion_date IS NOT NULL)
             // ถ้างานมีทั้งสองอย่าง = นับเป็น 1 งาน
-            // Group by received_date month
+            // Group by survey_date month (Updated to use survey_date as per user request)
             $sqlSurveyIntake = "SELECT 
-                DATE_FORMAT(received_date, '%Y-%m') as month,
+                DATE_FORMAT(survey_date, '%Y-%m') as month,
                 COUNT(DISTINCT id) as intake_count
             FROM survey_works 
-            WHERE received_date >= '2026-01-01'
-              AND received_date BETWEEN ? AND ?
+            WHERE survey_date >= '2026-01-01'
+              AND survey_date BETWEEN ? AND ?
               AND (
                   status_cause LIKE '%นัดรังวัด%' 
                   OR (completion_date IS NOT NULL AND completion_date != '0000-00-00')
               )
-            GROUP BY DATE_FORMAT(received_date, '%Y-%m')";
+            GROUP BY DATE_FORMAT(survey_date, '%Y-%m')";
 
             $stmt = $conn->prepare($sqlSurveyIntake);
             $stmt->execute([$startYear, $endYear]);
@@ -351,10 +351,15 @@ try {
                 $surveyIntakeByMonth[$row['month']] = (int) $row['intake_count'];
             }
 
-            // Query 2: นับงานรังวัดใหม่ที่เสร็จในแต่ละเดือน (by completion_date)
+            // Query 2: นับงานรังวัด (รับตั้งแต่ 1 ม.ค. 69) ที่เสร็จในแต่ละเดือน (ยึดตามเดือนที่เสร็จ)
+            // comp30: รับและเสร็จในเดือนเดียวกัน (received_date month = completion_date month)
+            // comp60: รับเดือนอื่นแต่เสร็จเดือนนี้ (received_date month != completion_date month)
+            $surveyComp30ByMonth = [];
+            $surveyComp60ByMonth = [];
             $sqlSurveyCompleted = "SELECT 
                 DATE_FORMAT(completion_date, '%Y-%m') as month,
-                COUNT(*) as completed_count
+                SUM(CASE WHEN DATE_FORMAT(received_date, '%Y-%m') = DATE_FORMAT(completion_date, '%Y-%m') THEN 1 ELSE 0 END) as comp30,
+                SUM(CASE WHEN DATE_FORMAT(received_date, '%Y-%m') <> DATE_FORMAT(completion_date, '%Y-%m') THEN 1 ELSE 0 END) as comp60
             FROM survey_works 
             WHERE received_date >= '2026-01-01'
               AND completion_date IS NOT NULL 
@@ -365,7 +370,9 @@ try {
             $stmt = $conn->prepare($sqlSurveyCompleted);
             $stmt->execute([$startYear, $endYear]);
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                $surveyCompletedByMonth[$row['month']] = (int) $row['completed_count'];
+                $surveyCompletedByMonth[$row['month']] = (int) $row['comp30'] + (int) $row['comp60'];
+                $surveyComp30ByMonth[$row['month']] = (int) $row['comp30'];
+                $surveyComp60ByMonth[$row['month']] = (int) $row['comp60'];
             }
 
             // --- Pre-fetch Old Work (Before 2026) for cumulative totals ---
@@ -413,6 +420,15 @@ try {
             }
             // -------------------------------------------------------------
 
+            // Cumulative Counters for Survey
+            $surveyCumulativeIntake = 0;
+            $surveyCumulativeCompleted = 0;
+
+            // Note: To be perfectly accurate for "Pending End of Month", we need:
+            // Cumulative Intake (Jan -> Month M) - Cumulative Completed (Jan -> Month M)
+            // But we only have $surveyCompletedByMonth which is "Completed IN Month M" for New Work.
+            // So we can sum up $surveyCompletedByMonth.
+
             // Build trend array efficiently
             for ($m = $startMonthIdx; $m <= $maxMonthIdx; $m++) {
                 $loopMonth = $requestedYear . '-' . str_pad($m, 2, '0', STR_PAD_LEFT);
@@ -445,18 +461,46 @@ try {
 
                     if ($dept === 'survey') {
                         $surveyReceived = $surveyReceivedByMonth[$loopMonth] ?? 0;
-                        $surveyIntake = $surveyIntakeByMonth[$loopMonth] ?? 0;
-                        $surveyCompleted = $surveyCompletedByMonth[$loopMonth] ?? 0;
+                        $surveyIntake = $surveyIntakeByMonth[$loopMonth] ?? 0; // Intake in this month (Survey Date)
+                        $surveyCompleted = $surveyCompletedByMonth[$loopMonth] ?? 0; // Completed in this month (Completion Date)
+
+                        // Update Cumulative
+                        // But wait! If we start report from Feb (e.g. range view), we miss Jan's initial cumulative.
+                        // Ideally, we should loop from Month 1 to calculate cumulative correctly, even if we don't display Month 1.
+                        // However, the current logic starts loop from $startMonthIdx. 
+                        // For correct cumulative, we must pre-calculate if $startMonthIdx > 1.
+
+                        // NOTE: For simplicity and assuming typical Yearly view starting Jan, this works.
+                        // If Monthly view is requested for "Feb", we need previous pending.
+
+                        // Let's recalculate cumulative from Jan up to current loop month ON THE FLY to be safe
+                        // This is inefficient but safer if $startMonthIdx > 1
+                        $cumIntake = 0;
+                        $cumComp = 0;
+                        for ($cm = 1; $cm <= $m; $cm++) {
+                            $cmKey = $requestedYear . '-' . str_pad($cm, 2, '0', STR_PAD_LEFT);
+                            $cumIntake += $surveyIntakeByMonth[$cmKey] ?? 0;
+                            $cumComp += $surveyCompletedByMonth[$cmKey] ?? 0;
+                        }
+
+                        $pendingTotal = max(0, $cumIntake - $cumComp);
+                        // Pending Total = (All Intake so far) - (All Completed so far)
+                        // This represents the "Active Backlog" at the end of Month M
 
                         $intake = $surveyIntake;
-                        $comp30 = $surveyCompleted;
+                        $comp30 = $surveyComp30ByMonth[$loopMonth] ?? 0; // เสร็จเดือนเดียวกับที่รับ
+                        $comp60 = $surveyComp60ByMonth[$loopMonth] ?? 0; // รับเดือนก่อน เสร็จเดือนนี้
                         $compPercent = ($intake > 0) ? round(($comp30 / $intake) * 100, 2) : 0;
+
+                        // Net pending THIS month = รับใหม่เดือนนี้ - (งานเสร็จ30วัน + งานเสร็จ60วัน)
+                        // Front-end จะสะสม (accumulate) ผ่าน deptBalances เอง
+                        $pendingThisMonth = $intake - ($comp30 + $comp60);
 
                         $monthStats['depts'][$dept] = [
                             'intake' => $intake,
                             'comp30' => $comp30,
-                            'comp60' => 0,
-                            'pending' => max(0, $intake - $comp30),
+                            'comp60' => $comp60,
+                            'pending' => $pendingThisMonth, // Net pending this month (FE accumulates)
                             'pending_type2' => (int) ($workData['pending_type2'] ?? 0) + $remOld2,
                             'pending_type3' => (int) ($workData['pending_type3'] ?? 0) + $remOld3,
                             'pending_type4' => (int) ($workData['pending_type4'] ?? 0) + $remOld4,

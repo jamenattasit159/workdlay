@@ -311,10 +311,7 @@ window.reportApp = {
                         <td class="px-3 py-3 border text-center font-bold text-gray-500 bg-gray-50/30">${prevBal.toLocaleString()}</td>
                         <!-- เดือนนี้ -->
                         <td class="px-3 py-3 border text-center font-bold text-blue-500 bg-blue-50/10">${pendingMonth.toLocaleString()}</td>
-                        <!-- (2) สุดขั้นตอน -->
-                        <td class="px-3 py-3 border text-center font-bold text-purple-600 bg-purple-50/20">${currentBalType2.toLocaleString()}</td>
-                        <!-- (3) งานศาล -->
-                        <td class="px-3 py-3 border text-center font-bold text-orange-600 bg-orange-50/20">${currentBalType3.toLocaleString()}</td>
+
                         <!-- (12) รวมทั้งหมด -->
                         <td class="px-3 py-3 border text-center font-black text-emerald-600 bg-emerald-50/30 cursor-pointer hover:underline" 
                             title="คลิกเพื่อดูรายละเอียดงานค้าง"
@@ -371,8 +368,7 @@ window.reportApp = {
                     <td class="px-3 py-3 border text-center">${totalPct60} %</td>
                     <td class="px-3 py-3 border text-center text-gray-600">${totalPrevBal.toLocaleString()}</td>
                     <td class="px-3 py-3 border text-center text-blue-600">${totalPendingMonth.toLocaleString()}</td>
-                    <td class="px-3 py-3 border text-center text-purple-700">${totalCurType2.toLocaleString()}</td>
-                    <td class="px-3 py-3 border text-center text-orange-700">${totalCurType3.toLocaleString()}</td>
+
                     <td class="px-3 py-3 border text-center text-emerald-700">${totalCurTotal.toLocaleString()}</td>
                     <td class="px-3 py-3 border text-center text-blue-700 font-black bg-blue-50/20">${totalSurveyReg > 0 ? totalSurveyReg.toLocaleString() : '-'}</td>
                     <td class="px-3 py-3 border bg-gray-200"></td>
@@ -390,7 +386,7 @@ window.reportApp = {
                                 <!-- Row 1 -->
                                 <tr class="bg-blue-100/50 text-gray-800 font-bold">
                                     <th rowspan="3" class="px-4 py-3 border text-center w-32">ฝ่าย</th>
-                                    <th colspan="10" class="px-2 py-2 border text-center bg-blue-200/30 font-black">ปริมาณงานเกิดใหม่<sup>(5)</sup> ประจำเดือน</th>
+                                    <th colspan="8" class="px-2 py-2 border text-center bg-blue-200/30 font-black">ปริมาณงานเกิดใหม่<sup>(5)</sup> ประจำเดือน</th>
                                     <th rowspan="3" class="px-4 py-3 border text-center w-32">งานรับเรื่องจากทะเบียน</th>
                                     <th rowspan="3" class="px-4 py-3 border text-center w-48">หมายเหตุ</th>
                                 </tr>
@@ -399,7 +395,7 @@ window.reportApp = {
                                     <th rowspan="2" class="px-2 py-2 border text-center w-16">รับใหม่</th>
                                     <th colspan="2" class="px-2 py-2 border text-center">งานที่ดำเนินการแล้วเสร็จภายใน 30 วัน <sup>(7)</sup><br><span class="text-blue-600 font-medium text-[10px]">(เป้าหมาย > 80%)</span></th>
                                     <th colspan="2" class="px-2 py-2 border text-center">งานที่ดำเนินการแล้วเสร็จภายใน 60 วัน <sup>(8)</sup><br><span class="text-indigo-600 font-medium text-[10px]">(เป้าหมาย = 100%)</span></th>
-                                    <th colspan="5" class="px-2 py-2 border text-center bg-blue-50">งานที่อยู่ระหว่างดำเนินการ (สะสม)</th>
+                                    <th colspan="3" class="px-2 py-2 border text-center bg-blue-50">งานที่อยู่ระหว่างดำเนินการ (สะสม)</th>
                                 </tr>
                                 <!-- Row 3 -->
                                 <tr class="bg-blue-50/30 text-[10px] font-bold text-gray-600">
@@ -409,8 +405,7 @@ window.reportApp = {
                                     <th class="px-1 py-2 border text-center w-14">ร้อยละ</th>
                                     <th class="px-1 py-2 border text-center w-16 bg-blue-50/50">ก่อนหน้า</th>
                                     <th class="px-1 py-2 border text-center w-16 text-blue-600">เดือนนี้</th>
-                                    <th class="px-1 py-2 border text-center w-16 text-purple-600">สุดขั้นตอน (2)</th>
-                                    <th class="px-1 py-2 border text-center w-16 text-orange-600">งานศาล (3)</th>
+
                                     <th class="px-1 py-2 border text-center w-16 bg-emerald-50 text-emerald-700 font-black">รวมทั้งหมด</th>
                                 </tr>
                             </thead>
