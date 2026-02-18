@@ -1,0 +1,14 @@
+.agent/
+.agents/
+.windsurf/
+logs/
+api/cache/ratelimit/
+*.log
+*.tmp
+*.bak
+*.part
+api/save_debug.txt
+tmp_frontend_log_payload.json
+tmp_masking_payload.json
+academic_subjects.json
+output_types.json

@@ -314,16 +314,27 @@ window.app = {
     },
 
     startIdleMonitor() {
-        // Reset timer on any user activity
-        window.onload = this.resetIdleTimer.bind(this);
-        window.onmousemove = this.resetIdleTimer.bind(this);
-        window.onmousedown = this.resetIdleTimer.bind(this); // catches touchscreen presses as well
-        window.ontouchstart = this.resetIdleTimer.bind(this);
-        window.onclick = this.resetIdleTimer.bind(this); // catches touchpad clicks
-        window.onkeypress = this.resetIdleTimer.bind(this);
-        window.addEventListener('scroll', this.resetIdleTimer.bind(this), true); // improved; scroll capturing
+        // Throttled reset to avoid excessive calls on mousemove/scroll
+        this._throttledIdleReset = this._throttleIdleReset.bind(this);
+        const resetBound = this._throttledIdleReset;
+
+        window.onmousemove = resetBound;
+        window.onmousedown = resetBound;
+        window.ontouchstart = resetBound;
+        window.onclick = resetBound;
+        window.onkeypress = resetBound;
+        window.addEventListener('scroll', resetBound, { passive: true, capture: true });
 
         this.resetIdleTimer(); // Start the timer
+    },
+
+    _lastIdleResetTime: 0,
+    _throttleIdleReset() {
+        const now = Date.now();
+        // Throttle: only reset every 10 seconds to reduce overhead
+        if (now - this._lastIdleResetTime < 10000) return;
+        this._lastIdleResetTime = now;
+        this.resetIdleTimer();
     },
 
     resetIdleTimer() {
@@ -451,20 +462,27 @@ window.app = {
             }
         }
 
-        // Reset active nav state efficiently without overwriting className (preserving 'hidden')
-        document.querySelectorAll('.nav-item').forEach(el => {
+        // Reset only the previously active nav (O(1) instead of O(n))
+        const _resetNav = (el) => {
+            if (!el) return;
             el.classList.remove('bg-emerald-50', 'text-emerald-700', 'font-bold', 'shadow-sm', 'border-l-4', 'border-emerald-500',
                 'bg-indigo-50', 'text-indigo-700', 'border-indigo-500',
                 'bg-blue-50', 'text-blue-700', 'border-blue-500',
                 'bg-orange-50', 'text-orange-700', 'border-orange-500',
                 'bg-purple-50', 'text-purple-700', 'border-purple-500');
             el.classList.add('hover:bg-emerald-50', 'hover:text-emerald-600', 'text-gray-600');
-
             const iconDiv = el.querySelector('div');
             if (iconDiv) {
                 iconDiv.className = 'p-2 bg-gray-100 rounded-lg group-hover:bg-emerald-100 mr-3 transition-colors text-gray-400 group-hover:text-emerald-600';
             }
-        });
+        };
+
+        if (this._activeNavEl) {
+            _resetNav(this._activeNavEl);
+        } else {
+            // First load: reset all nav items once
+            document.querySelectorAll('.nav-item').forEach(_resetNav);
+        }
 
         const activeNav = document.getElementById(`nav-${page}`);
         if (activeNav) {
@@ -489,6 +507,7 @@ window.app = {
                 activeNav.classList.add('bg-emerald-50', 'text-emerald-700', 'border-emerald-500');
                 if (iconDiv) iconDiv.className = 'p-2 bg-emerald-100 rounded-lg mr-3 transition-colors text-emerald-600';
             }
+            this._activeNavEl = activeNav;
         }
 
         // Reset active nav state (Mobile)
@@ -552,9 +571,7 @@ window.app = {
         }
 
         // Refresh AOS/Animations
-        if (typeof AOS !== 'undefined') {
-            setTimeout(() => AOS.refresh(), 100);
-        }
+        UI.refreshAOS();
     },
 
     // --- Survey Logic ---
@@ -729,9 +746,7 @@ window.app = {
             searchInput.value = val;
         }
 
-        if (typeof AOS !== 'undefined') {
-            setTimeout(() => AOS.refresh(), 100);
-        }
+        UI.refreshAOS();
 
         // Initialize DataTables after DOM is fully rendered - Remove delay to fix UI glitch
         requestAnimationFrame(() => {
@@ -880,9 +895,7 @@ window.app = {
             searchInput.value = val;
         }
 
-        if (typeof AOS !== 'undefined') {
-            setTimeout(() => AOS.refresh(), 100);
-        }
+        UI.refreshAOS();
 
         // Initialize DataTables after DOM is fully rendered - Remove delay to fix UI glitch
         requestAnimationFrame(() => {
@@ -1035,10 +1048,7 @@ window.app = {
             searchInput.value = val;
         }
 
-        // Refresh AOS
-        if (typeof AOS !== 'undefined') {
-            setTimeout(() => AOS.refresh(), 100);
-        }
+        UI.refreshAOS();
 
         // Initialize DataTables after DOM is fully rendered - Remove delay to fix UI glitch
         requestAnimationFrame(() => {
@@ -1627,43 +1637,16 @@ window.app = {
     },
 
     refreshLists(type) {
-        if (type === 'survey' || !type) this.refreshSurveyList();
-        if (type === 'registration' || !type) this.refreshRegistrationList();
-        if (type === 'academic' || !type) this.refreshAcademicList();
-
-        // Always refresh dashboard and report if visible
-        const content = document.getElementById('app-content');
-        if (content) {
-            if (this.currentPage === 'dashboard') UI.renderDashboard().then(html => content.innerHTML = html);
-            if (this.currentPage === 'report') UI.renderReport().then(html => content.innerHTML = html);
+        // Only refresh the specific department that changed
+        if (type === 'survey') this.refreshSurveyList();
+        else if (type === 'registration') this.refreshRegistrationList();
+        else if (type === 'academic') this.refreshAcademicList();
+        else {
+            // No type specified — refresh all
+            this.refreshSurveyList();
+            this.refreshRegistrationList();
+            this.refreshAcademicList();
         }
-    },
-
-    async setSurveyStatusView(view) {
-        this.surveyStatusView = view;
-        this.currentSurveyPage = 1;
-        // Show loading indicator while switching
-        const content = document.getElementById('app-content');
-        content.innerHTML = '<div class="flex items-center justify-center h-64"><i class="fas fa-spinner fa-spin text-4xl text-indigo-500"></i></div>';
-        await this.refreshSurveyList();
-    },
-
-    async setRegistrationStatusView(view) {
-        this.registrationStatusView = view;
-        this.currentRegistrationPage = 1;
-        // Show loading indicator while switching
-        const content = document.getElementById('app-content');
-        content.innerHTML = '<div class="flex items-center justify-center h-64"><i class="fas fa-spinner fa-spin text-4xl text-emerald-500"></i></div>';
-        await this.refreshRegistrationList();
-    },
-
-    async setAcademicStatusView(view) {
-        this.academicStatusView = view;
-        this.currentAcademicPage = 1;
-        // Show loading indicator while switching
-        const content = document.getElementById('app-content');
-        content.innerHTML = '<div class="flex items-center justify-center h-64"><i class="fas fa-spinner fa-spin text-4xl text-amber-500"></i></div>';
-        await this.refreshAcademicList();
     },
 
     // ABM Report Date Handler
@@ -1673,9 +1656,7 @@ window.app = {
             content.innerHTML = await UI.renderReport(dateValue);
 
             // Refresh AOS animations
-            if (typeof AOS !== 'undefined') {
-                setTimeout(() => AOS.refresh(), 100);
-            }
+            UI.refreshAOS();
         }
     },
 
@@ -2579,7 +2560,7 @@ window.app = {
                 contentDiv.innerHTML = html;
 
                 // Re-initialize AOS or other plugins if needed
-                if (typeof AOS !== 'undefined') AOS.refresh();
+                UI.refreshAOS();
             }
         } catch (error) {
             console.error('Error updating KPI report:', error);

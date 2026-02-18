@@ -7,6 +7,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 switch ($method) {
     case 'GET':
         try {
+            header('Cache-Control: private, max-age=30');
             $sql = "SELECT * FROM academic_works ORDER BY received_date DESC, seq_no DESC";
             $stmt = $conn->prepare($sql);
             $stmt->execute();

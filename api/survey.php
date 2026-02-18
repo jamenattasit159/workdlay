@@ -8,7 +8,11 @@ $method = $_SERVER['REQUEST_METHOD'];
 switch ($method) {
     case 'GET':
         try {
-            $sql = "SELECT * FROM survey_works ORDER BY created_at DESC";
+            // Cache control - allow browser to cache for 30 seconds
+            header('Cache-Control: private, max-age=30');
+            $sql = "SELECT id, received_seq, received_date, survey_type, applicant,  summary, 
+                           status_cause, completion_date, men, rv_12, survey_date, progress_type, created_at 
+                    FROM survey_works ORDER BY created_at DESC";
             $stmt = $conn->prepare($sql);
             $stmt->execute();
             $works = $stmt->fetchAll(PDO::FETCH_ASSOC);

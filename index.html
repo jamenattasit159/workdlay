@@ -7,6 +7,8 @@
     <title>Ang Thong Active Backlog Management (ABM)</title>
     <!-- TailwindCSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap"
         rel="stylesheet">
     <!-- FontAwesome -->
@@ -15,14 +17,14 @@
     <link href="libs/aos/aos.css?v=2.5" rel="stylesheet">
     <!-- SweetAlert2 -->
     <script src="libs/sweetalert2/sweetalert2.min.js?v=2.5"></script>
-    <!-- SheetJS (Excel) -->
-    <script src="libs/sheetjs/xlsx.full.min.js?v=2.5"></script>
-    <!-- jsPDF & AutoTable -->
-    <script src="libs/jspdf/jspdf.umd.min.js?v=2.5"></script>
-    <script src="libs/jspdf/jspdf.plugin.autotable.min.js?v=2.5"></script>
-    <!-- html2canvas for PDF screenshot -->
-    <script src="libs/html2canvas/html2canvas.min.js?v=2.5"></script>
-    <script src="libs/chartjs/chart.min.js?v=2.5"></script>
+    <!-- SheetJS (Excel) - deferred, only needed for export -->
+    <script src="libs/sheetjs/xlsx.full.min.js?v=2.5" defer></script>
+    <!-- jsPDF & AutoTable - deferred, only needed for PDF export -->
+    <script src="libs/jspdf/jspdf.umd.min.js?v=2.5" defer></script>
+    <script src="libs/jspdf/jspdf.plugin.autotable.min.js?v=2.5" defer></script>
+    <!-- html2canvas for PDF screenshot - deferred -->
+    <script src="libs/html2canvas/html2canvas.min.js?v=2.5" defer></script>
+    <script src="libs/chartjs/chart.min.js?v=2.5" defer></script>
     <!-- jQuery (required for DataTables) -->
     <script src="libs/jquery/jquery.min.js?v=2.5"></script>
     <!-- DataTables CSS & JS -->
@@ -61,7 +63,8 @@
         }
 
         .animate-blob {
-            animation: blob 7s infinite;
+            animation: blob 12s infinite;
+            will-change: transform;
         }
 
         .animation-delay-2000 {
@@ -424,6 +427,18 @@
                 <span class="font-medium">ภาพรวม (Dashboard)</span>
             </button>
 
+            <!-- New Intelligence Dashboard Link -->
+            <a href="classification_dashboard.html"
+                class="w-full flex items-center p-3 rounded-lg hover:bg-emerald-50 hover:text-emerald-600 transition-all duration-300 text-left group border border-dashed border-emerald-200"
+                id="nav-intel-dashboard">
+                <div
+                    class="p-2 bg-emerald-50 rounded-lg group-hover:bg-emerald-100 mr-3 transition-colors text-emerald-500 group-hover:text-emerald-600">
+                    <i class="fas fa-brain text-lg"></i>
+                </div>
+                <span class="font-bold text-emerald-700">คัดแยกงาน (Intelligence)</span>
+            </a>
+
+
             <button onclick="app.navigate('survey_list')"
                 class="nav-item w-full flex items-center p-3 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 transition-all duration-300 text-left group"
                 id="nav-survey_list">
@@ -476,7 +491,11 @@
                 <span class="text-gray-600 group-hover:text-blue-600">ภาพรวมฝ่ายทะเบียน</span>
             </button>
 
-
+            <a href="registration_classification_dashboard.html"
+                class="w-full flex items-center p-2 pl-12 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-all duration-300 text-left group text-sm">
+                <i class="fas fa-table-columns mr-2 text-blue-400 group-hover:text-blue-600"></i>
+                <span class="text-gray-600 group-hover:text-blue-600">รายงานคัดแยกฝ่ายทะเบียน</span>
+            </a>
 
             <button onclick="app.showImportModal('registration', false)"
                 class="nav-import-btn w-full flex items-center p-2 pl-12 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-all duration-300 text-left group text-sm"
@@ -741,8 +760,9 @@
 
     <!-- Scripts -->
     <script src="libs/aos/aos.js"></script>
-    <script src="js/api-config.js?v=2.5"></script>
-    <script src="js/data.js?v=2.5"></script>
+    <script src="js/api-config.js?v=3.0"></script>
+    <script src="js/error-tracker.js?v=1.0"></script>
+    <script src="js/data.js?v=3.0"></script>
     <!-- Add Work Modal -->
     <div id="add-work-modal" class="hidden fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title"
         role="dialog" aria-modal="true">
@@ -833,8 +853,8 @@
         </div>
     </div>
 
-    <script src="js/ui.js?v=2.5"></script>
-    <script src="js/app.js?v=2.5"></script>
+    <script src="js/ui.js?v=3.0"></script>
+    <script src="js/app.js?v=3.0"></script>
 </body>
 
 </html>

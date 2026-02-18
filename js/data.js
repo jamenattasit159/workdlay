@@ -128,7 +128,7 @@ const DataManager = {
         regItemsTime: 0,
         acadItems: null,
         acadItemsTime: 0,
-        ttl: 30000 // 30 seconds TTL
+        ttl: 60000 // 60 seconds TTL
     },
 
     async getStats() {
@@ -514,7 +514,7 @@ const DataManager = {
     },
 
     async saveSurveyItem(item) {
-        this.clearCache();
+        this.clearCache('survey');
         if (window.app?.currentUser) item.user_name = window.app.currentUser.name;
         try {
             const response = await fetch(this.surveyApiUrl, {
@@ -530,7 +530,7 @@ const DataManager = {
     },
 
     async updateSurveyItem(item) {
-        this.clearCache();
+        this.clearCache('survey');
         if (window.app?.currentUser) item.user_name = window.app.currentUser.name;
         try {
             const response = await fetch(this.surveyApiUrl, {
@@ -550,7 +550,7 @@ const DataManager = {
     },
 
     async deleteSurveyItem(id) {
-        this.clearCache();
+        this.clearCache('survey');
         const userName = window.app?.currentUser?.name || 'System';
         try {
             await fetch(this.surveyApiUrl, {
@@ -603,7 +603,7 @@ const DataManager = {
     },
 
     async saveRegistrationItem(item) {
-        this.clearCache();
+        this.clearCache('registration');
         try {
             const response = await fetch(this.registrationApiUrl, {
                 method: 'POST',
@@ -618,7 +618,7 @@ const DataManager = {
     },
 
     async updateRegistrationItem(item) {
-        this.clearCache();
+        this.clearCache('registration');
         try {
             const response = await fetch(this.registrationApiUrl, {
                 method: 'PUT',
@@ -637,7 +637,7 @@ const DataManager = {
     },
 
     async deleteRegistrationItem(id) {
-        this.clearCache();
+        this.clearCache('registration');
         try {
             await fetch(this.registrationApiUrl, {
                 method: 'DELETE',
@@ -677,7 +677,7 @@ const DataManager = {
     },
 
     async saveAcademicItem(item) {
-        this.clearCache();
+        this.clearCache('academic');
         try {
             const response = await fetch(this.academicApiUrl, {
                 method: 'POST',
@@ -692,7 +692,7 @@ const DataManager = {
     },
 
     async updateAcademicItem(item) {
-        this.clearCache();
+        this.clearCache('academic');
         try {
             const response = await fetch(this.academicApiUrl, {
                 method: 'PUT',
@@ -711,7 +711,7 @@ const DataManager = {
     },
 
     async deleteAcademicItem(id) {
-        this.clearCache();
+        this.clearCache('academic');
         try {
             await fetch(this.academicApiUrl, {
                 method: 'DELETE',
@@ -723,12 +723,29 @@ const DataManager = {
         }
     },
 
-    clearCache() {
-        console.log('Clearing DataManager cache');
+    clearCache(department = null) {
+        // Always invalidate stats when any data changes
         this._cache.lastStats = null;
-        this._cache.surveyItems = null;
-        this._cache.regItems = null;
-        this._cache.acadItems = null;
+        this._cache.lastStatsTime = 0;
+
+        if (!department) {
+            // Clear all department caches
+            this._cache.surveyItems = null;
+            this._cache.surveyItemsTime = 0;
+            this._cache.regItems = null;
+            this._cache.regItemsTime = 0;
+            this._cache.acadItems = null;
+            this._cache.acadItemsTime = 0;
+        } else if (department === 'survey') {
+            this._cache.surveyItems = null;
+            this._cache.surveyItemsTime = 0;
+        } else if (department === 'registration') {
+            this._cache.regItems = null;
+            this._cache.regItemsTime = 0;
+        } else if (department === 'academic') {
+            this._cache.acadItems = null;
+            this._cache.acadItemsTime = 0;
+        }
     }
 };
 

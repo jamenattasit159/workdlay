@@ -1,4 +1,12 @@
 window.UI = {
+    // Debounced AOS refresh - prevents multiple rapid calls
+    _aosRefreshTimer: null,
+    refreshAOS() {
+        if (typeof AOS === 'undefined') return;
+        clearTimeout(this._aosRefreshTimer);
+        this._aosRefreshTimer = setTimeout(() => AOS.refresh(), 150);
+    },
+
     //Progress Type Labels
     progressTypeLabels: {
         1: { name: 'งานปกติ', icon: 'fa-circle', color: 'gray' },
@@ -73,10 +81,8 @@ window.UI = {
                 ],
                 dom: '<"flex flex-wrap justify-between items-center mb-4"<"flex items-center"l><"flex items-center"f>>rtip',
                 drawCallback: function () {
-                    //Refresh AOS after draw
-                    if (typeof AOS !== 'undefined') {
-                        setTimeout(() => AOS.refresh(), 50);
-                    }
+                    //Refresh AOS after draw (debounced)
+                    UI.refreshAOS();
                 },
                 //Disable state saving to prevent conflicts
                 stateSave: false,
@@ -267,12 +273,27 @@ window.UI = {
 
     // Components
     async renderDashboard(userDept = 'all') {
-        let [stats, surveyItems, registrationItems, academicItems] = await Promise.all([
-            DataManager.getStats(),
-            DataManager.getSurveyItems(),
-            DataManager.getRegistrationItems(),
-            DataManager.getAcademicItems()
-        ]);
+        let stats, surveyItems, registrationItems, academicItems;
+
+        if (userDept === 'all') {
+            // Fetch all data in parallel for overview dashboard
+            [stats, surveyItems, registrationItems, academicItems] = await Promise.all([
+                DataManager.getStats(),
+                DataManager.getSurveyItems(),
+                DataManager.getRegistrationItems(),
+                DataManager.getAcademicItems()
+            ]);
+        } else {
+            // Single department: only fetch stats + that department's data (2 calls instead of 4)
+            const deptFetch = userDept === 'survey' ? DataManager.getSurveyItems()
+                : userDept === 'registration' ? DataManager.getRegistrationItems()
+                    : DataManager.getAcademicItems();
+            const [fetchedStats, deptItems] = await Promise.all([DataManager.getStats(), deptFetch]);
+            stats = fetchedStats;
+            surveyItems = userDept === 'survey' ? deptItems : [];
+            registrationItems = userDept === 'registration' ? deptItems : [];
+            academicItems = userDept === 'academic' ? deptItems : [];
+        }
 
         //Filter stats based on user department
         if (userDept !== 'all') {
@@ -408,6 +429,21 @@ window.UI = {
                     </div>
                 </div>
             </div>
+
+            ${userDept === 'survey' ? `
+            <div class="mb-10 flex flex-wrap gap-3" data-aos="fade-up">
+                <a href="survey_classification_dashboard.html"
+                    class="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all">
+                    <i class="fas fa-table-columns"></i>
+                    รายงานคัดแยกฝ่ายรังวัด
+                </a>
+                <a href="classification_dashboard.html"
+                    class="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-emerald-600 text-white font-bold shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition-all">
+                    <i class="fas fa-brain"></i>
+                    คัดแยกงาน (Intelligence)
+                </a>
+            </div>
+            ` : ''}
 
             <!-- Primary Metric Cards -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-10">
