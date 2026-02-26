@@ -90,12 +90,17 @@ switch ($method) {
                     $stmt->bindValue(':completion_date', (!empty($data->completion_date)) ? $data->completion_date : null);
                     $stmt->bindValue(':id', $data->id);
                 } else if (isset($data->progress_type)) {
-                    // Progress Type Update - Block setting TO type 2/3 (only allow removing FROM 2/3)
+                    // Progress Type Update - Check setting before blocking type 2/3
                     $pType = (int) $data->progress_type;
                     if (in_array($pType, [2, 3])) {
-                        http_response_code(403);
-                        echo json_encode(["status" => "error", "message" => "ไม่สามารถเปลี่ยนเป็นงานสุดขั้นตอนหรืองานศาลได้ (สามารถลดออกได้เท่านั้น)"]);
-                        exit;
+                        $settingStmt = $conn->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'progress_type_assign'");
+                        $settingStmt->execute();
+                        $assignMode = $settingStmt->fetchColumn() ?: 'restricted';
+                        if ($assignMode !== 'allowed') {
+                            http_response_code(403);
+                            echo json_encode(["status" => "error", "message" => "ไม่สามารถเปลี่ยนเป็นงานสุดขั้นตอนหรืองานศาลได้ (สามารถลดออกได้เท่านั้น)"]);
+                            exit;
+                        }
                     }
                     $sql = "UPDATE academic_works SET progress_type = :progress_type WHERE id = :id";
                     $stmt = $conn->prepare($sql);

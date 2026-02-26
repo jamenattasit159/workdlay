@@ -16,16 +16,19 @@ window.app = {
     surveyStatusView: 'pending',
     registrationStatusView: 'pending',
     academicStatusView: 'pending',
+    adminStatusView: 'pending',
 
     // Progress Type Filter State (all, 1, 2, 3)
     surveyProgressFilter: 'all',
     registrationProgressFilter: 'all',
     academicProgressFilter: 'all',
+    adminProgressFilter: 'all',
 
     // Month Filter State (all, 1-12)
     surveyMonthFilter: 'all',
     registrationMonthFilter: 'all',
     academicMonthFilter: 'all',
+    adminMonthFilter: 'all',
 
     init() {
         console.log('App initialized v2.0');
@@ -148,32 +151,42 @@ window.app = {
         // Define which elements to hide for each department
         const menuMappings = {
             'survey': [
-                'nav-registration_list', 'nav-academic_list',
-                'nav-registration_dashboard', 'nav-academic_dashboard',
-                'nav-add-registration', 'nav-add-academic',
-                'nav-import-registration', 'nav-import-academic',
-                'nav-sameday-registration', 'nav-sameday-academic',
-                'nav-import-completed-registration', 'nav-import-completed-academic',
-                'nav-completed-registration', 'nav-completed-academic',
+                'nav-registration_list', 'nav-academic_list', 'nav-admin_list',
+                'nav-registration_dashboard', 'nav-academic_dashboard', 'nav-admin_dashboard',
+                'nav-add-registration', 'nav-add-academic', 'nav-add-admin',
+                'nav-import-registration', 'nav-import-academic', 'nav-import-admin',
+                'nav-sameday-registration', 'nav-sameday-academic', 'nav-sameday-admin',
+                'nav-import-completed-registration', 'nav-import-completed-academic', 'nav-import-completed-admin',
+                'nav-completed-registration', 'nav-completed-academic', 'nav-completed-admin',
                 'nav-reg-export'
             ],
             'registration': [
-                'nav-survey_list', 'nav-academic_list',
-                'nav-survey_dashboard', 'nav-academic_dashboard',
-                'nav-add-survey', 'nav-add-academic',
-                'nav-import-survey', 'nav-import-academic',
-                'nav-sameday-survey', 'nav-sameday-academic',
-                'nav-import-completed-survey', 'nav-import-completed-academic',
-                'nav-completed-survey', 'nav-completed-academic'
+                'nav-survey_list', 'nav-academic_list', 'nav-admin_list',
+                'nav-survey_dashboard', 'nav-academic_dashboard', 'nav-admin_dashboard',
+                'nav-add-survey', 'nav-add-academic', 'nav-add-admin',
+                'nav-import-survey', 'nav-import-academic', 'nav-import-admin',
+                'nav-sameday-survey', 'nav-sameday-academic', 'nav-sameday-admin',
+                'nav-import-completed-survey', 'nav-import-completed-academic', 'nav-import-completed-admin',
+                'nav-completed-survey', 'nav-completed-academic', 'nav-completed-admin'
             ],
             'academic': [
-                'nav-survey_list', 'nav-registration_list',
-                'nav-survey_dashboard', 'nav-registration_dashboard',
-                'nav-add-survey', 'nav-add-registration',
-                'nav-import-survey', 'nav-import-registration',
-                'nav-sameday-survey', 'nav-sameday-registration',
-                'nav-import-completed-survey', 'nav-import-completed-registration',
-                'nav-completed-survey', 'nav-completed-registration',
+                'nav-survey_list', 'nav-registration_list', 'nav-admin_list',
+                'nav-survey_dashboard', 'nav-registration_dashboard', 'nav-admin_dashboard',
+                'nav-add-survey', 'nav-add-registration', 'nav-add-admin',
+                'nav-import-survey', 'nav-import-registration', 'nav-import-admin',
+                'nav-sameday-survey', 'nav-sameday-registration', 'nav-sameday-admin',
+                'nav-import-completed-survey', 'nav-import-completed-registration', 'nav-import-completed-admin',
+                'nav-completed-survey', 'nav-completed-registration', 'nav-completed-admin',
+                'nav-reg-export'
+            ],
+            'admin': [
+                'nav-survey_list', 'nav-registration_list', 'nav-academic_list',
+                'nav-survey_dashboard', 'nav-registration_dashboard', 'nav-academic_dashboard',
+                'nav-add-survey', 'nav-add-registration', 'nav-add-academic',
+                'nav-import-survey', 'nav-import-registration', 'nav-import-academic',
+                'nav-sameday-survey', 'nav-sameday-registration', 'nav-sameday-academic',
+                'nav-import-completed-survey', 'nav-import-completed-registration', 'nav-import-completed-academic',
+                'nav-completed-survey', 'nav-completed-registration', 'nav-completed-academic',
                 'nav-reg-export'
             ]
         };
@@ -233,7 +246,10 @@ window.app = {
             'tabian': { password: '1234', role: 'staff', name: 'ฝ่ายทะเบียน', department: 'registration' },
 
             'academic': { password: '1234', role: 'staff', name: 'กลุ่มงานวิชาการ', department: 'academic' },
-            'wichakan': { password: '1234', role: 'staff', name: 'กลุ่มงานวิชาการ', department: 'academic' }
+            'wichakan': { password: '1234', role: 'staff', name: 'กลุ่มงานวิชาการ', department: 'academic' },
+
+            'administration': { password: '1234', role: 'staff', name: 'ฝ่ายอำนวยการ', department: 'admin' },
+            'amnuaykan': { password: '1234', role: 'staff', name: 'ฝ่ายอำนวยการ', department: 'admin' }
         };
 
         const user = users[username];
@@ -281,7 +297,7 @@ window.app = {
                 // Add prompt for clearing cache as requested by user
                 Swal.fire({
                     title: 'ล้างแคชข้อมูล?',
-                    text: 'คุณต้องการล้างแคชเพื่อดึงข้อมูลใหม่ล่าสุดจากเซิร์ฟเวอร์หรือไม่? (จะแสดงเมนูนี้ทุกๆ 3 วัน)',
+                    text: 'คุณต้องการล้างแคชเพื่อดึงข้อมูลใหม่ล่าสุดจากเซิร์ฟเวอร์หรือไม่? (จะแสดงเมนูนี้ทุกๆ 3 วัน) หรือกด Ctrl+F5 เพื่อล้างแคช',
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonColor: '#10B981',
@@ -417,6 +433,14 @@ window.app = {
     academicSearchTimeout: null,
     currentAcademicSort: 'desc',
 
+    // State for Admin View
+    currentAdminPage: 1,
+    adminItemsPerPage: 20,
+    adminSearchTerm: '',
+    adminSearchTimeout: null,
+    currentAdminSort: 'desc',
+    currentAdminSubject: 'all',
+
     // ... (navigate function remains mostly same, just ensure state reset)
 
     async sortRegistrationList(order) {
@@ -444,7 +468,8 @@ window.app = {
             const allowedPages = {
                 'survey': ['dashboard', 'survey_list', 'survey_dashboard', 'survey_form', 'report', 'old_backlog'],
                 'registration': ['dashboard', 'registration_list', 'registration_dashboard', 'registration_form', 'report', 'old_backlog'],
-                'academic': ['dashboard', 'academic_list', 'academic_dashboard', 'academic_form', 'report', 'old_backlog']
+                'academic': ['dashboard', 'academic_list', 'academic_dashboard', 'academic_form', 'report', 'old_backlog'],
+                'admin': ['dashboard', 'admin_list', 'admin_dashboard', 'admin_form', 'report', 'old_backlog']
             };
 
             if (!allowedPages[userDept]?.includes(page)) {
@@ -500,6 +525,9 @@ window.app = {
             } else if (page === 'academic_list') {
                 activeNav.classList.add('bg-orange-50', 'text-orange-700', 'border-orange-500');
                 if (iconDiv) iconDiv.className = 'p-2 bg-orange-100 rounded-lg mr-3 transition-colors text-orange-600';
+            } else if (page === 'admin_list') {
+                activeNav.classList.add('bg-teal-50', 'text-teal-700', 'border-teal-500');
+                if (iconDiv) iconDiv.className = 'p-2 bg-teal-100 rounded-lg mr-3 transition-colors text-teal-600';
             } else if (page === 'sync_page') {
                 activeNav.classList.add('bg-purple-50', 'text-purple-700', 'border-purple-500');
                 if (iconDiv) iconDiv.className = 'p-2 bg-purple-100 rounded-lg mr-3 transition-colors text-purple-600';
@@ -568,6 +596,17 @@ window.app = {
         } else if (page === 'academic_form') {
             title.innerText = 'บันทึกงานวิชาการ';
             content.innerHTML = UI.renderAcademicForm();
+        } else if (page === 'admin_list') {
+            title.innerText = 'งานฝ่ายอำนวยการ';
+            this.currentAdminPage = 1;
+            await this.refreshAdminList();
+        } else if (page === 'admin_dashboard') {
+            title.innerText = 'ภาพรวมฝ่ายอำนวยการ';
+            content.innerHTML = await UI.renderDashboard('admin');
+            this.initPerformanceChart('admin');
+        } else if (page === 'admin_form') {
+            title.innerText = 'บันทึกงานอำนวยการ';
+            content.innerHTML = UI.renderAdminForm();
         }
 
         // Refresh AOS/Animations
@@ -766,6 +805,162 @@ window.app = {
         this.currentAcademicSubject = subject;
         this.currentAcademicPage = 1;
         this.refreshAcademicList();
+    },
+
+    // --- Admin Logic ---
+    async handleAdminSubmit(e) {
+        e.preventDefault();
+        const form = e.target;
+        const data = new FormData(form);
+        const item = {};
+        data.forEach((value, key) => item[key] = value);
+
+        try {
+            await DataManager.saveAdminItem(item);
+            Swal.fire({
+                title: 'บันทึกสำเร็จ!',
+                text: 'บันทึกข้อมูลอำนวยการเรียบร้อยแล้ว',
+                icon: 'success',
+                confirmButtonText: 'ตกลง',
+                confirmButtonColor: '#0D9488'
+            }).then(() => {
+                this.navigate('admin_list');
+            });
+        } catch (error) {
+            Swal.fire('Error', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
+        }
+    },
+
+    async searchAdminList(term) {
+        this.adminSearchTerm = term;
+        this.currentAdminPage = 1;
+
+        if (this.adminSearchTimeout) {
+            clearTimeout(this.adminSearchTimeout);
+        }
+
+        this.adminSearchTimeout = setTimeout(() => {
+            this.refreshAdminList();
+        }, 300);
+    },
+
+    async sortAdminList(order) {
+        this.currentAdminSort = order;
+        this.currentAdminPage = 1;
+        this.refreshAdminList();
+    },
+
+    async goToAdminPage(page) {
+        this.currentAdminPage = page;
+        this.refreshAdminList();
+    },
+
+    async refreshAdminList() {
+        const content = document.getElementById('app-content');
+        const listContainer = document.getElementById('admin-list-container');
+
+        // Destroy existing DataTable before re-render
+        UI.destroyDataTable('admin-datatable');
+
+        let items = await DataManager.getAdminItems();
+
+        if (this.adminStatusView === 'pending') {
+            items = items.filter(item => DataManager.isPending(item));
+        } else {
+            items = items.filter(item => DataManager.isCompleted(item));
+
+            if (this.adminMonthFilter && this.adminMonthFilter !== 'all') {
+                items = items.filter(i => {
+                    const d = DataManager.getSafeDate(i.completion_date);
+                    return d && (d.getMonth() + 1) === parseInt(this.adminMonthFilter, 10);
+                });
+            }
+        }
+
+        if (this.adminProgressFilter && this.adminProgressFilter !== 'all') {
+            const pType = parseInt(this.adminProgressFilter, 10);
+            items = items.filter(item => parseInt(item.progress_type, 10) === pType);
+        }
+
+        if (this.adminSearchTerm) {
+            const lowerTerm = this.adminSearchTerm.toLowerCase();
+            items = items.filter(item =>
+                (item.subject && item.subject.toLowerCase().includes(lowerTerm)) ||
+                (item.related_person && item.related_person.toLowerCase().includes(lowerTerm)) ||
+                (item.seq_no && item.seq_no.toLowerCase().includes(lowerTerm))
+            );
+        }
+
+        const maxPage = Math.ceil(items.length / this.adminItemsPerPage) || 1;
+        if (this.currentAdminPage > maxPage) {
+            this.currentAdminPage = maxPage;
+        }
+
+        if (!this.currentAdminSort) this.currentAdminSort = 'desc';
+
+        items.sort((a, b) => {
+            const idA = parseInt(a.id, 10) || 0;
+            const idB = parseInt(b.id, 10) || 0;
+
+            return this.currentAdminSort === 'asc' ? (idA - idB) : (idB - idA);
+        });
+
+        content.innerHTML = await UI.renderAdminList(
+            items,
+            this.adminSearchTerm,
+            this.currentAdminSort || 'desc',
+            this.currentAdminSubject || 'all',
+            this.currentAdminPage,
+            this.adminItemsPerPage,
+            this.adminStatusView
+        );
+
+        const searchInput = document.getElementById('admin-search-input');
+        if (searchInput && this.adminSearchTerm) {
+            searchInput.focus();
+            const val = searchInput.value;
+            searchInput.value = '';
+            searchInput.value = val;
+        }
+
+        UI.refreshAOS();
+
+        requestAnimationFrame(() => {
+            const tableEl = document.getElementById('admin-datatable');
+            if (typeof $ !== 'undefined' && $.fn.DataTable && tableEl) {
+                UI.initDataTable('admin-datatable', {
+                    order: [],
+                    columnDefs: [
+                        { orderable: false, targets: [5] }
+                    ]
+                });
+            }
+        });
+    },
+
+    async filterAdminSubject(subject) {
+        this.currentAdminSubject = subject;
+        this.currentAdminPage = 1;
+        this.refreshAdminList();
+    },
+
+    async setAdminStatusView(view) {
+        this.adminStatusView = view;
+        this.adminMonthFilter = 'all';
+        this.currentAdminPage = 1;
+        this.refreshAdminList();
+    },
+
+    async filterAdminProgress(progressType) {
+        this.adminProgressFilter = progressType;
+        this.currentAdminPage = 1;
+        this.refreshAdminList();
+    },
+
+    async filterAdminMonth(month) {
+        this.adminMonthFilter = month;
+        this.currentAdminPage = 1;
+        this.refreshAdminList();
     },
 
     async setAcademicStatusView(view) {
@@ -1067,7 +1262,7 @@ window.app = {
 
 
     async viewSurveyDetail(id) {
-        const items = await DataManager.getSurveyItems();
+        const [items] = await Promise.all([DataManager.getSurveyItems(), DataManager.getSystemSettings()]);
         const item = items.find(i => i.id == id);
         if (item) {
             UI.showSurveyDetail(item);
@@ -1075,7 +1270,7 @@ window.app = {
     },
 
     async viewRegistrationDetail(id) {
-        const items = await DataManager.getRegistrationItems();
+        const [items] = await Promise.all([DataManager.getRegistrationItems(), DataManager.getSystemSettings()]);
         const item = items.find(i => i.id == id);
         if (item && UI.showRegistrationDetail) {
             UI.showRegistrationDetail(item);
@@ -1083,7 +1278,7 @@ window.app = {
     },
 
     async viewAcademicDetail(id) {
-        const items = await DataManager.getAcademicItems();
+        const [items] = await Promise.all([DataManager.getAcademicItems(), DataManager.getSystemSettings()]);
         const item = items.find(i => i.id == id);
         if (item && UI.showAcademicDetail) {
             UI.showAcademicDetail(item);

@@ -9,6 +9,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap"
         rel="stylesheet">
     <!-- FontAwesome -->
@@ -65,6 +66,7 @@
         .animate-blob {
             animation: blob 12s infinite;
             will-change: transform;
+            transform: translateZ(0);
         }
 
         .animation-delay-2000 {
@@ -73,6 +75,13 @@
 
         .animation-delay-4000 {
             animation-delay: 4s;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .animate-blob { animation: none; }
+            .animate-progress { animation: none; }
+            .card-hover { transition: none; }
+            .bounceRight { animation: none; }
         }
 
         .pb-safe {
@@ -315,7 +324,7 @@
 <body class="bg-gray-50 h-screen flex flex-col md:flex-row overflow-hidden relative">
 
     <!-- Background Decoration -->
-    <div class="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+    <div class="absolute inset-0 z-0 overflow-hidden pointer-events-none" style="contain: strict;">
         <div
             class="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-emerald-400/20 blur-3xl rounded-full mix-blend-multiply filter opacity-70 animate-blob">
         </div>
@@ -427,16 +436,7 @@
                 <span class="font-medium">ภาพรวม (Dashboard)</span>
             </button>
 
-            <!-- New Intelligence Dashboard Link -->
-            <a href="classification_dashboard.html"
-                class="w-full flex items-center p-3 rounded-lg hover:bg-emerald-50 hover:text-emerald-600 transition-all duration-300 text-left group border border-dashed border-emerald-200"
-                id="nav-intel-dashboard">
-                <div
-                    class="p-2 bg-emerald-50 rounded-lg group-hover:bg-emerald-100 mr-3 transition-colors text-emerald-500 group-hover:text-emerald-600">
-                    <i class="fas fa-brain text-lg"></i>
-                </div>
-                <span class="font-bold text-emerald-700">คัดแยกงาน (Intelligence)</span>
-            </a>
+
 
 
             <button onclick="app.navigate('survey_list')"
@@ -455,6 +455,11 @@
                 <i class="fas fa-chart-pie mr-2 text-indigo-400 group-hover:text-indigo-600"></i>
                 <span class="text-gray-600 group-hover:text-indigo-600">ภาพรวมฝ่ายรังวัด</span>
             </button>
+            <a href="survey_classification_dashboard.html"
+                class="w-full flex items-center p-2 pl-12 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 transition-all duration-300 text-left group text-sm">
+                <i class="fas fa-table-columns mr-2 text-indigo-400 group-hover:text-indigo-600"></i>
+                <span class="text-gray-600 group-hover:text-indigo-600">รายงานคัดแยกฝ่ายรังวัด</span>
+            </a>
             <button onclick="app.showImportModal('survey', false)"
                 class="nav-import-btn w-full flex items-center p-2 pl-12 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 transition-all duration-300 text-left group text-sm"
                 id="nav-import-survey">
@@ -554,7 +559,36 @@
                 <span class="text-gray-600 group-hover:text-emerald-600">งานเกิดเสร็จวันเดียว</span>
             </button>
 
+            <!-- Admin (ฝ่ายอำนวยการ) Link -->
+            <button onclick="app.navigate('admin_list')"
+                class="nav-item w-full flex items-center p-3 rounded-lg hover:bg-teal-50 hover:text-teal-600 transition-all duration-300 text-left group hidden"
+                id="nav-admin_list">
+                <div
+                    class="p-2 bg-gray-100 rounded-lg group-hover:bg-teal-100 mr-3 transition-colors text-gray-500 group-hover:text-teal-600 shadow-sm">
+                    <i class="fas fa-building text-lg"></i>
+                </div>
+                <span class="font-bold">งานฝ่ายอำนวยการ</span>
+            </button>
 
+            <button onclick="app.navigate('admin_dashboard')"
+                class="nav-item w-full flex items-center p-2 pl-12 rounded-lg hover:bg-teal-50 hover:text-teal-600 transition-all duration-300 text-left group text-sm hidden"
+                id="nav-admin_dashboard">
+                <i class="fas fa-chart-pie mr-2 text-teal-400 group-hover:text-teal-600"></i>
+                <span class="text-gray-600 group-hover:text-teal-600">ภาพรวมฝ่ายอำนวยการ</span>
+            </button>
+
+            <button onclick="app.showImportModal('admin', false)"
+                class="nav-import-btn w-full flex items-center p-2 pl-12 rounded-lg hover:bg-teal-50 hover:text-teal-600 transition-all duration-300 text-left group text-sm hidden"
+                id="nav-import-admin">
+                <i class="fas fa-file-upload mr-2 text-teal-400 group-hover:text-teal-600"></i>
+                <span class="text-gray-600 group-hover:text-teal-600">นำเข้างานใหม่ (CSV/Excel)</span>
+            </button>
+            <button onclick="app.showSameDayCompletionModal('admin')"
+                class="nav-import-btn w-full flex items-center p-2 pl-12 rounded-lg hover:bg-emerald-50 hover:text-emerald-600 transition-all duration-300 text-left group text-sm hidden"
+                id="nav-sameday-admin">
+                <i class="fas fa-check-double mr-2 text-emerald-400 group-hover:text-emerald-600"></i>
+                <span class="text-gray-600 group-hover:text-emerald-600">งานเกิดเสร็จวันเดียว</span>
+            </button>
 
             <a href="report.html"
                 class="nav-item w-full flex items-center p-3 rounded-lg hover:bg-emerald-50 hover:text-emerald-600 transition-all duration-300 text-left group hidden"

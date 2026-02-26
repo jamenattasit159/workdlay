@@ -19,7 +19,7 @@ window.reportApp = {
         // Permission check: allow admins and authorized department staff
         const user = JSON.parse(localStorage.getItem('dol_user'));
         const isAdmin = user && (user.role === 'superadmin' || user.role === 'admin');
-        const isAuthorizedStaff = user && user.role === 'staff' && ['survey', 'registration', 'academic'].includes(user.department);
+        const isAuthorizedStaff = user && user.role === 'staff' && ['survey', 'registration', 'academic', 'admin'].includes(user.department);
 
         if (!user || (!isAdmin && !isAuthorizedStaff)) {
             window.location.href = 'index.html';
@@ -244,7 +244,8 @@ window.reportApp = {
         let depts = [
             { id: 'academic', label: 'กลุ่มงานวิชาการ' },
             { id: 'registration', label: 'ฝ่ายทะเบียน' },
-            { id: 'survey', label: 'ฝ่ายรังวัด' }
+            { id: 'survey', label: 'ฝ่ายรังวัด' },
+            { id: 'admin', label: 'ฝ่ายอำนวยการ' }
         ];
 
         // Filter depts if not admin
@@ -253,9 +254,9 @@ window.reportApp = {
         }
 
         // Track running balances
-        let deptBalances = { academic: 0, registration: 0, survey: 0 };
-        let deptBalancesType2 = { academic: 0, registration: 0, survey: 0 };
-        let deptBalancesType3 = { academic: 0, registration: 0, survey: 0 };
+        let deptBalances = { academic: 0, registration: 0, survey: 0, admin: 0 };
+        let deptBalancesType2 = { academic: 0, registration: 0, survey: 0, admin: 0 };
+        let deptBalancesType3 = { academic: 0, registration: 0, survey: 0, admin: 0 };
 
         let html = `<div class="space-y-8">`;
 
@@ -602,7 +603,8 @@ window.reportApp = {
             const depts = [
                 { id: 'academic', label: 'ฝ่ายวิชาการ' },
                 { id: 'registration', label: 'ฝ่ายทะเบียน' },
-                { id: 'survey', label: 'ฝ่ายรังวัด' }
+                { id: 'survey', label: 'ฝ่ายรังวัด' },
+                { id: 'admin', label: 'ฝ่ายอำนวยการ' }
             ];
 
             data.trend.forEach(monthItem => {

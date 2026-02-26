@@ -54,7 +54,8 @@ try {
     $deptMap = [
         'survey' => ['table' => 'survey_works', 'name' => 'ฝ่ายรังวัด', 'order' => 4],
         'registration' => ['table' => 'registration_works', 'name' => 'ฝ่ายทะเบียน', 'order' => 3],
-        'academic' => ['table' => 'academic_works', 'name' => 'กลุ่มงานวิชาการที่ดิน', 'order' => 2]
+        'academic' => ['table' => 'academic_works', 'name' => 'กลุ่มงานวิชาการที่ดิน', 'order' => 2],
+        'admin' => ['table' => 'administration_works', 'name' => 'ฝ่ายอำนวยการ', 'order' => 1]
     ];
 
     // Base condition for "Old Work"

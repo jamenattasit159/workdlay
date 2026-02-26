@@ -15,7 +15,7 @@ include_once 'db.php';
 
 // ⚡ Cache Configuration
 $CACHE_ENABLED = true;
-$CACHE_TTL = 30; // seconds (ปรับได้)
+$CACHE_TTL = 300; // seconds (5 minutes - ลด DB queries ซ้ำๆ)
 $CACHE_DIR = __DIR__ . '/cache';
 $CACHE_FILE = $CACHE_DIR . '/stats_cache.json';
 
@@ -40,7 +40,8 @@ try {
     $tableMap = [
         'survey' => 'survey_works',
         'registration' => 'registration_works',
-        'academic' => 'academic_works'
+        'academic' => 'academic_works',
+        'admin' => 'administration_works'
     ];
 
     $tables = ($department === 'all') ? array_values($tableMap) : [$tableMap[$department]];
@@ -57,12 +58,14 @@ try {
         'pendingByDept' => [
             'ฝ่ายรังวัด' => 0,
             'ฝ่ายทะเบียน' => 0,
-            'กลุ่มงานวิชาการ' => 0
+            'กลุ่มงานวิชาการ' => 0,
+            'ฝ่ายอำนวยการ' => 0
         ],
         'pendingBreakdown' => [
             'ฝ่ายรังวัด' => ['type2' => 0, 'type3' => 0, 'type4' => 0, 'other' => 0],
             'ฝ่ายทะเบียน' => ['type2' => 0, 'type3' => 0, 'type4' => 0, 'other' => 0],
-            'กลุ่มงานวิชาการ' => ['type2' => 0, 'type3' => 0, 'type4' => 0, 'other' => 0]
+            'กลุ่มงานวิชาการ' => ['type2' => 0, 'type3' => 0, 'type4' => 0, 'other' => 0],
+            'ฝ่ายอำนวยการ' => ['type2' => 0, 'type3' => 0, 'type4' => 0, 'other' => 0]
         ],
         'kpi' => [
             'oldWork' => ['total' => 0, 'pending' => 0, 'completed' => 0, 'percent' => 0],
@@ -73,7 +76,8 @@ try {
     $deptLabelMap = [
         'survey_works' => 'ฝ่ายรังวัด',
         'registration_works' => 'ฝ่ายทะเบียน',
-        'academic_works' => 'กลุ่มงานวิชาการ'
+        'academic_works' => 'กลุ่มงานวิชาการ',
+        'administration_works' => 'ฝ่ายอำนวยการ'
     ];
 
     $baselineDate = '2025-12-31';

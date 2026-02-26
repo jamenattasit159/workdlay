@@ -174,6 +174,52 @@ try {
             ]);
         }
 
+    } elseif ($type === 'admin') {
+        // Admin Work
+        // Auto-increment
+        $maxSql = "SELECT MAX(CAST(seq_no AS UNSIGNED)) as max_seq FROM administration_works";
+        $maxStmt = $conn->prepare($maxSql);
+        $maxStmt->execute();
+        $row = $maxStmt->fetch(PDO::FETCH_ASSOC);
+        $nextSeq = ($row['max_seq'] ?? 0) + 1;
+
+        if ($isCompleted) {
+            $sql = "INSERT INTO administration_works 
+                (seq_no, received_date, subject, related_person, summary, responsible_person, status_cause, completion_date, progress_type, created_at, updated_at) 
+                VALUES 
+                (:seq_no, :received_date, :subject, :related_person, :summary, :responsible_person, :status_cause, :completion_date, :progress_type, NOW(), NOW())";
+
+            $stmt = $conn->prepare($sql);
+            $stmt->execute([
+                ':seq_no' => $nextSeq,
+                ':received_date' => $_POST['received_date'],
+                ':subject' => $_POST['subject'],
+                ':related_person' => $_POST['related_person'] ?? '',
+                ':summary' => $_POST['summary'] ?? '',
+                ':responsible_person' => $_POST['responsible_person'] ?? '',
+                ':status_cause' => 'เสร็จสิ้น',
+                ':completion_date' => $_POST['received_date'],
+                ':progress_type' => $_POST['progress_type'] ?? 1
+            ]);
+        } else {
+            $sql = "INSERT INTO administration_works 
+                (seq_no, received_date, subject, related_person, summary, responsible_person, status_cause, progress_type, created_at, updated_at) 
+                VALUES 
+                (:seq_no, :received_date, :subject, :related_person, :summary, :responsible_person, :status_cause, :progress_type, NOW(), NOW())";
+
+            $stmt = $conn->prepare($sql);
+            $stmt->execute([
+                ':seq_no' => $nextSeq,
+                ':received_date' => $_POST['received_date'],
+                ':subject' => $_POST['subject'],
+                ':related_person' => $_POST['related_person'] ?? '',
+                ':summary' => $_POST['summary'] ?? '',
+                ':responsible_person' => $_POST['responsible_person'] ?? '',
+                ':status_cause' => $_POST['status_cause'] ?? 'pending',
+                ':progress_type' => $_POST['progress_type'] ?? null
+            ]);
+        }
+
     } else {
         throw new Exception("Invalid work type: $type");
     }

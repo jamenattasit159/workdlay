@@ -74,7 +74,8 @@ try {
                 $tableMap = [
                     'survey' => 'survey_works',
                     'registration' => 'registration_works',
-                    'academic' => 'academic_works'
+                    'academic' => 'academic_works',
+                    'admin' => 'administration_works'
                 ];
 
                 $table = $tableMap[$dept] ?? null;
@@ -166,7 +167,7 @@ try {
             $breakdown = [];
             foreach ($departments as $dept) {
                 if ($dept === 'admin')
-                    continue;
+                    continue; // Admin ใช้เฉพาะงานเกิดเสร็จวันเดียว ไม่มีรายงาน Trend/ABM
                 $breakdown[$dept] = getDepartmentStats($conn, $dept, $baselineDateCE, $yearMonth);
             }
 
@@ -225,14 +226,31 @@ try {
             $tableMap = [
                 'survey' => 'survey_works',
                 'registration' => 'registration_works',
-                'academic' => 'academic_works'
+                'academic' => 'academic_works',
+                'admin' => 'administration_works'
             ];
 
             $startYear = $requestedYear . '-01-01';
             $endYear = $requestedYear . '-12-31';
 
+            // Pre-fetch admin same-day completion data by month
+            // ฝ่ายอำนวยการบันทึกเฉพาะงานเกิดเสร็จวันเดียว → รับใหม่ = comp30 = ยอด sameday
+            $adminSamedayByMonth = [];
+            $adminStmt = $conn->prepare("
+                SELECT DATE_FORMAT(record_date, '%Y-%m') as month, SUM(count) as total
+                FROM sameday_completion_logs
+                WHERE department = 'admin' AND record_date BETWEEN ? AND ?
+                GROUP BY DATE_FORMAT(record_date, '%Y-%m')
+            ");
+            $adminStmt->execute([$startYear, $endYear]);
+            while ($row = $adminStmt->fetch(PDO::FETCH_ASSOC)) {
+                $adminSamedayByMonth[$row['month']] = (int) $row['total'];
+            }
+
             $workStatsByMonthDept = [];
             foreach ($tableMap as $deptKey => $tableName) {
+                if ($deptKey === 'admin')
+                    continue; // admin ใช้ข้อมูลจาก sameday_completion_logs แทน
                 // Updated logic:
                 // comp30 = Received AND completed in the SAME month (เสร็จภายในเดือนที่รับ)
                 // comp60 = Received in PREVIOUS month AND completed in THIS month (งานเดือนก่อนเสร็จเดือนนี้)
@@ -332,17 +350,13 @@ try {
 
             // Query 1: นับงานรับใหม่ (Intake) - unique jobs ที่มี (status_cause = นัดรังวัด OR completion_date IS NOT NULL)
             // ถ้างานมีทั้งสองอย่าง = นับเป็น 1 งาน
-            // Group by survey_date month (Updated to use survey_date as per user request)
+            // Group by survey_date month
             $sqlSurveyIntake = "SELECT 
                 DATE_FORMAT(survey_date, '%Y-%m') as month,
-                COUNT(DISTINCT id) as intake_count
+                COUNT(id) as intake_count
             FROM survey_works 
-            WHERE survey_date >= '2026-01-01'
+            WHERE received_date >= '2026-01-01'
               AND survey_date BETWEEN ? AND ?
-              AND (
-                  status_cause LIKE '%นัดรังวัด%' 
-                  OR (completion_date IS NOT NULL AND completion_date != '0000-00-00')
-              )
             GROUP BY DATE_FORMAT(survey_date, '%Y-%m')";
 
             $stmt = $conn->prepare($sqlSurveyIntake);
@@ -524,6 +538,19 @@ try {
                         ];
                     }
                 }
+                // Inject admin dept data from sameday_completion_logs
+                $adminCount = $adminSamedayByMonth[$loopMonth] ?? 0;
+                $monthStats['depts']['admin'] = [
+                    'intake' => $adminCount,
+                    'comp30' => $adminCount,  // งานเกิดเสร็จวันเดียว = เสร็จทันที
+                    'comp60' => 0,
+                    'pending' => 0,
+                    'pending_type2' => 0,
+                    'pending_type3' => 0,
+                    'pending_type4' => 0,
+                    'survey_reg' => 0,
+                    'notes' => ''
+                ];
                 $trend[] = $monthStats;
             }
 
@@ -557,10 +584,12 @@ try {
                     SELECT id, received_date, completion_date FROM registration_works WHERE received_date < ?
                     UNION ALL
                     SELECT id, received_date, completion_date FROM academic_works WHERE received_date < ?
+                    UNION ALL
+                    SELECT id, received_date, completion_date FROM administration_works WHERE received_date < ?
                 ) AS old_work
             ";
             $stmt = $conn->prepare($oldWorkSQL);
-            $stmt->execute([$baselineDateCE, $baselineDateCE, $baselineDateCE]);
+            $stmt->execute([$baselineDateCE, $baselineDateCE, $baselineDateCE, $baselineDateCE]);
             $oldWork = $stmt->fetch(PDO::FETCH_ASSOC);
 
             // Monthly Old Work Completed
@@ -574,12 +603,14 @@ try {
                     SELECT completion_date FROM registration_works WHERE received_date < ? AND completion_date IS NOT NULL AND completion_date != '0000-00-00' AND completion_date >= ?
                     UNION ALL
                     SELECT completion_date FROM academic_works WHERE received_date < ? AND completion_date IS NOT NULL AND completion_date != '0000-00-00' AND completion_date >= ?
+                    UNION ALL
+                    SELECT completion_date FROM administration_works WHERE received_date < ? AND completion_date IS NOT NULL AND completion_date != '0000-00-00' AND completion_date >= ?
                 ) AS monthly_completed
                 GROUP BY DATE_FORMAT(completion_date, '%Y-%m')
                 ORDER BY month ASC
             ";
             $stmt = $conn->prepare($monthlyOldWorkSQL);
-            $stmt->execute([$baselineDateCE, $baselineDateCE, $baselineDateCE, $baselineDateCE, $baselineDateCE, $baselineDateCE]);
+            $stmt->execute([$baselineDateCE, $baselineDateCE, $baselineDateCE, $baselineDateCE, $baselineDateCE, $baselineDateCE, $baselineDateCE, $baselineDateCE]);
             $monthlyOldWork = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             $baselineCount = $oldWork['total'];

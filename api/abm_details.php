@@ -22,7 +22,8 @@ try {
     $tableMap = [
         'survey' => 'survey_works',
         'registration' => 'registration_works',
-        'academic' => 'academic_works'
+        'academic' => 'academic_works',
+        'admin' => 'administration_works'
     ];
 
     if (!isset($tableMap[$department])) {

@@ -34,7 +34,7 @@ const DataManager = {
     async isLockdownActive(completionDateStr) {
         if (!completionDateStr) return false;
 
-        // Always fetch fresh settings from server to avoid cache issues
+        // Use cached settings (5 min TTL) to avoid redundant API calls
         await this.getSystemSettings();
 
         // Check for manual overrides from settings
@@ -81,13 +81,20 @@ const DataManager = {
         return false;
     },
 
-    async getSystemSettings() {
+    async getSystemSettings(forceRefresh = false) {
+        const now = Date.now();
+        // Use cache if fresh enough (5 min TTL) and not forced
+        if (!forceRefresh && this._cache.settings && (now - this._cache.settingsTime < this._cache.settingsTtl)) {
+            return this._cache.settings;
+        }
         try {
             const baseUrl = window.API_CONFIG?.getBaseUrl() || 'api';
             const response = await fetch(`${baseUrl}/settings${baseUrl.includes('localhost') ? '' : '.php'}`);
             const result = await response.json();
             if (result.status === 'success') {
                 this.systemSettings = result.data;
+                this._cache.settings = result.data;
+                this._cache.settingsTime = now;
                 return result.data;
             }
             return null;
@@ -109,6 +116,9 @@ const DataManager = {
             if (result.status === 'success') {
                 if (!this.systemSettings) this.systemSettings = {};
                 this.systemSettings[key] = value;
+                // Invalidate settings cache after update
+                this._cache.settings = null;
+                this._cache.settingsTime = 0;
                 return true;
             }
             return false;
@@ -118,7 +128,6 @@ const DataManager = {
         }
     },
 
-    // --- Cache Storage ---
     _cache: {
         lastStats: null,
         lastStatsTime: 0,
@@ -128,7 +137,12 @@ const DataManager = {
         regItemsTime: 0,
         acadItems: null,
         acadItemsTime: 0,
-        ttl: 60000 // 60 seconds TTL
+        adminItems: null,
+        adminItemsTime: 0,
+        settings: null,
+        settingsTime: 0,
+        ttl: 60000, // 60 seconds TTL for data
+        settingsTtl: 300000 // 5 minutes TTL for settings
     },
 
     async getStats() {
@@ -158,16 +172,18 @@ const DataManager = {
     },
 
     async getStatsManual() {
-        const [surveyItems, regItems, acadItems] = await Promise.all([
+        const [surveyItems, regItems, acadItems, adminItems] = await Promise.all([
             this.getSurveyItems(),
             this.getRegistrationItems(),
-            this.getAcademicItems()
+            this.getAcademicItems(),
+            this.getAdminItems()
         ]);
 
         const allItems = [
             ...surveyItems.map(i => ({ ...i, source: 'survey', department: 'ฝ่ายรังวัด' })),
             ...regItems.map(i => ({ ...i, source: 'registration', department: 'ฝ่ายทะเบียน' })),
-            ...acadItems.map(i => ({ ...i, source: 'academic', department: 'กลุ่มงานวิชาการ' }))
+            ...acadItems.map(i => ({ ...i, source: 'academic', department: 'กลุ่มงานวิชาการ' })),
+            ...adminItems.map(i => ({ ...i, source: 'admin', department: 'ฝ่ายอำนวยการ' }))
         ];
 
         const total = allItems.length;
@@ -275,16 +291,18 @@ const DataManager = {
 
     // ABM Report with Date Selection
     async getABMReport(reportDateStr) {
-        const [surveyItems, regItems, acadItems] = await Promise.all([
+        const [surveyItems, regItems, acadItems, adminItems] = await Promise.all([
             this.getSurveyItems(),
             this.getRegistrationItems(),
-            this.getAcademicItems()
+            this.getAcademicItems(),
+            this.getAdminItems()
         ]);
 
         const allItems = [
             ...surveyItems.map(i => ({ ...i, source: 'survey', department: 'ฝ่ายรังวัด' })),
             ...regItems.map(i => ({ ...i, source: 'registration', department: 'ฝ่ายทะเบียน' })),
-            ...acadItems.map(i => ({ ...i, source: 'academic', department: 'กลุ่มงานวิชาการ' }))
+            ...acadItems.map(i => ({ ...i, source: 'academic', department: 'กลุ่มงานวิชาการ' })),
+            ...adminItems.map(i => ({ ...i, source: 'admin', department: 'ฝ่ายอำนวยการ' }))
         ];
 
         // Parse report date (default to today)
@@ -723,10 +741,85 @@ const DataManager = {
         }
     },
 
+    // --- Admin Department API ---
+    get adminApiUrl() {
+        const baseUrl = window.API_CONFIG?.getBaseUrl() || 'api';
+        return `${baseUrl}/admin${baseUrl.includes('localhost') ? '' : '.php'}`;
+    },
+
+    async getAdminItems() {
+        const now = Date.now();
+        if (this._cache.adminItems && (now - this._cache.adminItemsTime < this._cache.ttl)) {
+            return this._cache.adminItems;
+        }
+
+        try {
+            const response = await fetch(this.adminApiUrl);
+            if (!response.ok) throw new Error('Network response was not ok');
+            const data = await response.json();
+
+            this._cache.adminItems = data;
+            this._cache.adminItemsTime = now;
+            return data;
+        } catch (error) {
+            console.error('Fetch admin error:', error);
+            return [];
+        }
+    },
+
+    async saveAdminItem(item) {
+        this.clearCache('admin');
+        try {
+            const response = await fetch(this.adminApiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(item)
+            });
+            return await response.json();
+        } catch (error) {
+            console.error('Save admin error:', error);
+            throw error;
+        }
+    },
+
+    async updateAdminItem(item) {
+        this.clearCache('admin');
+        try {
+            const response = await fetch(this.adminApiUrl, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(item)
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || 'Server responded with ' + response.status);
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('Update admin error:', error);
+            throw error;
+        }
+    },
+
+    async deleteAdminItem(id) {
+        this.clearCache('admin');
+        try {
+            await fetch(this.adminApiUrl, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: id })
+            });
+        } catch (error) {
+            console.error('Delete admin error:', error);
+        }
+    },
+
     clearCache(department = null) {
         // Always invalidate stats when any data changes
         this._cache.lastStats = null;
         this._cache.lastStatsTime = 0;
+        this._cache.settings = null;
+        this._cache.settingsTime = 0;
 
         if (!department) {
             // Clear all department caches
@@ -736,6 +829,8 @@ const DataManager = {
             this._cache.regItemsTime = 0;
             this._cache.acadItems = null;
             this._cache.acadItemsTime = 0;
+            this._cache.adminItems = null;
+            this._cache.adminItemsTime = 0;
         } else if (department === 'survey') {
             this._cache.surveyItems = null;
             this._cache.surveyItemsTime = 0;
@@ -745,6 +840,9 @@ const DataManager = {
         } else if (department === 'academic') {
             this._cache.acadItems = null;
             this._cache.acadItemsTime = 0;
+        } else if (department === 'admin') {
+            this._cache.adminItems = null;
+            this._cache.adminItemsTime = 0;
         }
     }
 };
