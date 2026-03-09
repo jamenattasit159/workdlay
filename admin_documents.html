@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin – ระบบเอกสาร</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --navy: #0d1f35;
+            --navy2: #162a45;
+            --navy3: #1e3a5f;
+            --gold: #d4a843;
+            --gold2: #f0c060;
+            --sky: #4baee8;
+            --green: #2ecc71;
+            --red: #e74c3c;
+            --orange: #e67e22;
+            --white: #f4f7fb;
+            --muted: #8fa3bc;
+            --card: rgba(22, 42, 69, 0.85);
+            --border: rgba(212, 168, 67, 0.25);
+            --radius: 14px;
+            --shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+            --font: 'IBM Plex Sans Thai', 'Sarabun', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box
+        }
+
+        body {
+            font-family: var(--font);
+            background: var(--navy);
+            color: var(--white);
+            min-height: 100vh;
+            background-image: radial-gradient(ellipse at 10% 20%, rgba(75, 174, 232, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 90% 80%, rgba(212, 168, 67, 0.07) 0%, transparent 50%);
+        }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 240px;
+            height: 100vh;
+            background: var(--navy2);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+        }
+
+        .sidebar-logo {
+            padding: 24px 20px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-logo h1 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--gold);
+            letter-spacing: .5px
+        }
+
+        .sidebar-logo span {
+            font-size: .75rem;
+            color: var(--muted)
+        }
+
+        .sidebar-badge {
+            display: inline-block;
+            background: var(--gold);
+            color: var(--navy);
+            font-size: .6rem;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 20px;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
+
+        .nav-section {
+            padding: 14px 12px 6px;
+            font-size: .68rem;
+            color: var(--muted);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            font-weight: 600
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            color: var(--muted);
+            text-decoration: none;
+            font-size: .88rem;
+            border-radius: 8px;
+            margin: 2px 8px;
+            transition: all .2s;
+            cursor: pointer;
+            border: none;
+            background: none;
+            width: calc(100% - 16px);
+            text-align: left;
+        }
+
+        .nav-item:hover,
+        .nav-item.active {
+            background: rgba(212, 168, 67, .12);
+            color: var(--gold);
+        }
+
+        .nav-item .icon {
+            width: 18px;
+            text-align: center;
+            font-size: 1rem
+        }
+
+        /* ── Main ── */
+        .main {
+            margin-left: 240px;
+            padding: 28px 32px;
+            min-height: 100vh
+        }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 28px
+        }
+
+        .topbar h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -.3px
+        }
+
+        .topbar h2 span {
+            color: var(--gold)
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 9px 18px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-family: var(--font);
+            font-size: .85rem;
+            font-weight: 600;
+            transition: all .18s;
+            text-decoration: none;
+        }
+
+        .btn-gold {
+            background: var(--gold);
+            color: var(--navy)
+        }
+
+        .btn-gold:hover {
+            background: var(--gold2);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 14px rgba(212, 168, 67, .35)
+        }
+
+        .btn-ghost {
+            background: rgba(255, 255, 255, .05);
+            color: var(--white);
+            border: 1px solid rgba(255, 255, 255, .1)
+        }
+
+        .btn-ghost:hover {
+            background: rgba(255, 255, 255, .1)
+        }
+
+        .btn-danger {
+            background: rgba(231, 76, 60, .15);
+            color: #e74c3c;
+            border: 1px solid rgba(231, 76, 60, .3)
+        }
+
+        .btn-danger:hover {
+            background: rgba(231, 76, 60, .25)
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: .78rem
+        }
+
+        /* ── Stats ── */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 28px
+        }
+
+        .stat-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+            transition: transform .2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px)
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            opacity: .08;
+            transform: translate(20px, -20px);
+        }
+
+        .stat-card.blue::before {
+            background: var(--sky)
+        }
+
+        .stat-card.gold::before {
+            background: var(--gold)
+        }
+
+        .stat-card.green::before {
+            background: var(--green)
+        }
+
+        .stat-card.red::before {
+            background: var(--red)
+        }
+
+        .stat-icon {
+            font-size: 1.4rem;
+            margin-bottom: 8px
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            line-height: 1.1
+        }
+
+        .stat-value.blue {
+            color: var(--sky)
+        }
+
+        .stat-value.gold {
+            color: var(--gold)
+        }
+
+        .stat-value.green {
+            color: var(--green)
+        }
+
+        .stat-value.red {
+            color: var(--red)
+        }
+
+        .stat-label {
+            font-size: .78rem;
+            color: var(--muted);
+            margin-top: 4px
+        }
+
+        /* ── Cards ── */
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 22px;
+            backdrop-filter: blur(10px);
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 18px
+        }
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--gold)
+        }
+
+        /* ── Table ── */
+        .tbl {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: .85rem
+        }
+
+        .tbl th {
+            text-align: left;
+            padding: 10px 12px;
+            color: var(--muted);
+            font-weight: 600;
+            border-bottom: 1px solid var(--border);
+            font-size: .75rem;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+        }
+
+        .tbl td {
+            padding: 11px 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, .04);
+            vertical-align: middle
+        }
+
+        .tbl tr:last-child td {
+            border-bottom: none
+        }
+
+        .tbl tr:hover td {
+            background: rgba(255, 255, 255, .02)
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: .72rem;
+            font-weight: 600;
+        }
+
+        .badge-draft {
+            background: rgba(143, 163, 188, .15);
+            color: var(--muted)
+        }
+
+        .badge-issued {
+            background: rgba(75, 174, 232, .15);
+            color: var(--sky)
+        }
+
+        .badge-paid {
+            background: rgba(46, 204, 113, .15);
+            color: var(--green)
+        }
+
+        .badge-cancelled {
+            background: rgba(231, 76, 60, .15);
+            color: var(--red)
+        }
+
+        .badge-qt {
+            background: rgba(75, 174, 232, .15);
+            color: var(--sky)
+        }
+
+        .badge-dv {
+            background: rgba(212, 168, 67, .15);
+            color: var(--gold)
+        }
+
+        .badge-rc {
+            background: rgba(46, 204, 113, .15);
+            color: var(--green)
+        }
+
+        /* ── Modal ── */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .65);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 500;
+            padding: 20px;
+        }
+
+        .modal-overlay.open {
+            display: flex
+        }
+
+        .modal {
+            background: var(--navy2);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            width: 100%;
+            max-width: 560px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow);
+            animation: slideUp .25s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        .modal-header {
+            padding: 22px 24px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between
+        }
+
+        .modal-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--gold)
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--muted);
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 4px 8px
+        }
+
+        .modal-body {
+            padding: 22px 24px
+        }
+
+        .modal-footer {
+            padding: 14px 24px 20px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px
+        }
+
+        /* ── Form ── */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px
+        }
+
+        .form-group.span2 {
+            grid-column: span 2
+        }
+
+        label {
+            font-size: .78rem;
+            color: var(--muted);
+            font-weight: 500;
+            letter-spacing: .3px
+        }
+
+        .form-control {
+            background: rgba(255, 255, 255, .05);
+            border: 1px solid rgba(255, 255, 255, .1);
+            color: var(--white);
+            border-radius: 8px;
+            padding: 9px 12px;
+            font-family: var(--font);
+            font-size: .88rem;
+            transition: border-color .15s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--gold);
+            background: rgba(255, 255, 255, .08)
+        }
+
+        .form-control::placeholder {
+            color: rgba(255, 255, 255, .2)
+        }
+
+        select.form-control option {
+            background: var(--navy2);
+            color: var(--white)
+        }
+
+        /* ── Filters ── */
+        .filters {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 18px;
+            flex-wrap: wrap
+        }
+
+        .filters .form-control {
+            min-width: 150px;
+            padding: 7px 12px;
+        }
+
+        /* ── Color picker inline ── */
+        .color-row {
+            display: flex;
+            gap: 8px;
+            align-items: center
+        }
+
+        .color-row input[type=color] {
+            width: 40px;
+            height: 36px;
+            border: 1px solid rgba(255, 255, 255, .15);
+            border-radius: 6px;
+            cursor: pointer;
+            background: none;
+            padding: 2px
+        }
+
+        /* ── Toast ── */
+        #toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--green);
+            color: #fff;
+            padding: 12px 22px;
+            border-radius: 10px;
+            font-size: .88rem;
+            font-weight: 600;
+            opacity: 0;
+            transition: opacity .3s;
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        #toast.show {
+            opacity: 1
+        }
+
+        #toast.error {
+            background: var(--red)
+        }
+
+        /* ── Tab pages ── */
+        .page {
+            display: none
+        }
+
+        .page.active {
+            display: block
+        }
+
+        /* ── Responsive ── */
+        @media(max-width:900px) {
+            .sidebar {
+                width: 60px
+            }
+
+            .sidebar-logo h1,
+            .sidebar-logo span,
+            .nav-section,
+            .nav-item span {
+                display: none
+            }
+
+            .nav-item {
+                justify-content: center;
+                margin: 4px auto;
+                width: 44px;
+                padding: 10px
+            }
+
+            .main {
+                margin-left: 60px;
+                padding: 16px
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr 1fr
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr
+            }
+
+            .form-group.span2 {
+                grid-column: 1
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <h1>📄 DocSystem <span class="sidebar-badge">ADMIN</span></h1>
+            <span>ระบบเอกสารร้านค้า</span>
+        </div>
+        <div class="nav-section">ภาพรวม</div>
+        <button class="nav-item active" onclick="showPage('dashboard',this)"><span
+                class="icon">🏠</span><span>Dashboard</span></button>
+        <div class="nav-section">เอกสาร</div>
+        <button class="nav-item" onclick="showPage('docs',this)"><span
+                class="icon">📋</span><span>เอกสารทั้งหมด</span></button>
+        <button class="nav-item" onclick="window.open('document_editor.html','_blank')"><span
+                class="icon">✏️</span><span>ออกเอกสาร</span></button>
+        <div class="nav-section">จัดการ</div>
+        <button class="nav-item" onclick="showPage('stores',this)"><span
+                class="icon">🏪</span><span>ร้านค้าในเครือ</span></button>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+        <!-- Dashboard -->
+        <div id="page-dashboard" class="page active">
+            <div class="topbar">
+                <h2>Dashboard <span>ภาพรวมระบบ</span></h2>
+                <a href="document_editor.html" class="btn btn-gold">✏️ ออกเอกสารใหม่</a>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card blue">
+                    <div class="stat-icon">📄</div>
+                    <div class="stat-value blue" id="stat-total">–</div>
+                    <div class="stat-label">เอกสารทั้งหมด</div>
+                </div>
+                <div class="stat-card gold">
+                    <div class="stat-icon">📝</div>
+                    <div class="stat-value gold" id="stat-qt">–</div>
+                    <div class="stat-label">ใบเสนอราคา</div>
+                </div>
+                <div class="stat-card green">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-value green" id="stat-rc">–</div>
+                    <div class="stat-label">ใบเสร็จรับเงิน</div>
+                </div>
+                <div class="stat-card red">
+                    <div class="stat-icon">🏪</div>
+                    <div class="stat-value red" id="stat-stores">–</div>
+                    <div class="stat-label">ร้านค้าในเครือ</div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">เอกสารล่าสุด</span>
+                    <button class="btn btn-ghost btn-sm"
+                        onclick="showPage('docs',document.querySelector('.nav-item:nth-child(5)'))">ดูทั้งหมด →</button>
+                </div>
+                <table class="tbl" id="recent-docs-tbl">
+                    <thead>
+                        <tr>
+                            <th>เลขที่</th>
+                            <th>ประเภท</th>
+                            <th>ร้านค้า</th>
+                            <th>ลูกค้า</th>
+                            <th>วันที่</th>
+                            <th>ยอดรวม</th>
+                            <th>สถานะ</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="recent-docs-body">
+                        <tr>
+                            <td colspan="8" style="text-align:center;color:var(--muted);padding:30px">กำลังโหลด...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Documents List -->
+        <div id="page-docs" class="page">
+            <div class="topbar">
+                <h2>เอกสาร <span>ทั้งหมด</span></h2>
+                <a href="document_editor.html" class="btn btn-gold">✏️ ออกเอกสารใหม่</a>
+            </div>
+            <div class="filters">
+                <select class="form-control" id="filter-store" onchange="loadDocs()">
+                    <option value="">ทุกร้านค้า</option>
+                </select>
+                <select class="form-control" id="filter-type" onchange="loadDocs()">
+                    <option value="">ทุกประเภท</option>
+                    <option value="quotation">ใบเสนอราคา</option>
+                    <option value="delivery">ใบส่งของ</option>
+                    <option value="receipt">ใบเสร็จรับเงิน</option>
+                </select>
+                <select class="form-control" id="filter-status" onchange="loadDocs()">
+                    <option value="">ทุกสถานะ</option>
+                    <option value="draft">ร่าง</option>
+                    <option value="issued">ออกแล้ว</option>
+                    <option value="paid">ชำระแล้ว</option>
+                    <option value="cancelled">ยกเลิก</option>
+                </select>
+                <input type="date" class="form-control" id="filter-from" onchange="loadDocs()">
+                <input type="date" class="form-control" id="filter-to" onchange="loadDocs()">
+            </div>
+            <div class="card" style="padding:0;overflow:hidden">
+                <table class="tbl">
+                    <thead>
+                        <tr>
+                            <th>เลขที่</th>
+                            <th>ประเภท</th>
+                            <th>ร้านค้า</th>
+                            <th>ลูกค้า</th>
+                            <th>วันที่</th>
+                            <th>ยอดรวม</th>
+                            <th>สถานะ</th>
+                            <th style="width:120px">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="docs-body">
+                        <tr>
+                            <td colspan="8" style="text-align:center;color:var(--muted);padding:30px">กำลังโหลด...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Stores -->
+        <div id="page-stores" class="page">
+            <div class="topbar">
+                <h2>ร้านค้า <span>ในเครือ</span></h2>
+                <button class="btn btn-gold" onclick="openStoreModal()">+ เพิ่มร้านค้า</button>
+            </div>
+            <div class="card" style="padding:0;overflow:hidden">
+                <table class="tbl">
+                    <thead>
+                        <tr>
+                            <th>ชื่อร้านค้า</th>
+                            <th>สาขา</th>
+                            <th>โทรศัพท์</th>
+                            <th>เลขผู้เสียภาษี</th>
+                            <th>เอกสาร</th>
+                            <th style="width:160px">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stores-body">
+                        <tr>
+                            <td colspan="6" style="text-align:center;color:var(--muted);padding:30px">กำลังโหลด...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Store Modal -->
+    <div class="modal-overlay" id="store-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-title" id="store-modal-title">เพิ่มร้านค้า</span>
+                <button class="modal-close" onclick="closeModal('store-modal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="store-id">
+                <div class="form-grid">
+                    <div class="form-group span2"><label>ชื่อร้านค้า *</label><input class="form-control" id="s-name"
+                            placeholder="เช่น บริษัท ABC จำกัด"></div>
+                    <div class="form-group"><label>สาขา</label><input class="form-control" id="s-branch"
+                            placeholder="สาขาใหญ่"></div>
+                    <div class="form-group"><label>โทรศัพท์</label><input class="form-control" id="s-phone"
+                            placeholder="02-xxx-xxxx"></div>
+                    <div class="form-group"><label>อีเมล</label><input class="form-control" id="s-email"
+                            placeholder="info@..."></div>
+                    <div class="form-group"><label>เลขประจำตัวผู้เสียภาษี</label><input class="form-control"
+                            id="s-taxid" placeholder="13 หลัก"></div>
+                    <div class="form-group span2"><label>ที่อยู่</label><textarea class="form-control" id="s-address"
+                            rows="2" placeholder="ที่อยู่ร้านค้า"></textarea></div>
+                    <div class="form-group span2"><label>URL โลโก้ร้านค้า</label><input class="form-control" id="s-logo"
+                            placeholder="https://..."></div>
+                    <div class="form-group"><label>สีหลัก</label>
+                        <div class="color-row"><input type="color" id="s-color1" value="#1a3a5c"><span id="s-color1-val"
+                                style="font-size:.78rem;color:var(--muted)">#1a3a5c</span></div>
+                    </div>
+                    <div class="form-group"><label>สีรอง</label>
+                        <div class="color-row"><input type="color" id="s-color2" value="#2980b9"><span id="s-color2-val"
+                                style="font-size:.78rem;color:var(--muted)">#2980b9</span></div>
+                    </div>
+                    <div class="form-group span2"><label>ข้อความท้ายใบ</label><input class="form-control" id="s-footer"
+                            placeholder="ขอบคุณที่ใช้บริการ"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeModal('store-modal')">ยกเลิก</button>
+                <button class="btn btn-gold" onclick="saveStore()">💾 บันทึก</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast"></div>
+
+    <script>
+        const API = 'api/';
+
+        // ── Nav ──────────────────────────────────────────────
+        function showPage(name, el) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById('page-' + name).classList.add('active');
+            el?.classList.add('active');
+            if (name === 'dashboard') loadDashboard();
+            if (name === 'docs') { loadStoresFilter(); loadDocs(); }
+            if (name === 'stores') loadStores();
+        }
+
+        // ── Toast ──────────────────────────────────────────────
+        function toast(msg, err = false) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = 'show' + (err ? ' error' : '');
+            setTimeout(() => t.className = '', 3000);
+        }
+
+        // ── Dashboard ──────────────────────────────────────────────
+        async function loadDashboard() {
+            const [docs, stores] = await Promise.all([
+                fetch(API + 'documents.php').then(r => r.json()),
+                fetch(API + 'stores.php').then(r => r.json())
+            ]);
+            document.getElementById('stat-total').textContent = docs.length;
+            document.getElementById('stat-qt').textContent = docs.filter(d => d.doc_type === 'quotation').length;
+            document.getElementById('stat-rc').textContent = docs.filter(d => d.doc_type === 'receipt').length;
+            document.getElementById('stat-stores').textContent = stores.length;
+
+            const recent = docs.slice(0, 10);
+            document.getElementById('recent-docs-body').innerHTML = recent.length
+                ? recent.map(d => docRow(d)).join('')
+                : '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:30px">ยังไม่มีเอกสาร</td></tr>';
+        }
+
+        // ── Docs ──────────────────────────────────────────────
+        async function loadStoresFilter() {
+            const stores = await fetch(API + 'stores.php').then(r => r.json());
+            const sel = document.getElementById('filter-store');
+            sel.innerHTML = '<option value="">ทุกร้านค้า</option>' + stores.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+        }
+
+        async function loadDocs() {
+            const p = new URLSearchParams();
+            const sv = document.getElementById('filter-store')?.value;
+            const tv = document.getElementById('filter-type')?.value;
+            const stv = document.getElementById('filter-status')?.value;
+            const fv = document.getElementById('filter-from')?.value;
+            const tv2 = document.getElementById('filter-to')?.value;
+            if (sv) p.set('store_id', sv);
+            if (tv) p.set('type', tv);
+            if (stv) p.set('status', stv);
+            if (fv) p.set('date_from', fv);
+            if (tv2) p.set('date_to', tv2);
+
+            const docs = await fetch(API + 'documents.php?' + p).then(r => r.json());
+            document.getElementById('docs-body').innerHTML = docs.length
+                ? docs.map(d => docRow(d, true)).join('')
+                : '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:30px">ไม่พบเอกสาร</td></tr>';
+        }
+
+        function docRow(d, showFull = false) {
+            const typeMap = { quotation: 'ใบเสนอราคา', delivery: 'ใบส่งของ', receipt: 'ใบเสร็จรับเงิน' };
+            const typeClass = { quotation: 'badge-qt', delivery: 'badge-dv', receipt: 'badge-rc' };
+            const statusMap = { draft: 'ร่าง', issued: 'ออกแล้ว', paid: 'ชำระแล้ว', cancelled: 'ยกเลิก' };
+            const statusClass = { draft: 'badge-draft', issued: 'badge-issued', paid: 'badge-paid', cancelled: 'badge-cancelled' };
+            const total = parseFloat(d.total || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 });
+            return `<tr>
+    <td><a href="document_view.html?id=${d.id}" target="_blank" style="color:var(--sky);text-decoration:none;font-weight:600">${d.doc_number}</a></td>
+    <td><span class="badge ${typeClass[d.doc_type]}">${typeMap[d.doc_type] || d.doc_type}</span></td>
+    <td>${d.store_name || '–'}</td>
+    <td>${d.customer_name || '–'}</td>
+    <td>${d.issue_date || '–'}</td>
+    <td style="text-align:right;font-variant-numeric:tabular-nums">${total}</td>
+    <td><span class="badge ${statusClass[d.status]}">${statusMap[d.status] || d.status}</span></td>
+    <td>
+      <a href="document_view.html?id=${d.id}" target="_blank" class="btn btn-ghost btn-sm" title="ดู">👁</a>
+      <a href="document_editor.html?id=${d.id}" class="btn btn-ghost btn-sm" title="แก้ไข">✏️</a>
+      <button onclick="deleteDoc(${d.id},'${d.doc_number}')" class="btn btn-danger btn-sm" title="ลบ">🗑</button>
+    </td>
+  </tr>`;
+        }
+
+        async function deleteDoc(id, num) {
+            if (!confirm(`ลบเอกสาร ${num} ใช่ไหม?`)) return;
+            await fetch(API + 'documents.php?id=' + id, { method: 'DELETE' });
+            toast('ลบเอกสารสำเร็จ');
+            loadDocs();
+        }
+
+        // ── Stores ──────────────────────────────────────────────
+        async function loadStores() {
+            const stores = await fetch(API + 'stores.php').then(r => r.json());
+            document.getElementById('stores-body').innerHTML = stores.length
+                ? stores.map(s => `<tr>
+        <td><strong>${s.name}</strong></td>
+        <td>${s.branch || '–'}</td>
+        <td>${s.phone || '–'}</td>
+        <td>${s.tax_id || '–'}</td>
+        <td style="text-align:center">${s.doc_count || 0}</td>
+        <td>
+          <button onclick="openStoreModal(${s.id})" class="btn btn-ghost btn-sm">✏️ แก้ไข</button>
+          <a href="document_editor.html?store_id=${s.id}" class="btn btn-gold btn-sm">+ เอกสาร</a>
+        </td>
+      </tr>`).join('')
+                : '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:30px">ยังไม่มีร้านค้า</td></tr>';
+        }
+
+        function openStoreModal(id = null) {
+            document.getElementById('store-id').value = id || '';
+            document.getElementById('store-modal-title').textContent = id ? 'แก้ไขร้านค้า' : 'เพิ่มร้านค้า';
+            ['name', 'branch', 'phone', 'email', 'taxid', 'address', 'logo', 'footer'].forEach(f => document.getElementById('s-' + f).value = '');
+            document.getElementById('s-color1').value = '#1a3a5c';
+            document.getElementById('s-color2').value = '#2980b9';
+
+            if (id) {
+                fetch(API + 'stores.php?id=' + id).then(r => r.json()).then(s => {
+                    if (!s) return;
+                    document.getElementById('s-name').value = s.name || '';
+                    document.getElementById('s-branch').value = s.branch || '';
+                    document.getElementById('s-phone').value = s.phone || '';
+                    document.getElementById('s-email').value = s.email || '';
+                    document.getElementById('s-taxid').value = s.tax_id || '';
+                    document.getElementById('s-address').value = s.address || '';
+                    document.getElementById('s-logo').value = s.logo_url || '';
+                    document.getElementById('s-footer').value = s.footer_text || '';
+                    document.getElementById('s-color1').value = s.primary_color || '#1a3a5c';
+                    document.getElementById('s-color2').value = s.accent_color || '#2980b9';
+                });
+            }
+            document.getElementById('store-modal').classList.add('open');
+        }
+
+        async function saveStore() {
+            const id = document.getElementById('store-id').value;
+            const body = {
+                name: document.getElementById('s-name').value,
+                branch: document.getElementById('s-branch').value,
+                phone: document.getElementById('s-phone').value,
+                email: document.getElementById('s-email').value,
+                tax_id: document.getElementById('s-taxid').value,
+                address: document.getElementById('s-address').value,
+                logo_url: document.getElementById('s-logo').value,
+                footer_text: document.getElementById('s-footer').value,
+                primary_color: document.getElementById('s-color1').value,
+                accent_color: document.getElementById('s-color2').value,
+            };
+            if (!body.name) { toast('กรุณาระบุชื่อร้านค้า', true); return; }
+            const url = id ? API + 'stores.php?id=' + id : API + 'stores.php';
+            const method = id ? 'PUT' : 'POST';
+            const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            const data = await res.json();
+            toast(data.message || 'บันทึกสำเร็จ');
+            closeModal('store-modal');
+            loadStores();
+        }
+
+        function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+        // Color value display
+        document.getElementById('s-color1').addEventListener('input', e => document.getElementById('s-color1-val').textContent = e.target.value);
+        document.getElementById('s-color2').addEventListener('input', e => document.getElementById('s-color2-val').textContent = e.target.value);
+
+        // Close on overlay click
+        document.getElementById('store-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal('store-modal'); });
+
+        // Init
+        loadDashboard();
+    </script>
+</body>
+
+</html>

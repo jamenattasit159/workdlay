@@ -254,7 +254,15 @@ window.reportApp = {
         }
 
         // Track running balances
-        let deptBalances = { academic: 0, registration: 0, survey: 0, admin: 0 };
+        // ใช้ initial_balances จาก API (PHP คำนวณจากเดือนก่อนหน้า)
+        // เพื่อให้โหมดรายเดือน/ช่วงเวลา แสดงยอดค้างก่อนหน้าถูกต้อง
+        const initBal = abmReport.initial_balances || {};
+        let deptBalances = {
+            academic: initBal.academic || 0,
+            registration: initBal.registration || 0,
+            survey: initBal.survey || 0,
+            admin: initBal.admin || 0
+        };
         let deptBalancesType2 = { academic: 0, registration: 0, survey: 0, admin: 0 };
         let deptBalancesType3 = { academic: 0, registration: 0, survey: 0, admin: 0 };
 
@@ -277,10 +285,15 @@ window.reportApp = {
                 const pendingMonth = dData.pending || 0; // This month's new pending
 
                 const pct30 = intake > 0 ? ((comp30 / intake) * 100).toFixed(2) : "0.00";
-                const pct60 = intake > 0 ? ((comp60 / intake) * 100).toFixed(2) : "0.00";
 
                 const prevBal = deptBalances[dept.id];
-                const currentBal = prevBal + pendingMonth;
+                // ยอดก่อนหน้าที่เหลือจริง = prevBal - comp60 (หักงานที่เสร็จใน 60 วันออกก่อน)
+                const prevBalNet = Math.max(0, prevBal - comp60);
+                // % งานเสร็จ 60 วัน = comp60 / max(prevBal, comp60) × 100 (cap ที่ 100%)
+                const pct60Denom = Math.max(prevBal, comp60);
+                const pct60 = pct60Denom > 0 ? Math.min(100, (comp60 / pct60Denom) * 100).toFixed(2) : "0.00";
+                // รวมทั้งหมด = ยอดเก่าที่เหลือ (prevBalNet) + งานค้างเดือนนี้
+                const currentBal = prevBalNet + pendingMonth;
                 deptBalances[dept.id] = currentBal;
 
                 // Track breakdown balances (Cumulative)
@@ -308,8 +321,8 @@ window.reportApp = {
                         <td class="px-3 py-3 border text-center font-medium text-gray-600">${pct60} %</td>
                         
                         <!-- งานไม่แล้วเสร็จ breakdown -->
-                        <!-- ก่อนหน้า -->
-                        <td class="px-3 py-3 border text-center font-bold text-gray-500 bg-gray-50/30">${prevBal.toLocaleString()}</td>
+                        <!-- ก่อนหน้า (ยอดค้างเก่า หักงานที่เสร็จ 60 วันแล้ว) -->
+                        <td class="px-3 py-3 border text-center font-bold text-gray-500 bg-gray-50/30">${prevBalNet.toLocaleString()}</td>
                         <!-- เดือนนี้ -->
                         <td class="px-3 py-3 border text-center font-bold text-blue-500 bg-blue-50/10">${pendingMonth.toLocaleString()}</td>
 
@@ -342,10 +355,12 @@ window.reportApp = {
             depts.forEach(dept => {
                 const dData = monthItem.depts[dept.id] || {};
                 const intake = (dData.intake || 0);
+                const comp60 = (dData.comp60 || 0);
+                const pendingMonth = (dData.pending || 0);
                 totalIntake += intake;
                 totalComp30 += (dData.comp30 || 0);
-                totalComp60 += (dData.comp60 || 0);
-                totalPendingMonth += (dData.pending || 0);
+                totalComp60 += comp60;
+                totalPendingMonth += pendingMonth;
                 if (dept.id === 'survey') totalSurveyReg += (dData.survey_reg || 0);
 
                 // For totals, we need to track cumulative balances correctly
@@ -353,11 +368,14 @@ window.reportApp = {
                 totalCurType2 += deptBalancesType2[dept.id];
                 totalCurType3 += deptBalancesType3[dept.id];
                 totalCurTotal += deptBalances[dept.id];
-                totalPrevBal += (deptBalances[dept.id] - (dData.pending || 0));
+                // prevBalNet สำหรับแถวรวม = currentBal - pendingMonth (= prevBal - comp60)
+                totalPrevBal += Math.max(0, deptBalances[dept.id] - pendingMonth);
             });
 
             const totalPct30 = totalIntake > 0 ? ((totalComp30 / totalIntake) * 100).toFixed(2) : "0.00";
-            const totalPct60 = totalIntake > 0 ? ((totalComp60 / totalIntake) * 100).toFixed(2) : "0.00";
+            // % งานเสร็จ 60 วัน แถวรวม: ใช้ max(totalPrevBal, totalComp60) และ cap ที่ 100%
+            const totalPct60Denom = Math.max(totalPrevBal, totalComp60);
+            const totalPct60 = totalPct60Denom > 0 ? Math.min(100, (totalComp60 / totalPct60Denom) * 100).toFixed(2) : "0.00";
 
             const totalHtml = `
                 <tr class="bg-gray-100/80 font-black text-gray-800 border-t-2 border-gray-300">

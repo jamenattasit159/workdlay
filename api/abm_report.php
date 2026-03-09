@@ -366,14 +366,25 @@ try {
             }
 
             // Query 2: นับงานรังวัด (รับตั้งแต่ 1 ม.ค. 69) ที่เสร็จในแต่ละเดือน (ยึดตามเดือนที่เสร็จ)
-            // comp30: รับและเสร็จในเดือนเดียวกัน (received_date month = completion_date month)
-            // comp60: รับเดือนอื่นแต่เสร็จเดือนนี้ (received_date month != completion_date month)
+            // comp30: survey_date AND completion_date อยู่ในเดือนเดียวกัน (เสร็จในวันนัดรังวัดเดียวกัน)
+            // comp60: survey_date อยู่คนละเดือนกับ completion_date (ค้างมาแล้วเสร็จเดือนถัดไป)
             $surveyComp30ByMonth = [];
             $surveyComp60ByMonth = [];
             $sqlSurveyCompleted = "SELECT 
                 DATE_FORMAT(completion_date, '%Y-%m') as month,
-                SUM(CASE WHEN DATE_FORMAT(received_date, '%Y-%m') = DATE_FORMAT(completion_date, '%Y-%m') THEN 1 ELSE 0 END) as comp30,
-                SUM(CASE WHEN DATE_FORMAT(received_date, '%Y-%m') <> DATE_FORMAT(completion_date, '%Y-%m') THEN 1 ELSE 0 END) as comp60
+                -- comp30: survey_date AND completion_date ในเดือนเดียวกัน
+                SUM(CASE
+                    WHEN survey_date IS NOT NULL AND survey_date != '0000-00-00'
+                         AND DATE_FORMAT(survey_date, '%Y-%m') = DATE_FORMAT(completion_date, '%Y-%m')
+                    THEN 1 ELSE 0
+                END) as comp30,
+                -- comp60: survey_date ต่างเดือนกับ completion_date (งานค้างมาเสร็จเดือนถัดไป)
+                -- ❌ ไม่นับงานที่ survey_date เป็น NULL หรือ 0000-00-00
+                SUM(CASE
+                    WHEN survey_date IS NOT NULL AND survey_date != '0000-00-00'
+                         AND DATE_FORMAT(survey_date, '%Y-%m') != DATE_FORMAT(completion_date, '%Y-%m')
+                    THEN 1 ELSE 0
+                END) as comp60
             FROM survey_works 
             WHERE received_date >= '2026-01-01'
               AND completion_date IS NOT NULL 
@@ -443,6 +454,40 @@ try {
             // But we only have $surveyCompletedByMonth which is "Completed IN Month M" for New Work.
             // So we can sum up $surveyCompletedByMonth.
 
+            // Pre-calculate initial balances for months BEFORE startMonthIdx
+            // This is needed for monthly/range views where the loop doesn't start from Jan
+            // Must use the exact same formula as the JS frontend:
+            //   currentBal = max(0, prevBal - comp60 + pending)
+            $initialBalances = ['survey' => 0, 'registration' => 0, 'academic' => 0, 'admin' => 0];
+            if ($startMonthIdx > 1) {
+                foreach (['survey', 'registration', 'academic', 'admin'] as $dept) {
+                    $bal = 0;
+                    for ($pm = 1; $pm < $startMonthIdx; $pm++) {
+                        $pmKey = $requestedYear . '-' . str_pad($pm, 2, '0', STR_PAD_LEFT);
+                        if ($dept === 'survey') {
+                            $sIntake = $surveyIntakeByMonth[$pmKey] ?? 0;
+                            $sComp30 = $surveyComp30ByMonth[$pmKey] ?? 0;
+                            $sComp60 = $surveyComp60ByMonth[$pmKey] ?? 0;
+                            // ใช้สูตรเดียวกับ trend loop: pending = intake - comp30 (ไม่หัก comp60)
+                            $pending = $sIntake - $sComp30;
+                            $comp60 = $sComp60;
+                        } elseif ($dept === 'admin') {
+                            $pending = 0;
+                            $comp60 = 0;
+                        } else {
+                            $wd = $workStatsByMonthDept[$pmKey][$dept] ?? [];
+                            $sd = $savedDataByMonthDept[$pmKey][$dept] ?? [];
+                            $m30 = (int) ($sd['completed_within_30'] ?? 0);
+                            $m60 = (int) ($sd['completed_within_60'] ?? 0);
+                            $pending = (int) ($wd['pending'] ?? 0);
+                            $comp60 = (int) ($wd['comp60'] ?? 0) + $m60;
+                        }
+                        $bal = max(0, $bal - $comp60 + $pending);
+                    }
+                    $initialBalances[$dept] = $bal;
+                }
+            }
+
             // Build trend array efficiently
             for ($m = $startMonthIdx; $m <= $maxMonthIdx; $m++) {
                 $loopMonth = $requestedYear . '-' . str_pad($m, 2, '0', STR_PAD_LEFT);
@@ -506,9 +551,10 @@ try {
                         $comp60 = $surveyComp60ByMonth[$loopMonth] ?? 0; // รับเดือนก่อน เสร็จเดือนนี้
                         $compPercent = ($intake > 0) ? round(($comp30 / $intake) * 100, 2) : 0;
 
-                        // Net pending THIS month = รับใหม่เดือนนี้ - (งานเสร็จ30วัน + งานเสร็จ60วัน)
-                        // Front-end จะสะสม (accumulate) ผ่าน deptBalances เอง
-                        $pendingThisMonth = $intake - ($comp30 + $comp60);
+                        // pending = intake - comp30 เท่านั้น
+                        // comp60 คือ งานค้างจาก prevBal ที่มาเสร็จเดือนนี้ — JS จะหักออกจาก prevBal เอง
+                        // ถ้าหัก comp60 ที่นี่ด้วย จะทำให้ JS double-subtract ผิดพลาด
+                        $pendingThisMonth = $intake - $comp30;
 
                         $monthStats['depts'][$dept] = [
                             'intake' => $intake,
@@ -623,6 +669,7 @@ try {
                     'startMonth' => $startMonthIdx,
                     'maxMonth' => $maxMonthIdx
                 ],
+                'initial_balances' => $initialBalances,
                 'savedAll' => $savedAll,
                 'breakdown' => $breakdown,
                 'trend' => $trend,

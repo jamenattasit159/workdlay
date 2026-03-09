@@ -345,60 +345,60 @@ window.UI = {
                 else if (pType === 3) pBreakdown.type3++;
                 else if (pType === 4) pBreakdown.type4++;
                 else pBreakdown.other++;
-});
-pendingBreakdown[deptLabel] = pBreakdown;
+            });
+            pendingBreakdown[deptLabel] = pBreakdown;
 
-stats = {
-    total: filteredItems.length,
-    completed: completedItems.length,
-    pending: pendingItems.length,
-    over30: over30,
-    over60: over60,
-    pendingByDept: {
-        'งานสุดขั้นตอน': pBreakdown.type2,
-        'งานศาล': pBreakdown.type3,
-        'งานค้าง (สะสม)': pBreakdown.type4,
-        'งานปกติ/อื่นๆ': pBreakdown.other
-    },
-    type2: pBreakdown.type2,
-    type3: pBreakdown.type3,
-    type4: pBreakdown.type4,
-    pendingBreakdown: pendingBreakdown,
-    isSingleDept: true,
-    deptLabel: deptLabel
-};
+            stats = {
+                total: filteredItems.length,
+                completed: completedItems.length,
+                pending: pendingItems.length,
+                over30: over30,
+                over60: over60,
+                pendingByDept: {
+                    'งานสุดขั้นตอน': pBreakdown.type2,
+                    'งานศาล': pBreakdown.type3,
+                    'งานค้าง (สะสม)': pBreakdown.type4,
+                    'งานปกติ/อื่นๆ': pBreakdown.other
+                },
+                type2: pBreakdown.type2,
+                type3: pBreakdown.type3,
+                type4: pBreakdown.type4,
+                pendingBreakdown: pendingBreakdown,
+                isSingleDept: true,
+                deptLabel: deptLabel
+            };
         }
 
-// Dashboard (Ultimate SaaS Premium Look)
-const completionRate = Math.round((stats.completed / (stats.total || 1)) * 100);
-const userName = window.app?.currentUser?.name || window.app?.currentUser?.username || 'ผู้ใช้งาน';
+        // Dashboard (Ultimate SaaS Premium Look)
+        const completionRate = Math.round((stats.completed / (stats.total || 1)) * 100);
+        const userName = window.app?.currentUser?.name || window.app?.currentUser?.username || 'ผู้ใช้งาน';
 
-// Department Selection Menu definition
-const deptsMenu = [
-    { id: 'all', label: 'ภาพรวมทั้งหมด', icon: 'fa-th-large', color: 'bg-emerald-500', text: 'text-emerald-600', hover: 'hover:bg-emerald-50', navigate: 'dashboard' },
-    { id: 'survey', label: 'ฝ่ายรังวัด', icon: 'fa-vector-square', color: 'bg-indigo-500', text: 'text-indigo-600', hover: 'hover:bg-indigo-50', navigate: 'survey_dashboard' },
-    { id: 'registration', label: 'ฝ่ายทะเบียน', icon: 'fa-file-invoice', color: 'bg-blue-500', text: 'text-blue-600', hover: 'hover:bg-blue-50', navigate: 'registration_dashboard' },
-    { id: 'academic', label: 'ฝ่ายวิชาการ', icon: 'fa-book-reader', color: 'bg-orange-500', text: 'text-orange-600', hover: 'hover:bg-orange-50', navigate: 'academic_dashboard' }
-];
+        // Department Selection Menu definition
+        const deptsMenu = [
+            { id: 'all', label: 'ภาพรวมทั้งหมด', icon: 'fa-th-large', color: 'bg-emerald-500', text: 'text-emerald-600', hover: 'hover:bg-emerald-50', navigate: 'dashboard' },
+            { id: 'survey', label: 'ฝ่ายรังวัด', icon: 'fa-vector-square', color: 'bg-indigo-500', text: 'text-indigo-600', hover: 'hover:bg-indigo-50', navigate: 'survey_dashboard' },
+            { id: 'registration', label: 'ฝ่ายทะเบียน', icon: 'fa-file-invoice', color: 'bg-blue-500', text: 'text-blue-600', hover: 'hover:bg-blue-50', navigate: 'registration_dashboard' },
+            { id: 'academic', label: 'ฝ่ายวิชาการ', icon: 'fa-book-reader', color: 'bg-orange-500', text: 'text-orange-600', hover: 'hover:bg-orange-50', navigate: 'academic_dashboard' }
+        ];
 
-const deptSelectorHtml = `
+        const deptSelectorHtml = `
             <div class="flex flex-wrap gap-2 mb-8 bg-white/40 p-1.5 rounded-2xl border border-white/60 backdrop-blur-sm inline-flex shadow-sm" data-aos="fade-right">
                 ${deptsMenu.map(d => {
-    const isActive = userDept === d.id;
-    return `
+            const isActive = userDept === d.id;
+            return `
                         <button onclick="app.navigate('${d.navigate}')" 
                             class="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 ${isActive
-            ? `${d.color} text-white shadow-lg`
-            : `${d.text} ${d.hover} opacity-70 hover:opacity-100`}">
+                    ? `${d.color} text-white shadow-lg`
+                    : `${d.text} ${d.hover} opacity-70 hover:opacity-100`}">
                             <i class="fas ${d.icon} ${isActive ? 'text-white' : ''}"></i>
                             ${d.label}
                         </button>
                     `;
-}).join('')}
+        }).join('')}
             </div>
         `;
 
-return `
+        return `
             <!-- Department Selector -->
             ${deptSelectorHtml}
 
@@ -572,22 +572,22 @@ return `
                     </div>
                     <div class="space-y-6">
                         ${stats.pendingByDept && Object.entries(stats.pendingByDept).length > 0 ?
-        Object.entries(stats.pendingByDept)
-            .sort(([, a], [, b]) => b - a)
-            .map(([label, count], idx) => {
-                const percentage = Math.round((count / (stats.pending || 1)) * 100);
-                const depts_meta = {
-                    'ฝ่ายรังวัด': { icon: 'fa-vector-square', color: 'from-emerald-400 to-teal-500' },
-                    'ฝ่ายทะเบียน': { icon: 'fa-file-invoice', color: 'from-blue-400 to-indigo-500' },
-                    'กลุ่มงานวิชาการ': { icon: 'fa-book-reader', color: 'from-purple-400 to-pink-500' },
-                    'งานปกติ/อื่นๆ': { icon: 'fa-circle', color: 'from-gray-400 to-gray-500' },
-                    'งานสุดขั้นตอน': { icon: 'fa-flag-checkered', color: 'from-purple-400 to-indigo-500' },
-                    'งานศาล': { icon: 'fa-gavel', color: 'from-red-400 to-rose-500' },
-                    'งานค้าง (สะสม)': { icon: 'fa-clock', color: 'from-orange-400 to-amber-500' }
-                };
-                const meta = depts_meta[label] || depts_meta[label.replace(' (2)', '').replace(' (4)', '')] || { icon: 'fa-layer-group', color: 'from-gray-400 to-gray-500' };
+                Object.entries(stats.pendingByDept)
+                    .sort(([, a], [, b]) => b - a)
+                    .map(([label, count], idx) => {
+                        const percentage = Math.round((count / (stats.pending || 1)) * 100);
+                        const depts_meta = {
+                            'ฝ่ายรังวัด': { icon: 'fa-vector-square', color: 'from-emerald-400 to-teal-500' },
+                            'ฝ่ายทะเบียน': { icon: 'fa-file-invoice', color: 'from-blue-400 to-indigo-500' },
+                            'กลุ่มงานวิชาการ': { icon: 'fa-book-reader', color: 'from-purple-400 to-pink-500' },
+                            'งานปกติ/อื่นๆ': { icon: 'fa-circle', color: 'from-gray-400 to-gray-500' },
+                            'งานสุดขั้นตอน': { icon: 'fa-flag-checkered', color: 'from-purple-400 to-indigo-500' },
+                            'งานศาล': { icon: 'fa-gavel', color: 'from-red-400 to-rose-500' },
+                            'งานค้าง (สะสม)': { icon: 'fa-clock', color: 'from-orange-400 to-amber-500' }
+                        };
+                        const meta = depts_meta[label] || depts_meta[label.replace(' (2)', '').replace(' (4)', '')] || { icon: 'fa-layer-group', color: 'from-gray-400 to-gray-500' };
 
-                return `
+                        return `
                                 <div>
                                     <div class="flex justify-between items-end mb-2">
                                         <div class="flex items-center">
@@ -610,9 +610,9 @@ return `
                                     </div>
                                 </div>
                             `;
-            }).join('')
-        : '<div class="text-center text-gray-400 py-10"><i class="fas fa-inbox text-4xl mb-2 opacity-20"></i><p>ไม่มีข้อมูลงานค้าง</p></div>'
-    }
+                    }).join('')
+                : '<div class="text-center text-gray-400 py-10"><i class="fas fa-inbox text-4xl mb-2 opacity-20"></i><p>ไม่มีข้อมูลงานค้าง</p></div>'
+            }
                     </div>
                 </div>
 
@@ -629,10 +629,10 @@ return `
                     </div>
                     <div class="flex-1 overflow-y-auto custom-scrollbar -mx-2 px-2">
                         ${this.renderRecentTasks(
-        userDept === 'survey' || userDept === 'all' ? surveyItems : [],
-        userDept === 'registration' || userDept === 'all' ? registrationItems : [],
-        userDept === 'academic' || userDept === 'all' ? academicItems : []
-    )}
+                userDept === 'survey' || userDept === 'all' ? surveyItems : [],
+                userDept === 'registration' || userDept === 'all' ? registrationItems : [],
+                userDept === 'academic' || userDept === 'all' ? academicItems : []
+            )}
                     </div>
                 </div>
             </div>
@@ -695,29 +695,29 @@ return `
         `;
     },
 
-//Helper function for Recent Tasks
-renderRecentTasks(surveyItems, registrationItems, academicItems) {
-    const allItems = [...surveyItems, ...registrationItems, ...academicItems]
-        .filter(i => i.received_date)
-        .sort((a, b) => new Date(b.received_date) - new Date(a.received_date))
-        .slice(0, 8);
+    //Helper function for Recent Tasks
+    renderRecentTasks(surveyItems, registrationItems, academicItems) {
+        const allItems = [...surveyItems, ...registrationItems, ...academicItems]
+            .filter(i => i.received_date)
+            .sort((a, b) => new Date(b.received_date) - new Date(a.received_date))
+            .slice(0, 8);
 
-    if (allItems.length === 0) {
-        return '<div class="text-center text-gray-400 py-8"><i class="fas fa-inbox text-4xl mb-2"></i><p>ยังไม่มีงานในระบบ</p></div>';
-    }
+        if (allItems.length === 0) {
+            return '<div class="text-center text-gray-400 py-8"><i class="fas fa-inbox text-4xl mb-2"></i><p>ยังไม่มีงานในระบบ</p></div>';
+        }
 
-    return allItems.map(item => {
-        const date = new Date(item.received_date);
-        const dept = item.survey_type ? 'รังวัด' : (item.subject ? 'ทะเบียน' : 'วิชาการ');
-        const deptColor = item.survey_type ? 'bg-emerald-100 text-emerald-700' : (item.subject ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700');
-        const title = item.applicant || item.related_person || item.sender_name || 'ไม่ระบุ';
-        const isCompleted = DataManager.isCompleted(item);
-        const opacityClass = isCompleted ? 'opacity-50' : '';
-        const statusBadge = isCompleted
-            ? '<span class="px-2 py-0.5 text-[10px] rounded-full bg-gray-100 text-gray-500"><i class="fas fa-check mr-1"></i>เสร็จ</span>'
-            : '<span class="px-2 py-0.5 text-[10px] rounded-full bg-amber-100 text-amber-700"><i class="fas fa-hourglass-half mr-1"></i>รอ</span>';
+        return allItems.map(item => {
+            const date = new Date(item.received_date);
+            const dept = item.survey_type ? 'รังวัด' : (item.subject ? 'ทะเบียน' : 'วิชาการ');
+            const deptColor = item.survey_type ? 'bg-emerald-100 text-emerald-700' : (item.subject ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700');
+            const title = item.applicant || item.related_person || item.sender_name || 'ไม่ระบุ';
+            const isCompleted = DataManager.isCompleted(item);
+            const opacityClass = isCompleted ? 'opacity-50' : '';
+            const statusBadge = isCompleted
+                ? '<span class="px-2 py-0.5 text-[10px] rounded-full bg-gray-100 text-gray-500"><i class="fas fa-check mr-1"></i>เสร็จ</span>'
+                : '<span class="px-2 py-0.5 text-[10px] rounded-full bg-amber-100 text-amber-700"><i class="fas fa-hourglass-half mr-1"></i>รอ</span>';
 
-        return `
+            return `
                 <div class="flex items-center p-3 mb-2 rounded-2xl hover:bg-gray-50/80 transition-all duration-300 group border border-transparent hover:border-gray-100 hover:shadow-sm">
                     <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col items-center justify-center text-center mr-4 flex-shrink-0 group-hover:scale-110 transition-transform shadow-sm">
                         <span class="text-lg font-black text-gray-700 leading-tight">${date.getDate()}</span>
@@ -735,41 +735,41 @@ renderRecentTasks(surveyItems, registrationItems, academicItems) {
                     </div>
                 </div>
             `;
-    }).join('');
-},
+        }).join('');
+    },
 
-//Helper function for Urgent Tasks
-renderUrgentTasks(surveyItems, registrationItems, academicItems) {
-    const today = new Date();
-    const allItems = [...surveyItems, ...registrationItems, ...academicItems]
-        .filter(i => {
-            if (DataManager.isCompleted(i)) return false;
-            const rd = new Date(i.received_date);
-            if (isNaN(rd.getTime())) return false;
-            return Math.floor((today - rd) / (1000 * 60 * 60 * 24)) > 30;
-        })
-        .sort((a, b) => new Date(a.received_date) - new Date(b.received_date))
-        .slice(0, 8);
+    //Helper function for Urgent Tasks
+    renderUrgentTasks(surveyItems, registrationItems, academicItems) {
+        const today = new Date();
+        const allItems = [...surveyItems, ...registrationItems, ...academicItems]
+            .filter(i => {
+                if (DataManager.isCompleted(i)) return false;
+                const rd = new Date(i.received_date);
+                if (isNaN(rd.getTime())) return false;
+                return Math.floor((today - rd) / (1000 * 60 * 60 * 24)) > 30;
+            })
+            .sort((a, b) => new Date(a.received_date) - new Date(b.received_date))
+            .slice(0, 8);
 
-    if (allItems.length === 0) {
-        return '<div class="text-center text-gray-500 py-8"><i class="fas fa-circle-check text-4xl mb-2 text-emerald-500"></i><p class="text-gray-700 font-semibold">ไม่พบรายการเร่งด่วน</p><p class="text-sm text-gray-500 mt-1">ไม่พบรายการค้าง 31 วันขึ้นไป</p></div>';
-    }
+        if (allItems.length === 0) {
+            return '<div class="text-center text-gray-500 py-8"><i class="fas fa-circle-check text-4xl mb-2 text-emerald-500"></i><p class="text-gray-700 font-semibold">ไม่พบรายการเร่งด่วน</p><p class="text-sm text-gray-500 mt-1">ไม่พบรายการค้าง 31 วันขึ้นไป</p></div>';
+        }
 
-    return allItems.map(item => {
-        const rd = new Date(item.received_date);
-        const days = Math.floor((today - rd) / (1000 * 60 * 60 * 24));
-        const dept = item.survey_type ? 'รังวัด' : (item.subject ? 'ทะเบียน' : 'วิชาการ');
-        const title = item.applicant || item.related_person || item.sender_name || 'ไม่ระบุ';
-        const isOver60 = days > 60;
-        const bgClass = isOver60 ? 'bg-red-50 border-l-4 border-red-500' : 'bg-orange-50 border-l-4 border-orange-400';
-        const numBgClass = isOver60 ? 'bg-red-100' : 'bg-orange-100';
-        const numTextClass = isOver60 ? 'text-red-600' : 'text-orange-600';
-        const labelTextClass = isOver60 ? 'text-red-500' : 'text-orange-500';
-        const urgencyBadge = isOver60
-            ? '<span class="px-2 py-1 text-xs font-bold rounded bg-red-100 text-red-700">ค้างเกิน 60 วัน</span>'
-            : '<span class="px-2 py-1 text-xs font-bold rounded bg-orange-100 text-orange-700">ค้าง 31 - 60 วัน</span>';
+        return allItems.map(item => {
+            const rd = new Date(item.received_date);
+            const days = Math.floor((today - rd) / (1000 * 60 * 60 * 24));
+            const dept = item.survey_type ? 'รังวัด' : (item.subject ? 'ทะเบียน' : 'วิชาการ');
+            const title = item.applicant || item.related_person || item.sender_name || 'ไม่ระบุ';
+            const isOver60 = days > 60;
+            const bgClass = isOver60 ? 'bg-red-50 border-l-4 border-red-500' : 'bg-orange-50 border-l-4 border-orange-400';
+            const numBgClass = isOver60 ? 'bg-red-100' : 'bg-orange-100';
+            const numTextClass = isOver60 ? 'text-red-600' : 'text-orange-600';
+            const labelTextClass = isOver60 ? 'text-red-500' : 'text-orange-500';
+            const urgencyBadge = isOver60
+                ? '<span class="px-2 py-1 text-xs font-bold rounded bg-red-100 text-red-700">ค้างเกิน 60 วัน</span>'
+                : '<span class="px-2 py-1 text-xs font-bold rounded bg-orange-100 text-orange-700">ค้าง 31 - 60 วัน</span>';
 
-        return `
+            return `
                 <div class="flex items-center py-3 mb-2 rounded-lg px-3 ${bgClass}">
                     <div class="w-14 h-14 rounded-xl flex flex-col items-center justify-center text-center mr-3 flex-shrink-0 ${numBgClass}">
                         <span class="text-xl font-black ${numTextClass}">${days}</span>
@@ -784,27 +784,27 @@ renderUrgentTasks(surveyItems, registrationItems, academicItems) {
                     </div>
                 </div>
             `;
-    }).join('');
-},
+        }).join('');
+    },
 
     //Render Monthly ABM Report (สถิติรายเดือนแยกตามฝ่าย)
     //Render Monthly ABM Report (ตารางตามเดือน แยกตามฝ่าย - ตามรูปภาพตัวอย่าง)
     async renderMonthlyABMReport(abmData, currentYearMonth = '') {
-    const trend = abmData.trend || [];
-    const depts = [
-        { id: 'academic', label: 'ฝ่ายวิชาการ' },
-        { id: 'registration', label: 'ฝ่ายทะเบียน' }, // มักจะเรียกฝ่ายทะเบียน หรือฝ่ายบริหารในบางแผนก
-        { id: 'survey', label: 'ฝ่ายรังวัด' }
-    ];
+        const trend = abmData.trend || [];
+        const depts = [
+            { id: 'academic', label: 'ฝ่ายวิชาการ' },
+            { id: 'registration', label: 'ฝ่ายทะเบียน' }, // มักจะเรียกฝ่ายทะเบียน หรือฝ่ายบริหารในบางแผนก
+            { id: 'survey', label: 'ฝ่ายรังวัด' }
+        ];
 
-    // Track running balances for each department
-    let deptBalances = {
-        academic: 0,
-        registration: 0,
-        survey: 0
-    };
+        // Track running balances for each department
+        let deptBalances = {
+            academic: 0,
+            registration: 0,
+            survey: 0
+        };
 
-    let html = `
+        let html = `
             <div class="space-y-12 animate-fade-in p-2 md:p-6 bg-gray-50/50 rounded-2xl">
                 <!-- Header Zone -->
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -816,30 +816,30 @@ renderUrgentTasks(surveyItems, registrationItems, academicItems) {
                     </div>
                 </div>`;
 
-    // Iterate Month by Month
-    trend.forEach((monthItem, index) => {
-        const date = new Date(monthItem.month + '-01');
-        const monthLabel = date.toLocaleDateString('th-TH', { month: 'long' });
-        const isFirstMonth = index === 0;
+        // Iterate Month by Month
+        trend.forEach((monthItem, index) => {
+            const date = new Date(monthItem.month + '-01');
+            const monthLabel = date.toLocaleDateString('th-TH', { month: 'long' });
+            const isFirstMonth = index === 0;
 
-        let rowHtml = depts.map(dept => {
-            const dData = monthItem.depts[dept.id] || { intake: 0, comp30: 0, comp60: 0, pending: 0, notes: '' };
-            const intake = dData.intake || 0;
-            const comp30 = dData.comp30 || 0;
-            const comp60 = dData.comp60 || 0;
-            const pendingCurrent = dData.pending || 0;
+            let rowHtml = depts.map(dept => {
+                const dData = monthItem.depts[dept.id] || { intake: 0, comp30: 0, comp60: 0, pending: 0, notes: '' };
+                const intake = dData.intake || 0;
+                const comp30 = dData.comp30 || 0;
+                const comp60 = dData.comp60 || 0;
+                const pendingCurrent = dData.pending || 0;
 
-            const pct30 = intake > 0 ? ((comp30 / intake) * 100).toFixed(2) : "0.00";
-            const pct60 = intake > 0 ? ((comp60 / intake) * 100).toFixed(2) : "0.00";
-            const pctPending = intake > 0 ? ((pendingCurrent / intake) * 100).toFixed(2) : "0.00";
+                const pct30 = intake > 0 ? ((comp30 / intake) * 100).toFixed(2) : "0.00";
+                const pct60 = intake > 0 ? ((comp60 / intake) * 100).toFixed(2) : "0.00";
+                const pctPending = intake > 0 ? ((pendingCurrent / intake) * 100).toFixed(2) : "0.00";
 
-            const prevBal = deptBalances[dept.id];
-            const currentBal = prevBal + pendingCurrent;
+                const prevBal = deptBalances[dept.id];
+                const currentBal = prevBal + pendingCurrent;
 
-            // Update for next month
-            deptBalances[dept.id] = currentBal;
+                // Update for next month
+                deptBalances[dept.id] = currentBal;
 
-            return `
+                return `
                     <tr class="hover:bg-gray-50 transition-colors">
                         <td class="px-3 py-3 border font-bold text-gray-700 bg-gray-50/50">${dept.label}</td>
                         <!-- (7) 30 วัน -->
@@ -865,9 +865,9 @@ renderUrgentTasks(surveyItems, registrationItems, academicItems) {
                         </td>
                     </tr>
                 `;
-        }).join('');
+            }).join('');
 
-        html += `
+            html += `
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8" data-aos="fade-up">
                     <div class="bg-gray-100/50 px-6 py-3 border-b border-gray-200">
                         <h4 class="font-black text-gray-800">เดือน${monthLabel} ${isFirstMonth ? '(เดือนเริ่มต้น)' : ''}</h4>
@@ -898,24 +898,24 @@ renderUrgentTasks(surveyItems, registrationItems, academicItems) {
                     </div>
                 </div>
             `;
-    });
+        });
 
-    html += `</div>`;
-    return html;
-},
+        html += `</div>`;
+        return html;
+    },
 
     async renderReport(reportDate = null) {
-    //Get ABM data based on selected date
-    const abmReport = await DataManager.getABMReport(reportDate);
-    this.renderStats(abmReport.stats, reportDate);
-    this.renderABMReport(abmReport, reportDate);
-    const today = new Date();
-    const datePickerValue = reportDate || today.toISOString().split('T')[0];
+        //Get ABM data based on selected date
+        const abmReport = await DataManager.getABMReport(reportDate);
+        this.renderStats(abmReport.stats, reportDate);
+        this.renderABMReport(abmReport, reportDate);
+        const today = new Date();
+        const datePickerValue = reportDate || today.toISOString().split('T')[0];
 
-    //Render Monthly Report Content
-    const monthlyReportContent = await this.renderMonthlyABMReport(abmData, datePickerValue.slice(0, 7));
+        //Render Monthly Report Content
+        const monthlyReportContent = await this.renderMonthlyABMReport(abmData, datePickerValue.slice(0, 7));
 
-    return `
+        return `
             <div class="space-y-6" data-aos="fade-up">
                 <!-- Toolbar with Date Picker -->
                 <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
@@ -949,19 +949,19 @@ renderUrgentTasks(surveyItems, registrationItems, academicItems) {
                 </div>
             </div>
             `;
-},
+    },
 
-showDetailModal(item) {
-    const modal = document.getElementById('detail-modal');
-    const content = document.getElementById('detail-modal-content');
+    showDetailModal(item) {
+        const modal = document.getElementById('detail-modal');
+        const content = document.getElementById('detail-modal-content');
 
-    if (!modal || !content) return;
+        if (!modal || !content) return;
 
-    const statusLabel = item.status === 'completed'
-        ? '<span class="px-3 py-1 rounded-full bg-green-100 text-green-800 text-sm font-bold">เสร็จสิ้นแล้ว</span>'
-        : '<span class="px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-sm font-bold">รอการดำเนินการ</span>';
+        const statusLabel = item.status === 'completed'
+            ? '<span class="px-3 py-1 rounded-full bg-green-100 text-green-800 text-sm font-bold">เสร็จสิ้นแล้ว</span>'
+            : '<span class="px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-sm font-bold">รอการดำเนินการ</span>';
 
-    content.innerHTML = `
+        content.innerHTML = `
             <div class="space-y-6">
                 <div class="flex justify-between items-start border-b border-gray-100 pb-4">
                     <div>
@@ -1009,38 +1009,38 @@ showDetailModal(item) {
             </div>
             `;
 
-    modal.classList.remove('hidden');
-    //Simple entry animation
-    setTimeout(() => {
-        modal.querySelector('div[class*="scale-100"]').classList.remove('scale-95', 'opacity-0');
-    }, 10);
-},
+        modal.classList.remove('hidden');
+        //Simple entry animation
+        setTimeout(() => {
+            modal.querySelector('div[class*="scale-100"]').classList.remove('scale-95', 'opacity-0');
+        }, 10);
+    },
 
 
-formatDate(dateString) {
-    if (!dateString || dateString === '0000-00-00' || dateString === '0000-00-00 00:00:00') return '-';
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return '-';
-    return date.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
-},
+    formatDate(dateString) {
+        if (!dateString || dateString === '0000-00-00' || dateString === '0000-00-00 00:00:00') return '-';
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return '-';
+        return date.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+    },
 
     //--- Survey Department Views ---
 
     async renderSurveyList(allItems, searchTerm = '', sortOrder = 'desc', filterType = 'all', page = 1, limit = 20, statusView = 'pending') {
-    const fullItems = await DataManager.getSurveyItems();
-    const surveyTypes = [...new Set(fullItems.map(i => i.survey_type).filter(Boolean))];
+        const fullItems = await DataManager.getSurveyItems();
+        const surveyTypes = [...new Set(fullItems.map(i => i.survey_type).filter(Boolean))];
 
-    // Process data (Sort by ID)
-    let processedItems = [...allItems];
-    processedItems.sort((a, b) => {
-        const idA = parseInt(a.id, 10) || 0;
-        const idB = parseInt(b.id, 10) || 0;
-        return sortOrder === 'asc' ? (idA - idB) : (idB - idA);
-    });
+        // Process data (Sort by ID)
+        let processedItems = [...allItems];
+        processedItems.sort((a, b) => {
+            const idA = parseInt(a.id, 10) || 0;
+            const idB = parseInt(b.id, 10) || 0;
+            return sortOrder === 'asc' ? (idA - idB) : (idB - idA);
+        });
 
-    const totalItems = processedItems.length;
+        const totalItems = processedItems.length;
 
-    let html = `
+        let html = `
             <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4" data-aos="fade-down">
                 <h3 class="font-bold text-3xl flex items-center self-start md:self-auto group">
                     <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-200 mr-4 transform group-hover:scale-105 transition-transform duration-300">
@@ -1120,62 +1120,62 @@ formatDate(dateString) {
             <div id="survey-list-container" class="space-y-4" data-aos="fade-up">
                 ${this.renderSurveyItems(processedItems)}
             </div>`;
-    return html;
-},
+        return html;
+    },
 
 
     async updateSurveyList(allItems, searchTerm, sortOrder, filterType, page, limit) {
-    //Pagination Logic
-    const totalItems = allItems.length;
-    const totalPages = Math.ceil(totalItems / limit);
-    const start = (page - 1) * limit;
-    const currentItems = allItems.slice(start, start + limit);
+        //Pagination Logic
+        const totalItems = allItems.length;
+        const totalPages = Math.ceil(totalItems / limit);
+        const start = (page - 1) * limit;
+        const currentItems = allItems.slice(start, start + limit);
 
-    //Update Total Count
-    const countDisplay = document.getElementById('survey-total-items');
-    if (countDisplay) countDisplay.innerText = totalItems;
+        //Update Total Count
+        const countDisplay = document.getElementById('survey-total-items');
+        if (countDisplay) countDisplay.innerText = totalItems;
 
-    //Update List Items
-    const container = document.getElementById('survey-list-container');
-    if (container) {
-        container.innerHTML = this.renderSurveyItems(allItems, page, totalPages, totalItems, start, limit);
-    }
-},
+        //Update List Items
+        const container = document.getElementById('survey-list-container');
+        if (container) {
+            container.innerHTML = this.renderSurveyItems(allItems, page, totalPages, totalItems, start, limit);
+        }
+    },
 
-renderSurveyItems(items) {
-    let html = '';
-    if (items.length === 0) {
-        html += `<div class="bg-white rounded-xl shadow-sm p-10 text-center text-gray-400"> ไม่พบข้อมูล</div> `;
-    } else {
-        //Mobile View (Cards) - hidden on desktop
-        html += `<div class="grid grid-cols-1 gap-4 md:hidden"> `;
-        items.forEach(item => {
-            const formattedDate = this.formatThaiDate(item.received_date);
-            const diffDays = this.calculateDiffDays(item.received_date);
-            const statusVal = item.status_cause || item.status || '';
+    renderSurveyItems(items) {
+        let html = '';
+        if (items.length === 0) {
+            html += `<div class="bg-white rounded-xl shadow-sm p-10 text-center text-gray-400"> ไม่พบข้อมูล</div> `;
+        } else {
+            //Mobile View (Cards) - hidden on desktop
+            html += `<div class="grid grid-cols-1 gap-4 md:hidden"> `;
+            items.forEach(item => {
+                const formattedDate = this.formatThaiDate(item.received_date);
+                const diffDays = this.calculateDiffDays(item.received_date);
+                const statusVal = item.status_cause || item.status || '';
 
-            let statusBadgeText = statusVal === 'pending' ? 'รอดำเนินการ' : (statusVal || 'รอดำเนินการ');
-            let statusColor = "bg-blue-100 text-blue-800";
-            let durationText = `<span class="text-xs text-gray-500"> ผ่านมา ${diffDays} วัน</span> `;
+                let statusBadgeText = statusVal === 'pending' ? 'รอดำเนินการ' : (statusVal || 'รอดำเนินการ');
+                let statusColor = "bg-blue-100 text-blue-800";
+                let durationText = `<span class="text-xs text-gray-500"> ผ่านมา ${diffDays} วัน</span> `;
 
-            const isCompleted = DataManager.isCompleted(item);
-            if (!isCompleted) {
-                if (diffDays > 60) {
-                    statusColor = "bg-red-100 text-red-800 animate-pulse border border-red-200";
-                    statusBadgeText = `🚨 ล่าช้า`;
-                    durationText = `<span class="text-xs font-bold text-red-600 animate-pulse"> <i class="fas fa-fire mr-1"></i>🔥 เกิน ${diffDays} วัน</span> `;
-                } else if (diffDays > 30) {
-                    statusColor = "bg-yellow-100 text-yellow-800 border border-yellow-200";
-                    statusBadgeText = `⚠️ ล่าช้า`;
-                    durationText = `<span class="text-xs font-bold text-yellow-600"> <i class="fas fa-exclamation-triangle mr-1"></i>🟠 เกิน ${diffDays} วัน</span> `;
-                } else if (diffDays > 14) {
-                    statusColor = "bg-orange-100 text-orange-800 border border-orange-200";
-                    statusBadgeText = `⏳ ติดตาม`;
-                    durationText = `<span class="text-xs font-bold text-orange-600">⏱️ ติดตาม(${diffDays} วัน)</span> `;
+                const isCompleted = DataManager.isCompleted(item);
+                if (!isCompleted) {
+                    if (diffDays > 60) {
+                        statusColor = "bg-red-100 text-red-800 animate-pulse border border-red-200";
+                        statusBadgeText = `🚨 ล่าช้า`;
+                        durationText = `<span class="text-xs font-bold text-red-600 animate-pulse"> <i class="fas fa-fire mr-1"></i>🔥 เกิน ${diffDays} วัน</span> `;
+                    } else if (diffDays > 30) {
+                        statusColor = "bg-yellow-100 text-yellow-800 border border-yellow-200";
+                        statusBadgeText = `⚠️ ล่าช้า`;
+                        durationText = `<span class="text-xs font-bold text-yellow-600"> <i class="fas fa-exclamation-triangle mr-1"></i>🟠 เกิน ${diffDays} วัน</span> `;
+                    } else if (diffDays > 14) {
+                        statusColor = "bg-orange-100 text-orange-800 border border-orange-200";
+                        statusBadgeText = `⏳ ติดตาม`;
+                        durationText = `<span class="text-xs font-bold text-orange-600">⏱️ ติดตาม(${diffDays} วัน)</span> `;
+                    }
                 }
-            }
 
-            html += `
+                html += `
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 transition-all hover:shadow-md">
                     <div class="flex justify-between items-start mb-3">
                         <div>
@@ -1201,11 +1201,11 @@ renderSurveyItems(items) {
                         ดูรายละเอียด
                     </button>
                 </div> `;
-        });
-        html += `</div> `;
+            });
+            html += `</div> `;
 
-        //Desktop View (Table)
-        html += `<div class="hidden md:block bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+            //Desktop View (Table)
+            html += `<div class="hidden md:block bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
             <table id="survey-datatable" class="w-full text-left border-collapse display">
                 <thead class="bg-emerald-50/80 border-b border-emerald-100">
                     <tr>
@@ -1223,41 +1223,41 @@ renderSurveyItems(items) {
                 </thead>
                 <tbody class="divide-y divide-gray-100">`;
 
-        items.forEach(item => {
-            const formattedDate = this.formatThaiDate(item.received_date);
-            const diffDays = this.calculateDiffDays(item.received_date);
-            const statusVal = item.status_cause || item.status || '';
+            items.forEach(item => {
+                const formattedDate = this.formatThaiDate(item.received_date);
+                const diffDays = this.calculateDiffDays(item.received_date);
+                const statusVal = item.status_cause || item.status || '';
 
-            let statusBadge = '';
-            let rowClass = "hover:bg-gray-50 transition-all";
-            let durationCol = `<span class="text-gray-500 text-xs">${diffDays}วัน</span>`;
+                let statusBadge = '';
+                let rowClass = "hover:bg-gray-50 transition-all";
+                let durationCol = `<span class="text-gray-500 text-xs">${diffDays}วัน</span>`;
 
-            const isCompleted = DataManager.isCompleted(item);
-            if (isCompleted) {
-                statusBadge = '<span class="px-1.5 py-0.5 text-[10px] font-medium rounded bg-gray-100 text-gray-500">เสร็จ</span>';
-                rowClass += " opacity-50 bg-gray-50";
-            } else if (statusVal === 'job_sent' || statusVal.includes('ส่งเรื่อง')) {
-                statusBadge = '<span class="px-1.5 py-0.5 text-[10px] font-medium rounded bg-teal-50 text-teal-600">ส่งทะเบียน</span>';
-            } else {
-                let badgeText = statusVal || 'รอ';
-                if (diffDays > 60) {
-                    statusBadge = `<span class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-red-100 text-red-700 animate-pulse">🚨</span>`;
-                    durationCol = `<span class="text-red-700 font-bold text-xs bg-red-50 px-1.5 py-0.5 rounded">🔥 ${diffDays}วัน</span>`;
-                    rowClass = "bg-red-50/40 hover:bg-red-50 border-l-2 border-red-500";
-                } else if (diffDays > 30) {
-                    statusBadge = `<span class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-orange-100 text-orange-700">⚠️</span>`;
-                    durationCol = `<span class="text-orange-700 font-bold text-xs bg-orange-50 px-1.5 py-0.5 rounded">🟠 ${diffDays}วัน</span>`;
-                } else if (diffDays > 14) {
-                    statusBadge = `<span class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-yellow-100 text-yellow-700">⏳</span>`;
-                    durationCol = `<span class="text-yellow-700 font-bold text-xs bg-yellow-50 px-1.5 py-0.5 rounded">⏱️ ${diffDays}วัน</span>`;
+                const isCompleted = DataManager.isCompleted(item);
+                if (isCompleted) {
+                    statusBadge = '<span class="px-1.5 py-0.5 text-[10px] font-medium rounded bg-gray-100 text-gray-500">เสร็จ</span>';
+                    rowClass += " opacity-50 bg-gray-50";
+                } else if (statusVal === 'job_sent' || statusVal.includes('ส่งเรื่อง')) {
+                    statusBadge = '<span class="px-1.5 py-0.5 text-[10px] font-medium rounded bg-teal-50 text-teal-600">ส่งทะเบียน</span>';
                 } else {
-                    statusBadge = `<span class="px-1.5 py-0.5 text-[10px] font-medium rounded bg-emerald-50 text-emerald-600">${badgeText.substring(0, 4)}</span>`;
+                    let badgeText = statusVal || 'รอ';
+                    if (diffDays > 60) {
+                        statusBadge = `<span class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-red-100 text-red-700 animate-pulse">🚨</span>`;
+                        durationCol = `<span class="text-red-700 font-bold text-xs bg-red-50 px-1.5 py-0.5 rounded">🔥 ${diffDays}วัน</span>`;
+                        rowClass = "bg-red-50/40 hover:bg-red-50 border-l-2 border-red-500";
+                    } else if (diffDays > 30) {
+                        statusBadge = `<span class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-orange-100 text-orange-700">⚠️</span>`;
+                        durationCol = `<span class="text-orange-700 font-bold text-xs bg-orange-50 px-1.5 py-0.5 rounded">🟠 ${diffDays}วัน</span>`;
+                    } else if (diffDays > 14) {
+                        statusBadge = `<span class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-yellow-100 text-yellow-700">⏳</span>`;
+                        durationCol = `<span class="text-yellow-700 font-bold text-xs bg-yellow-50 px-1.5 py-0.5 rounded">⏱️ ${diffDays}วัน</span>`;
+                    } else {
+                        statusBadge = `<span class="px-1.5 py-0.5 text-[10px] font-medium rounded bg-emerald-50 text-emerald-600">${badgeText.substring(0, 4)}</span>`;
+                    }
                 }
-            }
 
-            const truncate = (text, len) => text && text.length > len ? text.substring(0, len) + '...' : (text || '-');
+                const truncate = (text, len) => text && text.length > len ? text.substring(0, len) + '...' : (text || '-');
 
-            html += `
+                html += `
                     <tr class="${rowClass}">
                         <td class="px-3 py-2 text-center">${statusBadge}</td>
                         <td class="px-3 py-2 text-center text-sm text-gray-700 font-medium">${formattedDate}</td>
@@ -1275,154 +1275,154 @@ renderSurveyItems(items) {
                             </button>
                         </td>
                     </tr>`;
-        });
-        html += `</tbody></table></div> `;
-    }
-    return html;
-},
+            });
+            html += `</tbody></table></div> `;
+        }
+        return html;
+    },
 
-//--- Registration Department Views ---
+    //--- Registration Department Views ---
 
-//--- Helper for Date ---
-getSafeDate(dateString) {
-    if (!dateString) return null;
-    let date = new Date(dateString);
+    //--- Helper for Date ---
+    getSafeDate(dateString) {
+        if (!dateString) return null;
+        let date = new Date(dateString);
 
-    //Invalid check
-    if (isNaN(date.getTime())) return null;
+        //Invalid check
+        if (isNaN(date.getTime())) return null;
 
-    let year = date.getFullYear();
+        let year = date.getFullYear();
 
-    //1. Handle Short Years (e.g. 23 -> 2023)
-    //Browsers might parse "23" as 1923 or 2023. We want 2023 for this system.
-    // This is a placeholder for the actual navigate function logic.
-    // The instruction implies this code snippet is part of a larger 'navigate' function.
-    // Since the full 'navigate' function is not provided, I'm inserting the change
-    // at the closest logical point based on the provided context, which is within
-    // the 'getSafeDate' function's comments, as per the instruction's formatting.
-    // In a real scenario, this would be placed in the 'app.navigate' function.
-    /*
-    if (page === 'dashboard') {
-        title.innerText = 'ภาพรวมการดำเนินงาน';
-        content.innerHTML = await UI.renderDashboard(userDept);
-        this.initPerformanceChart();
-    } else if (type === 'registration' || type === 'academic' || type === 'admin')(page === 'logs') {
-        title.innerText = 'ตรวจสอบประวัติ (Activity Logs)';
-        content.innerHTML = await UI.renderLogs();
-        UI.initDataTable('logs-datatable', { order: [[4, 'desc']] });
-    } else if (type === 'registration' || type === 'academic' || type === 'admin')(page === 'report') {
-    */
-    if (year < 100) {
-        year += 2000;
-        date.setFullYear(year);
-    } else if (year >= 100 && year < 1900) {
-        //Safer to leave 19xx alone, it's visually obvious.
-    }
-
-    //2. Handle Buddhist Years (Recursive fallback)
-    //If year is way in the future (e.g. 2566, 2600, 2780), subtract 543 until it's in a reasonable range (e.g. <2200)
-    //This handles double-conversion errors (e.g. 2566 + 543 = 3109)
-    while (year > 2200) {
-        year -= 543;
-        date.setFullYear(year); //Update the date object's year in each iteration
-    }
-
-    return date;
-},
-
-formatThaiDate(dateString) {
-    if (!dateString) return '-';
-    const date = this.getSafeDate(dateString); //Use the safe date first!
-    if (!date || isNaN(date)) return '-';
-
-    const day = date.getDate();
-    const month = date.toLocaleDateString('th-TH', { month: 'short' });
-    const year = date.getFullYear();
-    const bYear = year + 543;
-    const shortYear = String(bYear).slice(-2);
-
-    return `${day} -${month} -${shortYear} `;
-},
-
-calculateDiffDays(dateString) {
-    if (!dateString) return 0;
-    const receivedDate = this.getSafeDate(dateString);
-    if (!receivedDate || isNaN(receivedDate)) return 0;
-
-    const now = new Date();
-    //Reset time for fair comparison
-    now.setHours(0, 0, 0, 0);
-    receivedDate.setHours(0, 0, 0, 0);
-
-    const diff = Math.floor((now - receivedDate) / (1000 * 60 * 60 * 24));
-
-    //Sanity Check: If diff is> 50 years (18250 days), return 0. (Likely data error)
-    if (Math.abs(diff) > 18250) {
-        console.warn(`Suspicious Date Diff clamped to 0. Original: ${diff} `);
-        return 0;
-    }
-    return diff;
-},
-
-processRegistrationData(items, searchTerm, sortOrder, filterType) {
-    let processedItems = [...items];
-
-    //Filter by Status
-    if (filterType !== 'all') {
-        const now = new Date();
-        processedItems = processedItems.filter(item => {
-            const diffDays = this.calculateDiffDays(item.received_date);
-            if (filterType === 'pending') return item.status_cause !== 'เสร็จสิ้น' && item.status_cause !== 'ส่งทะเบียน' && item.status_cause !== 'ยกเลิก';
-            if (filterType === 'completed') return item.status_cause === 'เสร็จสิ้น' || item.status_cause === 'ส่งทะเบียน' || item.status_cause === 'ยกเลิก';
-            if (filterType === 'alert') return diffDays > 14 && item.status_cause !== 'เสร็จสิ้น' && item.status_cause !== 'ส่งทะเบียน' && item.status_cause !== 'ยกเลิก';
-            return true;
-        });
-    }
-
-    //Search
-    if (searchTerm) {
-        const lowerTerm = searchTerm.toLowerCase();
-        processedItems = processedItems.filter(item =>
-            (item.subject && item.subject.toLowerCase().includes(lowerTerm)) ||
-            (item.related_person && item.related_person.toLowerCase().includes(lowerTerm)) ||
-            (item.responsible_person && item.responsible_person.toLowerCase().includes(lowerTerm)) ||
-            (item.seq_no && String(item.seq_no).toLowerCase().includes(lowerTerm))
-        );
-    }
-
-    //Sort
-    processedItems.sort((a, b) => {
-        if (sortOrder === 'subject_asc') {
-            return (a.subject || '').localeCompare(b.subject || '');
-        } else if (sortOrder === 'subject_desc') {
-            return (b.subject || '').localeCompare(a.subject || '');
+        //1. Handle Short Years (e.g. 23 -> 2023)
+        //Browsers might parse "23" as 1923 or 2023. We want 2023 for this system.
+        // This is a placeholder for the actual navigate function logic.
+        // The instruction implies this code snippet is part of a larger 'navigate' function.
+        // Since the full 'navigate' function is not provided, I'm inserting the change
+        // at the closest logical point based on the provided context, which is within
+        // the 'getSafeDate' function's comments, as per the instruction's formatting.
+        // In a real scenario, this would be placed in the 'app.navigate' function.
+        /*
+        if (page === 'dashboard') {
+            title.innerText = 'ภาพรวมการดำเนินงาน';
+            content.innerHTML = await UI.renderDashboard(userDept);
+            this.initPerformanceChart();
+        } else if (type === 'registration' || type === 'academic' || type === 'admin')(page === 'logs') {
+            title.innerText = 'ตรวจสอบประวัติ (Activity Logs)';
+            content.innerHTML = await UI.renderLogs();
+            UI.initDataTable('logs-datatable', { order: [[4, 'desc']] });
+        } else if (type === 'registration' || type === 'academic' || type === 'admin')(page === 'report') {
+        */
+        if (year < 100) {
+            year += 2000;
+            date.setFullYear(year);
+        } else if (year >= 100 && year < 1900) {
+            //Safer to leave 19xx alone, it's visually obvious.
         }
 
-        //Sort by ID
-        const idA = parseInt(a.id, 10) || 0;
-        const idB = parseInt(b.id, 10) || 0;
+        //2. Handle Buddhist Years (Recursive fallback)
+        //If year is way in the future (e.g. 2566, 2600, 2780), subtract 543 until it's in a reasonable range (e.g. <2200)
+        //This handles double-conversion errors (e.g. 2566 + 543 = 3109)
+        while (year > 2200) {
+            year -= 543;
+            date.setFullYear(year); //Update the date object's year in each iteration
+        }
 
-        return sortOrder === 'asc' ? (idA - idB) : (idB - idA);
-    });
+        return date;
+    },
 
-    return processedItems;
-},
+    formatThaiDate(dateString) {
+        if (!dateString) return '-';
+        const date = this.getSafeDate(dateString); //Use the safe date first!
+        if (!date || isNaN(date)) return '-';
+
+        const day = date.getDate();
+        const month = date.toLocaleDateString('th-TH', { month: 'short' });
+        const year = date.getFullYear();
+        const bYear = year + 543;
+        const shortYear = String(bYear).slice(-2);
+
+        return `${day} -${month} -${shortYear} `;
+    },
+
+    calculateDiffDays(dateString) {
+        if (!dateString) return 0;
+        const receivedDate = this.getSafeDate(dateString);
+        if (!receivedDate || isNaN(receivedDate)) return 0;
+
+        const now = new Date();
+        //Reset time for fair comparison
+        now.setHours(0, 0, 0, 0);
+        receivedDate.setHours(0, 0, 0, 0);
+
+        const diff = Math.floor((now - receivedDate) / (1000 * 60 * 60 * 24));
+
+        //Sanity Check: If diff is> 50 years (18250 days), return 0. (Likely data error)
+        if (Math.abs(diff) > 18250) {
+            console.warn(`Suspicious Date Diff clamped to 0. Original: ${diff} `);
+            return 0;
+        }
+        return diff;
+    },
+
+    processRegistrationData(items, searchTerm, sortOrder, filterType) {
+        let processedItems = [...items];
+
+        //Filter by Status
+        if (filterType !== 'all') {
+            const now = new Date();
+            processedItems = processedItems.filter(item => {
+                const diffDays = this.calculateDiffDays(item.received_date);
+                if (filterType === 'pending') return item.status_cause !== 'เสร็จสิ้น' && item.status_cause !== 'ส่งทะเบียน' && item.status_cause !== 'ยกเลิก';
+                if (filterType === 'completed') return item.status_cause === 'เสร็จสิ้น' || item.status_cause === 'ส่งทะเบียน' || item.status_cause === 'ยกเลิก';
+                if (filterType === 'alert') return diffDays > 14 && item.status_cause !== 'เสร็จสิ้น' && item.status_cause !== 'ส่งทะเบียน' && item.status_cause !== 'ยกเลิก';
+                return true;
+            });
+        }
+
+        //Search
+        if (searchTerm) {
+            const lowerTerm = searchTerm.toLowerCase();
+            processedItems = processedItems.filter(item =>
+                (item.subject && item.subject.toLowerCase().includes(lowerTerm)) ||
+                (item.related_person && item.related_person.toLowerCase().includes(lowerTerm)) ||
+                (item.responsible_person && item.responsible_person.toLowerCase().includes(lowerTerm)) ||
+                (item.seq_no && String(item.seq_no).toLowerCase().includes(lowerTerm))
+            );
+        }
+
+        //Sort
+        processedItems.sort((a, b) => {
+            if (sortOrder === 'subject_asc') {
+                return (a.subject || '').localeCompare(b.subject || '');
+            } else if (sortOrder === 'subject_desc') {
+                return (b.subject || '').localeCompare(a.subject || '');
+            }
+
+            //Sort by ID
+            const idA = parseInt(a.id, 10) || 0;
+            const idB = parseInt(b.id, 10) || 0;
+
+            return sortOrder === 'asc' ? (idA - idB) : (idB - idA);
+        });
+
+        return processedItems;
+    },
 
     async renderRegistrationList(items, searchTerm = '', sortOrder = 'desc', filterType = 'all', subjectFilter = 'all', page = 1, limit = 20, statusView = 'pending') {
-    const fullItems = await DataManager.getRegistrationItems();
-    const subjects = [...new Set(fullItems.map(i => i.subject).filter(Boolean))];
+        const fullItems = await DataManager.getRegistrationItems();
+        const subjects = [...new Set(fullItems.map(i => i.subject).filter(Boolean))];
 
-    // Process data (Sort by ID inside here)
-    const processedItems = this.processRegistrationData(items, searchTerm, sortOrder, filterType);
+        // Process data (Sort by ID inside here)
+        const processedItems = this.processRegistrationData(items, searchTerm, sortOrder, filterType);
 
-    let displayItems = processedItems;
-    if (subjectFilter && subjectFilter !== 'all') {
-        displayItems = displayItems.filter(i => i.subject === subjectFilter);
-    }
+        let displayItems = processedItems;
+        if (subjectFilter && subjectFilter !== 'all') {
+            displayItems = displayItems.filter(i => i.subject === subjectFilter);
+        }
 
-    const totalItems = displayItems.length;
+        const totalItems = displayItems.length;
 
-    let html = `
+        let html = `
             <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4" data-aos="fade-down">
                 <h3 class="font-bold text-3xl flex items-center self-start md:self-auto group">
                     <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center shadow-lg shadow-blue-200 mr-4 transform group-hover:scale-105 transition-transform duration-300">
@@ -1496,65 +1496,65 @@ processRegistrationData(items, searchTerm, sortOrder, filterType) {
             <div id="registration-list-container" class="space-y-4" data-aos="fade-up">
                 ${this.renderRegistrationItems(displayItems)}
             </div>`;
-    return html;
-},
+        return html;
+    },
 
     async updateRegistrationList(items, searchTerm, sortOrder, filterType, subjectFilter, page, limit) {
-    const processedItems = this.processRegistrationData(items, searchTerm, sortOrder, filterType);
+        const processedItems = this.processRegistrationData(items, searchTerm, sortOrder, filterType);
 
-    let displayItems = processedItems;
-    if (subjectFilter && subjectFilter !== 'all') {
-        displayItems = displayItems.filter(i => i.subject === subjectFilter);
-    }
+        let displayItems = processedItems;
+        if (subjectFilter && subjectFilter !== 'all') {
+            displayItems = displayItems.filter(i => i.subject === subjectFilter);
+        }
 
-    const totalItems = displayItems.length;
-    const totalPages = Math.ceil(totalItems / limit);
-    const start = (page - 1) * limit;
-    const currentItems = displayItems.slice(start, start + limit);
+        const totalItems = displayItems.length;
+        const totalPages = Math.ceil(totalItems / limit);
+        const start = (page - 1) * limit;
+        const currentItems = displayItems.slice(start, start + limit);
 
-    //Update Total Count
-    const countDisplay = document.getElementById('reg-total-items');
-    if (countDisplay) countDisplay.innerText = totalItems;
+        //Update Total Count
+        const countDisplay = document.getElementById('reg-total-items');
+        if (countDisplay) countDisplay.innerText = totalItems;
 
-    //Update List Items
-    const container = document.getElementById('registration-list-container');
-    if (container) {
-        container.innerHTML = this.renderRegistrationItems(displayItems, page, totalPages, totalItems, start, limit);
-    }
-},
+        //Update List Items
+        const container = document.getElementById('registration-list-container');
+        if (container) {
+            container.innerHTML = this.renderRegistrationItems(displayItems, page, totalPages, totalItems, start, limit);
+        }
+    },
 
-renderRegistrationItems(items) {
-    let html = '';
-    if (items.length === 0) {
-        html += `<div class="bg-white rounded-xl shadow-sm p-10 text-center text-gray-400"> ไม่พบข้อมูล</div> `;
-    } else {
-        //Mobile View (Cards)
-        html += `<div class="grid grid-cols-1 gap-4 md:hidden">`;
-        items.forEach(item => {
-            const formattedDate = this.formatThaiDate(item.received_date);
-            const diffDays = this.calculateDiffDays(item.received_date);
+    renderRegistrationItems(items) {
+        let html = '';
+        if (items.length === 0) {
+            html += `<div class="bg-white rounded-xl shadow-sm p-10 text-center text-gray-400"> ไม่พบข้อมูล</div> `;
+        } else {
+            //Mobile View (Cards)
+            html += `<div class="grid grid-cols-1 gap-4 md:hidden">`;
+            items.forEach(item => {
+                const formattedDate = this.formatThaiDate(item.received_date);
+                const diffDays = this.calculateDiffDays(item.received_date);
 
-            let statusBadge = '';
-            let statusColor = "bg-blue-50 text-blue-600";
-            let statusText = item.status_cause || '-';
+                let statusBadge = '';
+                let statusColor = "bg-blue-50 text-blue-600";
+                let statusText = item.status_cause || '-';
 
-            const isCompleted = DataManager.isCompleted(item);
-            if (isCompleted || statusText === 'ส่งทะเบียน') {
-                statusColor = "bg-gray-100 text-gray-500";
-            } else {
-                if (diffDays > 60) {
-                    statusColor = "bg-red-100 text-red-800 animate-pulse border border-red-200";
-                    statusText = `🚨 ${statusText} `;
-                } else if (diffDays > 30) {
-                    statusColor = "bg-orange-100 text-orange-800 border border-orange-200";
-                    statusText = `⚠️ ${statusText} `;
-                } else if (diffDays > 14) {
-                    statusColor = "bg-yellow-100 text-yellow-800 border border-yellow-200";
-                    statusText = `⏳ ${statusText} `;
+                const isCompleted = DataManager.isCompleted(item);
+                if (isCompleted || statusText === 'ส่งทะเบียน') {
+                    statusColor = "bg-gray-100 text-gray-500";
+                } else {
+                    if (diffDays > 60) {
+                        statusColor = "bg-red-100 text-red-800 animate-pulse border border-red-200";
+                        statusText = `🚨 ${statusText} `;
+                    } else if (diffDays > 30) {
+                        statusColor = "bg-orange-100 text-orange-800 border border-orange-200";
+                        statusText = `⚠️ ${statusText} `;
+                    } else if (diffDays > 14) {
+                        statusColor = "bg-yellow-100 text-yellow-800 border border-yellow-200";
+                        statusText = `⏳ ${statusText} `;
+                    }
                 }
-            }
 
-            html += `
+                html += `
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 relative overflow-hidden group hover:shadow-md transition-all">
                     <div class="flex justify-between items-start mb-3">
                         <span class="text-gray-400 font-mono text-xs">#${item.seq_no}</span>
@@ -1576,12 +1576,12 @@ renderRegistrationItems(items) {
                     </div>
                 </div>
                 `;
-        });
-        html += `</div>`;
+            });
+            html += `</div>`;
 
 
-        //Desktop View (Table) - Compact Design like Academic
-        html += `<div class="hidden md:block bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+            //Desktop View (Table) - Compact Design like Academic
+            html += `<div class="hidden md:block bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
             <div class="overflow-x-auto custom-scrollbar">
                 <table id="registration-datatable" class="w-full text-left border-collapse min-w-[900px] display">
                     <thead class="bg-blue-50/80 border-b border-blue-100">
@@ -1598,35 +1598,35 @@ renderRegistrationItems(items) {
                     </thead>
                     <tbody class="divide-y divide-gray-100">`;
 
-        items.forEach(item => {
-            const formattedDate = this.formatThaiDate(item.received_date);
-            const diffDays = this.calculateDiffDays(item.received_date);
+            items.forEach(item => {
+                const formattedDate = this.formatThaiDate(item.received_date);
+                const diffDays = this.calculateDiffDays(item.received_date);
 
-            let statusBadge = '';
-            let rowClass = "hover:bg-gray-50 transition-all";
-            let statusText = item.status_cause || '-';
+                let statusBadge = '';
+                let rowClass = "hover:bg-gray-50 transition-all";
+                let statusText = item.status_cause || '-';
 
-            const isCompleted = DataManager.isCompleted(item);
-            if (isCompleted || statusText === 'ส่งทะเบียน') {
-                statusBadge = `<span class="px-1.5 py-0.5 text-[10px] font-medium rounded bg-gray-100 text-gray-500">${statusText.substring(0, 6)}</span>`;
-                rowClass += " opacity-50 bg-gray-50";
-            } else {
-                if (diffDays > 60) {
-                    statusBadge = `<span class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-red-100 text-red-700 animate-pulse">🚨 ${diffDays}วัน</span>`;
-                    rowClass = "bg-red-50/40 hover:bg-red-50 border-l-2 border-red-500";
-                } else if (diffDays > 30) {
-                    statusBadge = `<span class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-orange-100 text-orange-700">⚠️ ${diffDays}วัน</span>`;
-                } else if (diffDays > 14) {
-                    statusBadge = `<span class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-yellow-100 text-yellow-700">⏳ ${diffDays}วัน</span>`;
+                const isCompleted = DataManager.isCompleted(item);
+                if (isCompleted || statusText === 'ส่งทะเบียน') {
+                    statusBadge = `<span class="px-1.5 py-0.5 text-[10px] font-medium rounded bg-gray-100 text-gray-500">${statusText.substring(0, 6)}</span>`;
+                    rowClass += " opacity-50 bg-gray-50";
                 } else {
-                    statusBadge = `<span class="px-1.5 py-0.5 text-[10px] font-medium rounded bg-blue-50 text-blue-600">${statusText.substring(0, 8)}</span>`;
+                    if (diffDays > 60) {
+                        statusBadge = `<span class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-red-100 text-red-700 animate-pulse">🚨 ${diffDays}วัน</span>`;
+                        rowClass = "bg-red-50/40 hover:bg-red-50 border-l-2 border-red-500";
+                    } else if (diffDays > 30) {
+                        statusBadge = `<span class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-orange-100 text-orange-700">⚠️ ${diffDays}วัน</span>`;
+                    } else if (diffDays > 14) {
+                        statusBadge = `<span class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-yellow-100 text-yellow-700">⏳ ${diffDays}วัน</span>`;
+                    } else {
+                        statusBadge = `<span class="px-1.5 py-0.5 text-[10px] font-medium rounded bg-blue-50 text-blue-600">${statusText.substring(0, 8)}</span>`;
+                    }
                 }
-            }
 
-            //Truncate text helper
-            const truncate = (text, len) => text && text.length > len ? text.substring(0, len) + '...' : (text || '-');
+                //Truncate text helper
+                const truncate = (text, len) => text && text.length > len ? text.substring(0, len) + '...' : (text || '-');
 
-            html += `
+                html += `
                         <tr class="${rowClass}">
                             <td class="px-3 py-2 text-center text-sm text-gray-500">${item.seq_no || '-'}</td>
                             <td class="px-3 py-2 text-center text-sm text-gray-700 font-medium">${formattedDate}</td>
@@ -1642,33 +1642,33 @@ renderRegistrationItems(items) {
                                 </button>
                             </td>
                         </tr>`;
-        });
-        html += `</tbody></table></div></div>`;
-    }
-    return html;
-},
+            });
+            html += `</tbody></table></div></div>`;
+        }
+        return html;
+    },
 
     //--- Academic Department Views ---
     async renderAcademicList(items, searchTerm = '', sortOrder = 'desc', subjectFilter = 'all', page = 1, limit = 20, statusView = 'pending') {
-    const fullItems = await DataManager.getAcademicItems();
-    const subjects = [...new Set(fullItems.map(i => i.subject).filter(Boolean))];
+        const fullItems = await DataManager.getAcademicItems();
+        const subjects = [...new Set(fullItems.map(i => i.subject).filter(Boolean))];
 
-    // Process data (Sort by ID)
-    let processedItems = [...items];
-    processedItems.sort((a, b) => {
-        const idA = parseInt(a.id, 10) || 0;
-        const idB = parseInt(b.id, 10) || 0;
-        return sortOrder === 'asc' ? (idA - idB) : (idB - idA);
-    });
+        // Process data (Sort by ID)
+        let processedItems = [...items];
+        processedItems.sort((a, b) => {
+            const idA = parseInt(a.id, 10) || 0;
+            const idB = parseInt(b.id, 10) || 0;
+            return sortOrder === 'asc' ? (idA - idB) : (idB - idA);
+        });
 
-    let displayItems = processedItems;
-    if (subjectFilter && subjectFilter !== 'all') {
-        displayItems = displayItems.filter(i => i.subject === subjectFilter);
-    }
+        let displayItems = processedItems;
+        if (subjectFilter && subjectFilter !== 'all') {
+            displayItems = displayItems.filter(i => i.subject === subjectFilter);
+        }
 
-    const totalItems = displayItems.length;
+        const totalItems = displayItems.length;
 
-    let html = `
+        let html = `
                             <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4" data-aos="fade-down">
                 <h3 class="font-bold text-3xl flex items-center self-start md:self-auto group">
                     <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-lg shadow-orange-200 mr-4 transform group-hover:scale-105 transition-transform duration-300">
@@ -1742,55 +1742,55 @@ renderRegistrationItems(items) {
             <div id="academic-list-container" class="space-y-4" data-aos="fade-up">
                 ${this.renderAcademicItems(displayItems)}
             </div>`;
-    return html;
-},
+        return html;
+    },
 
     async updateAcademicList(items, searchTerm, subjectFilter, page, limit) {
-    //Pagination Logic
-    let displayItems = items;
-    if (subjectFilter && subjectFilter !== 'all') {
-        displayItems = displayItems.filter(i => i.subject === subjectFilter);
-    }
+        //Pagination Logic
+        let displayItems = items;
+        if (subjectFilter && subjectFilter !== 'all') {
+            displayItems = displayItems.filter(i => i.subject === subjectFilter);
+        }
 
-    const totalItems = displayItems.length;
-    const totalPages = Math.ceil(totalItems / limit);
-    const start = (page - 1) * limit;
-    const currentItems = displayItems.slice(start, start + limit);
+        const totalItems = displayItems.length;
+        const totalPages = Math.ceil(totalItems / limit);
+        const start = (page - 1) * limit;
+        const currentItems = displayItems.slice(start, start + limit);
 
-    //Update Total Count
-    const countDisplay = document.getElementById('academic-total-items');
-    if (countDisplay) countDisplay.innerText = totalItems;
+        //Update Total Count
+        const countDisplay = document.getElementById('academic-total-items');
+        if (countDisplay) countDisplay.innerText = totalItems;
 
-    //Update List Items
-    const container = document.getElementById('academic-list-container');
-    if (container) {
-        container.innerHTML = this.renderAcademicItems(displayItems, page, totalPages, totalItems, start, limit);
-    }
-},
+        //Update List Items
+        const container = document.getElementById('academic-list-container');
+        if (container) {
+            container.innerHTML = this.renderAcademicItems(displayItems, page, totalPages, totalItems, start, limit);
+        }
+    },
 
-renderAcademicItems(items) {
-    let html = '';
-    if (items.length === 0) {
-        html += `<div class="bg-white rounded-xl shadow-sm p-10 text-center text-gray-400"> ไม่พบข้อมูล</div> `;
-    } else {
-        //Mobile View (Cards)
-        html += `<div class="grid grid-cols-1 gap-4 md:hidden"> `;
-        items.forEach(item => {
-            const formattedDate = this.formatThaiDate(item.received_date);
-            const diffDays = this.calculateDiffDays(item.received_date);
-            let statusBadge = '';
-            let statusText = item.status_cause || '-';
-            let statusColor = "bg-orange-50 text-orange-600";
+    renderAcademicItems(items) {
+        let html = '';
+        if (items.length === 0) {
+            html += `<div class="bg-white rounded-xl shadow-sm p-10 text-center text-gray-400"> ไม่พบข้อมูล</div> `;
+        } else {
+            //Mobile View (Cards)
+            html += `<div class="grid grid-cols-1 gap-4 md:hidden"> `;
+            items.forEach(item => {
+                const formattedDate = this.formatThaiDate(item.received_date);
+                const diffDays = this.calculateDiffDays(item.received_date);
+                let statusBadge = '';
+                let statusText = item.status_cause || '-';
+                let statusColor = "bg-orange-50 text-orange-600";
 
-            const isCompleted = DataManager.isCompleted(item);
-            if (isCompleted) {
-                statusColor = "bg-gray-100 text-gray-500";
-            } else if (diffDays > 30) {
-                statusColor = "bg-red-100 text-red-800 animate-pulse border border-red-200";
-                statusText = `🚨 ${statusText} `;
-            }
+                const isCompleted = DataManager.isCompleted(item);
+                if (isCompleted) {
+                    statusColor = "bg-gray-100 text-gray-500";
+                } else if (diffDays > 30) {
+                    statusColor = "bg-red-100 text-red-800 animate-pulse border border-red-200";
+                    statusText = `🚨 ${statusText} `;
+                }
 
-            html += `
+                html += `
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 relative overflow-hidden group hover:shadow-md transition-all">
                         <div class="flex justify-between items-start mb-3">
                             <span class="text-gray-400 font-mono text-xs">#${item.seq_no}</span>
@@ -1811,11 +1811,11 @@ renderAcademicItems(items) {
                         </div>
                     </div>
             `;
-        });
-        html += `</div> `;
+            });
+            html += `</div> `;
 
-        //Desktop View (Table) - DataTables will handle pagination
-        html += `
+            //Desktop View (Table) - DataTables will handle pagination
+            html += `
             <div class="hidden md:block bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
                 <table id="academic-datatable" class="w-full text-left border-collapse display">
                     <thead class="bg-gradient-to-r from-orange-50 to-amber-50 border-b border-orange-100">
@@ -1830,28 +1830,28 @@ renderAcademicItems(items) {
                     </thead>
                     <tbody class="divide-y divide-gray-100">`;
 
-        items.forEach(item => {
-            const formattedDate = this.formatThaiDate(item.received_date);
-            const diffDays = this.calculateDiffDays(item.received_date);
-            let statusBadge = '';
-            let statusText = item.status_cause || '-';
-            let rowClass = "hover:bg-orange-50/50 transition-all duration-200 group";
+            items.forEach(item => {
+                const formattedDate = this.formatThaiDate(item.received_date);
+                const diffDays = this.calculateDiffDays(item.received_date);
+                let statusBadge = '';
+                let statusText = item.status_cause || '-';
+                let rowClass = "hover:bg-orange-50/50 transition-all duration-200 group";
 
-            const isCompleted = DataManager.isCompleted(item);
-            if (isCompleted) {
-                statusBadge = `<span class="px-2 py-1 inline-flex text-xs leading-4 font-semibold rounded bg-gray-100 text-gray-500">${statusText}</span>`;
-                rowClass += " opacity-60 bg-gray-50";
-            } else if (diffDays > 60) {
-                statusBadge = `<span class="px-2 py-1 inline-flex text-xs leading-4 font-bold rounded bg-red-100 text-red-700 animate-pulse">🔥 ${diffDays}วัน</span>`;
-                rowClass = "bg-red-50/40 hover:bg-red-100/50 border-l-4 border-red-500";
-            } else if (diffDays > 30) {
-                statusBadge = `<span class="px-2 py-1 inline-flex text-xs leading-4 font-bold rounded bg-orange-100 text-orange-700">⚠️ ${diffDays}วัน</span>`;
-                rowClass = "bg-orange-50/40 hover:bg-orange-100/50 border-l-4 border-orange-400";
-            } else {
-                statusBadge = `<span class="px-2 py-1 inline-flex text-xs leading-4 font-semibold rounded bg-blue-50 text-blue-700">${statusText || diffDays + 'วัน'}</span>`;
-            }
+                const isCompleted = DataManager.isCompleted(item);
+                if (isCompleted) {
+                    statusBadge = `<span class="px-2 py-1 inline-flex text-xs leading-4 font-semibold rounded bg-gray-100 text-gray-500">${statusText}</span>`;
+                    rowClass += " opacity-60 bg-gray-50";
+                } else if (diffDays > 60) {
+                    statusBadge = `<span class="px-2 py-1 inline-flex text-xs leading-4 font-bold rounded bg-red-100 text-red-700 animate-pulse">🔥 ${diffDays}วัน</span>`;
+                    rowClass = "bg-red-50/40 hover:bg-red-100/50 border-l-4 border-red-500";
+                } else if (diffDays > 30) {
+                    statusBadge = `<span class="px-2 py-1 inline-flex text-xs leading-4 font-bold rounded bg-orange-100 text-orange-700">⚠️ ${diffDays}วัน</span>`;
+                    rowClass = "bg-orange-50/40 hover:bg-orange-100/50 border-l-4 border-orange-400";
+                } else {
+                    statusBadge = `<span class="px-2 py-1 inline-flex text-xs leading-4 font-semibold rounded bg-blue-50 text-blue-700">${statusText || diffDays + 'วัน'}</span>`;
+                }
 
-            html += `
+                html += `
                         <tr class="${rowClass}">
                             <td class="px-3 py-3 text-center text-sm font-mono text-gray-500">${item.seq_no || '-'}</td>
                             <td class="px-3 py-3 text-center text-sm text-gray-700">
@@ -1870,13 +1870,13 @@ renderAcademicItems(items) {
                             </td>
                         </tr>
                         `;
-        });
-        html += `</tbody></table></div> `;
-    }
-    return html;
-},
-renderAcademicForm() {
-    return `
+            });
+            html += `</tbody></table></div> `;
+        }
+        return html;
+    },
+    renderAcademicForm() {
+        return `
                             <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-xl p-8 border border-gray-100" data-aos="fade-up">
                 <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
                     <h3 class="text-xl font-bold text-gray-800 flex items-center">
@@ -1946,10 +1946,10 @@ renderAcademicForm() {
                 </form>
             </div>
             `;
-},
+    },
 
-renderSurveyForm() {
-    return `
+    renderSurveyForm() {
+        return `
             <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-xl p-8 border border-gray-100" data-aos="fade-up">
                 <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
                     <h3 class="text-xl font-bold text-gray-800">บันทึกงานรังวัดใหม่</h3>
@@ -2025,30 +2025,30 @@ renderSurveyForm() {
                 </form>
             </div>
         `;
-},
+    },
 
-showSurveyDetail(item) {
-    const modal = document.getElementById('detail-modal');
-    const content = document.getElementById('detail-modal-content');
+    showSurveyDetail(item) {
+        const modal = document.getElementById('detail-modal');
+        const content = document.getElementById('detail-modal-content');
 
-    if (!modal || !content) return;
+        if (!modal || !content) return;
 
-    const statusValue = item.status_cause || item.status || '';
-    const isCompleted = (item.completion_date && item.completion_date !== '0000-00-00') &&
-        (statusValue === 'completed' || statusValue === 'เสร็จสิ้น' || !statusValue || statusValue === '');
-    const progressType = item.progress_type || 4;
+        const statusValue = item.status_cause || item.status || '';
+        const isCompleted = (item.completion_date && item.completion_date !== '0000-00-00') &&
+            (statusValue === 'completed' || statusValue === 'เสร็จสิ้น' || !statusValue || statusValue === '');
+        const progressType = item.progress_type || 4;
 
-    const statusLabel = isCompleted
-        ? '<span class="px-3 py-1 rounded-full bg-green-100 text-green-800 text-sm font-bold">เสร็จสิ้นแล้ว</span>'
-        : '<span class="px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-sm font-bold">รอดำเนินการ</span>';
+        const statusLabel = isCompleted
+            ? '<span class="px-3 py-1 rounded-full bg-green-100 text-green-800 text-sm font-bold">เสร็จสิ้นแล้ว</span>'
+            : '<span class="px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-sm font-bold">รอดำเนินการ</span>';
 
-    //Get progress type badge
-    const ptInfo = this.progressTypeLabels[progressType] || this.progressTypeLabels[4];
-    const progressBadge = `<span class="px-2 py-1 rounded-full bg-${ptInfo.color}-100 text-${ptInfo.color}-700 text-xs font-bold ml-2">
+        //Get progress type badge
+        const ptInfo = this.progressTypeLabels[progressType] || this.progressTypeLabels[4];
+        const progressBadge = `<span class="px-2 py-1 rounded-full bg-${ptInfo.color}-100 text-${ptInfo.color}-700 text-xs font-bold ml-2">
             <i class="fas ${ptInfo.icon} mr-1"></i>${ptInfo.name}
         </span>`;
 
-    content.innerHTML = `
+        content.innerHTML = `
             <div class="space-y-4">
                 <!-- Header Info -->
                 <div class="flex justify-between items-start border-b border-gray-100 pb-4">
@@ -2136,36 +2136,36 @@ showSurveyDetail(item) {
             </div>
         `;
 
-    modal.classList.remove('hidden');
-    setTimeout(() => {
-        modal.querySelector('div[class*="scale-100"]').classList.remove('scale-95', 'opacity-0');
-    }, 10);
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.querySelector('div[class*="scale-100"]').classList.remove('scale-95', 'opacity-0');
+        }, 10);
 
-    //Load history
-    app.loadStatusHistory(item.id, 'survey');
-},
+        //Load history
+        app.loadStatusHistory(item.id, 'survey');
+    },
 
 
-showRegistrationDetail(item) {
-    const modal = document.getElementById('detail-modal');
-    const content = document.getElementById('detail-modal-content');
+    showRegistrationDetail(item) {
+        const modal = document.getElementById('detail-modal');
+        const content = document.getElementById('detail-modal-content');
 
-    if (!modal || !content) return;
+        if (!modal || !content) return;
 
-    const isCompleted = (item.completion_date && item.completion_date !== '0000-00-00') &&
-        (item.status_cause === 'completed' || item.status_cause === 'เสร็จสิ้น' || !item.status_cause || item.status_cause === '');
-    const progressType = item.progress_type || 4;
+        const isCompleted = (item.completion_date && item.completion_date !== '0000-00-00') &&
+            (item.status_cause === 'completed' || item.status_cause === 'เสร็จสิ้น' || !item.status_cause || item.status_cause === '');
+        const progressType = item.progress_type || 4;
 
-    const statusLabel = isCompleted
-        ? '<span class="px-3 py-1 rounded-full bg-green-100 text-green-800 text-sm font-bold">เสร็จสิ้นแล้ว</span>'
-        : '<span class="px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-sm font-bold">รอดำเนินการ</span>';
+        const statusLabel = isCompleted
+            ? '<span class="px-3 py-1 rounded-full bg-green-100 text-green-800 text-sm font-bold">เสร็จสิ้นแล้ว</span>'
+            : '<span class="px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-sm font-bold">รอดำเนินการ</span>';
 
-    const ptInfo = this.progressTypeLabels[progressType] || this.progressTypeLabels[4];
-    const progressBadge = `<span class="px-2 py-1 rounded-full bg-${ptInfo.color}-100 text-${ptInfo.color}-700 text-xs font-bold ml-2">
+        const ptInfo = this.progressTypeLabels[progressType] || this.progressTypeLabels[4];
+        const progressBadge = `<span class="px-2 py-1 rounded-full bg-${ptInfo.color}-100 text-${ptInfo.color}-700 text-xs font-bold ml-2">
             <i class="fas ${ptInfo.icon} mr-1"></i>${ptInfo.name}
         </span>`;
 
-    content.innerHTML = `
+        content.innerHTML = `
             <div class="space-y-4">
                 <!-- Header Info -->
                 <div class="flex justify-between items-start border-b border-gray-100 pb-4">
@@ -2237,36 +2237,36 @@ showRegistrationDetail(item) {
             </div>
         `;
 
-    modal.classList.remove('hidden');
-    setTimeout(() => {
-        modal.querySelector('div[class*="scale-100"]').classList.remove('scale-95', 'opacity-0');
-    }, 10);
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.querySelector('div[class*="scale-100"]').classList.remove('scale-95', 'opacity-0');
+        }, 10);
 
-    //Load history
-    app.loadStatusHistory(item.id, 'registration');
-},
+        //Load history
+        app.loadStatusHistory(item.id, 'registration');
+    },
 
 
-showAcademicDetail(item) {
-    const modal = document.getElementById('detail-modal');
-    const content = document.getElementById('detail-modal-content');
+    showAcademicDetail(item) {
+        const modal = document.getElementById('detail-modal');
+        const content = document.getElementById('detail-modal-content');
 
-    if (!modal || !content) return;
+        if (!modal || !content) return;
 
-    const isCompleted = (item.completion_date && item.completion_date !== '0000-00-00') &&
-        (item.status_cause === 'completed' || item.status_cause === 'เสร็จสิ้น' || !item.status_cause || item.status_cause === '');
-    const progressType = item.progress_type || 4;
+        const isCompleted = (item.completion_date && item.completion_date !== '0000-00-00') &&
+            (item.status_cause === 'completed' || item.status_cause === 'เสร็จสิ้น' || !item.status_cause || item.status_cause === '');
+        const progressType = item.progress_type || 4;
 
-    const statusLabel = isCompleted
-        ? '<span class="px-3 py-1 rounded-full bg-green-100 text-green-800 text-sm font-bold">เสร็จสิ้นแล้ว</span>'
-        : '<span class="px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-sm font-bold">รอดำเนินการ</span>';
+        const statusLabel = isCompleted
+            ? '<span class="px-3 py-1 rounded-full bg-green-100 text-green-800 text-sm font-bold">เสร็จสิ้นแล้ว</span>'
+            : '<span class="px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-sm font-bold">รอดำเนินการ</span>';
 
-    const ptInfo = this.progressTypeLabels[progressType] || this.progressTypeLabels[4];
-    const progressBadge = `<span class="px-2 py-1 rounded-full bg-${ptInfo.color}-100 text-${ptInfo.color}-700 text-xs font-bold ml-2">
+        const ptInfo = this.progressTypeLabels[progressType] || this.progressTypeLabels[4];
+        const progressBadge = `<span class="px-2 py-1 rounded-full bg-${ptInfo.color}-100 text-${ptInfo.color}-700 text-xs font-bold ml-2">
             <i class="fas ${ptInfo.icon} mr-1"></i>${ptInfo.name}
         </span>`;
 
-    content.innerHTML = `
+        content.innerHTML = `
             <div class="space-y-4">
                 <!-- Header Info -->
                 <div class="flex justify-between items-start border-b border-gray-100 pb-4">
@@ -2338,19 +2338,19 @@ showAcademicDetail(item) {
             </div>
         `;
 
-    modal.classList.remove('hidden');
-    setTimeout(() => {
-        modal.querySelector('div[class*="scale-100"]').classList.remove('scale-95', 'opacity-0');
-    }, 10);
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.querySelector('div[class*="scale-100"]').classList.remove('scale-95', 'opacity-0');
+        }, 10);
 
-    //Load history
-    app.loadStatusHistory(item.id, 'academic');
-},
+        //Load history
+        app.loadStatusHistory(item.id, 'academic');
+    },
 
 
-renderAddForm(type) {
-    if (type === 'survey') {
-        return `
+    renderAddForm(type) {
+        if (type === 'survey') {
+            return `
                 <div>
                     <!-- Auto-generated received_seq -->
                     <label class="block text-sm font-medium text-gray-700">ลำดับรับ (Received Seq)</label>
@@ -2381,9 +2381,9 @@ renderAddForm(type) {
                     <input type="text" name="men" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm border p-2">
                 </div>
 `;
-    } else if (type === 'registration' || type === 'academic') {
-        const context = type === 'registration' ? 'ทะเบียน' : 'วิชาการ';
-        return `
+        } else if (type === 'registration' || type === 'academic') {
+            const context = type === 'registration' ? 'ทะเบียน' : 'วิชาการ';
+            return `
                 <div>
                     <!-- Auto-generated seq_no -->
                     <label class="block text-sm font-medium text-gray-700">ลำดับที่ (Seq No)</label>
@@ -2422,32 +2422,32 @@ renderAddForm(type) {
                     <input type="text" name="responsible_person" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm border p-2">
                 </div>
 `;
-    }
-    return '';
-},
+        }
+        return '';
+    },
 
     //--- Admin Department Views ---
-//--- Admin Department Views ---
+    //--- Admin Department Views ---
     async renderAdminList(items, searchTerm = '', sortOrder = 'desc', subjectFilter = 'all', page = 1, limit = 20, statusView = 'pending') {
-    const fullItems = await DataManager.getAdminItems();
-    const subjects = [...new Set(fullItems.map(i => i.subject).filter(Boolean))];
+        const fullItems = await DataManager.getAdminItems();
+        const subjects = [...new Set(fullItems.map(i => i.subject).filter(Boolean))];
 
-    // Process data (Sort by ID)
-    let processedItems = [...items];
-    processedItems.sort((a, b) => {
-        const idA = parseInt(a.id, 10) || 0;
-        const idB = parseInt(b.id, 10) || 0;
-        return sortOrder === 'asc' ? (idA - idB) : (idB - idA);
-    });
+        // Process data (Sort by ID)
+        let processedItems = [...items];
+        processedItems.sort((a, b) => {
+            const idA = parseInt(a.id, 10) || 0;
+            const idB = parseInt(b.id, 10) || 0;
+            return sortOrder === 'asc' ? (idA - idB) : (idB - idA);
+        });
 
-    let displayItems = processedItems;
-    if (subjectFilter && subjectFilter !== 'all') {
-        displayItems = displayItems.filter(i => i.subject === subjectFilter);
-    }
+        let displayItems = processedItems;
+        if (subjectFilter && subjectFilter !== 'all') {
+            displayItems = displayItems.filter(i => i.subject === subjectFilter);
+        }
 
-    const totalItems = displayItems.length;
+        const totalItems = displayItems.length;
 
-    let html = `
+        let html = `
                             <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4" data-aos="fade-down">
                 <h3 class="font-bold text-3xl flex items-center self-start md:self-auto group">
                     <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-200 mr-4 transform group-hover:scale-105 transition-transform duration-300">
@@ -2521,55 +2521,55 @@ renderAddForm(type) {
             <div id="admin-list-container" class="space-y-4" data-aos="fade-up">
                 ${this.renderAdminItems(displayItems)}
             </div>`;
-    return html;
-},
+        return html;
+    },
 
     async updateAdminList(items, searchTerm, subjectFilter, page, limit) {
-    //Pagination Logic
-    let displayItems = items;
-    if (subjectFilter && subjectFilter !== 'all') {
-        displayItems = displayItems.filter(i => i.subject === subjectFilter);
-    }
+        //Pagination Logic
+        let displayItems = items;
+        if (subjectFilter && subjectFilter !== 'all') {
+            displayItems = displayItems.filter(i => i.subject === subjectFilter);
+        }
 
-    const totalItems = displayItems.length;
-    const totalPages = Math.ceil(totalItems / limit);
-    const start = (page - 1) * limit;
-    const currentItems = displayItems.slice(start, start + limit);
+        const totalItems = displayItems.length;
+        const totalPages = Math.ceil(totalItems / limit);
+        const start = (page - 1) * limit;
+        const currentItems = displayItems.slice(start, start + limit);
 
-    //Update Total Count
-    const countDisplay = document.getElementById('admin-total-items');
-    if (countDisplay) countDisplay.innerText = totalItems;
+        //Update Total Count
+        const countDisplay = document.getElementById('admin-total-items');
+        if (countDisplay) countDisplay.innerText = totalItems;
 
-    //Update List Items
-    const container = document.getElementById('admin-list-container');
-    if (container) {
-        container.innerHTML = this.renderAdminItems(displayItems, page, totalPages, totalItems, start, limit);
-    }
-},
+        //Update List Items
+        const container = document.getElementById('admin-list-container');
+        if (container) {
+            container.innerHTML = this.renderAdminItems(displayItems, page, totalPages, totalItems, start, limit);
+        }
+    },
 
-renderAdminItems(items) {
-    let html = '';
-    if (items.length === 0) {
-        html += `<div class="bg-white rounded-xl shadow-sm p-10 text-center text-gray-400"> ไม่พบข้อมูล</div> `;
-    } else {
-        //Mobile View (Cards)
-        html += `<div class="grid grid-cols-1 gap-4 md:hidden"> `;
-        items.forEach(item => {
-            const formattedDate = this.formatThaiDate(item.received_date);
-            const diffDays = this.calculateDiffDays(item.received_date);
-            let statusBadge = '';
-            let statusText = item.status_cause || '-';
-            let statusColor = "bg-emerald-50 text-emerald-600";
+    renderAdminItems(items) {
+        let html = '';
+        if (items.length === 0) {
+            html += `<div class="bg-white rounded-xl shadow-sm p-10 text-center text-gray-400"> ไม่พบข้อมูล</div> `;
+        } else {
+            //Mobile View (Cards)
+            html += `<div class="grid grid-cols-1 gap-4 md:hidden"> `;
+            items.forEach(item => {
+                const formattedDate = this.formatThaiDate(item.received_date);
+                const diffDays = this.calculateDiffDays(item.received_date);
+                let statusBadge = '';
+                let statusText = item.status_cause || '-';
+                let statusColor = "bg-emerald-50 text-emerald-600";
 
-            const isCompleted = DataManager.isCompleted(item);
-            if (isCompleted) {
-                statusColor = "bg-gray-100 text-gray-500";
-            } else if (diffDays > 30) {
-                statusColor = "bg-teal-100 text-teal-800 animate-pulse border border-teal-200";
-                statusText = `🚨 ${statusText} `;
-            }
+                const isCompleted = DataManager.isCompleted(item);
+                if (isCompleted) {
+                    statusColor = "bg-gray-100 text-gray-500";
+                } else if (diffDays > 30) {
+                    statusColor = "bg-teal-100 text-teal-800 animate-pulse border border-teal-200";
+                    statusText = `🚨 ${statusText} `;
+                }
 
-            html += `
+                html += `
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 relative overflow-hidden group hover:shadow-md transition-all">
                         <div class="flex justify-between items-start mb-3">
                             <span class="text-gray-400 font-mono text-xs">#${item.seq_no}</span>
@@ -2590,11 +2590,11 @@ renderAdminItems(items) {
                         </div>
                     </div>
             `;
-        });
-        html += `</div> `;
+            });
+            html += `</div> `;
 
-        //Desktop View (Table) - DataTables will handle pagination
-        html += `
+            //Desktop View (Table) - DataTables will handle pagination
+            html += `
             <div class="hidden md:block bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
                 <table id="admin-datatable" class="w-full text-left border-collapse display">
                     <thead class="bg-gradient-to-r from-emerald-50 to-green-50 border-b border-emerald-100">
@@ -2609,28 +2609,28 @@ renderAdminItems(items) {
                     </thead>
                     <tbody class="divide-y divide-gray-100">`;
 
-        items.forEach(item => {
-            const formattedDate = this.formatThaiDate(item.received_date);
-            const diffDays = this.calculateDiffDays(item.received_date);
-            let statusBadge = '';
-            let statusText = item.status_cause || '-';
-            let rowClass = "hover:bg-emerald-50/50 transition-all duration-200 group";
+            items.forEach(item => {
+                const formattedDate = this.formatThaiDate(item.received_date);
+                const diffDays = this.calculateDiffDays(item.received_date);
+                let statusBadge = '';
+                let statusText = item.status_cause || '-';
+                let rowClass = "hover:bg-emerald-50/50 transition-all duration-200 group";
 
-            const isCompleted = DataManager.isCompleted(item);
-            if (isCompleted) {
-                statusBadge = `<span class="px-2 py-1 inline-flex text-xs leading-4 font-semibold rounded bg-gray-100 text-gray-500">${statusText}</span>`;
-                rowClass += " opacity-60 bg-gray-50";
-            } else if (diffDays > 60) {
-                statusBadge = `<span class="px-2 py-1 inline-flex text-xs leading-4 font-bold rounded bg-teal-100 text-teal-700 animate-pulse">🔥 ${diffDays}วัน</span>`;
-                rowClass = "bg-teal-50/40 hover:bg-teal-100/50 border-l-4 border-teal-500";
-            } else if (diffDays > 30) {
-                statusBadge = `<span class="px-2 py-1 inline-flex text-xs leading-4 font-bold rounded bg-emerald-100 text-emerald-700">⚠️ ${diffDays}วัน</span>`;
-                rowClass = "bg-emerald-50/40 hover:bg-emerald-100/50 border-l-4 border-emerald-400";
-            } else {
-                statusBadge = `<span class="px-2 py-1 inline-flex text-xs leading-4 font-semibold rounded bg-blue-50 text-blue-700">${statusText || diffDays + 'วัน'}</span>`;
-            }
+                const isCompleted = DataManager.isCompleted(item);
+                if (isCompleted) {
+                    statusBadge = `<span class="px-2 py-1 inline-flex text-xs leading-4 font-semibold rounded bg-gray-100 text-gray-500">${statusText}</span>`;
+                    rowClass += " opacity-60 bg-gray-50";
+                } else if (diffDays > 60) {
+                    statusBadge = `<span class="px-2 py-1 inline-flex text-xs leading-4 font-bold rounded bg-teal-100 text-teal-700 animate-pulse">🔥 ${diffDays}วัน</span>`;
+                    rowClass = "bg-teal-50/40 hover:bg-teal-100/50 border-l-4 border-teal-500";
+                } else if (diffDays > 30) {
+                    statusBadge = `<span class="px-2 py-1 inline-flex text-xs leading-4 font-bold rounded bg-emerald-100 text-emerald-700">⚠️ ${diffDays}วัน</span>`;
+                    rowClass = "bg-emerald-50/40 hover:bg-emerald-100/50 border-l-4 border-emerald-400";
+                } else {
+                    statusBadge = `<span class="px-2 py-1 inline-flex text-xs leading-4 font-semibold rounded bg-blue-50 text-blue-700">${statusText || diffDays + 'วัน'}</span>`;
+                }
 
-            html += `
+                html += `
                         <tr class="${rowClass}">
                             <td class="px-3 py-3 text-center text-sm font-mono text-gray-500">${item.seq_no || '-'}</td>
                             <td class="px-3 py-3 text-center text-sm text-gray-700">
@@ -2649,13 +2649,13 @@ renderAdminItems(items) {
                             </td>
                         </tr>
                         `;
-        });
-        html += `</tbody></table></div> `;
-    }
-    return html;
-},
-renderAdminForm() {
-    return `
+            });
+            html += `</tbody></table></div> `;
+        }
+        return html;
+    },
+    renderAdminForm() {
+        return `
                             <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-xl p-8 border border-gray-100" data-aos="fade-up">
                 <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
                     <h3 class="text-xl font-bold text-gray-800 flex items-center">
@@ -2725,10 +2725,10 @@ renderAdminForm() {
                 </form>
             </div>
             `;
-},
+    },
 
-renderSurveyForm() {
-    return `
+    renderSurveyForm() {
+        return `
             <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-xl p-8 border border-gray-100" data-aos="fade-up">
                 <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
                     <h3 class="text-xl font-bold text-gray-800">บันทึกงานรังวัดใหม่</h3>
@@ -2804,30 +2804,30 @@ renderSurveyForm() {
                 </form>
             </div>
         `;
-},
+    },
 
-showSurveyDetail(item) {
-    const modal = document.getElementById('detail-modal');
-    const content = document.getElementById('detail-modal-content');
+    showSurveyDetail(item) {
+        const modal = document.getElementById('detail-modal');
+        const content = document.getElementById('detail-modal-content');
 
-    if (!modal || !content) return;
+        if (!modal || !content) return;
 
-    const statusValue = item.status_cause || item.status || '';
-    const isCompleted = (item.completion_date && item.completion_date !== '0000-00-00') &&
-        (statusValue === 'completed' || statusValue === 'เสร็จสิ้น' || !statusValue || statusValue === '');
-    const progressType = item.progress_type || 4;
+        const statusValue = item.status_cause || item.status || '';
+        const isCompleted = (item.completion_date && item.completion_date !== '0000-00-00') &&
+            (statusValue === 'completed' || statusValue === 'เสร็จสิ้น' || !statusValue || statusValue === '');
+        const progressType = item.progress_type || 4;
 
-    const statusLabel = isCompleted
-        ? '<span class="px-3 py-1 rounded-full bg-green-100 text-green-800 text-sm font-bold">เสร็จสิ้นแล้ว</span>'
-        : '<span class="px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-sm font-bold">รอดำเนินการ</span>';
+        const statusLabel = isCompleted
+            ? '<span class="px-3 py-1 rounded-full bg-green-100 text-green-800 text-sm font-bold">เสร็จสิ้นแล้ว</span>'
+            : '<span class="px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-sm font-bold">รอดำเนินการ</span>';
 
-    //Get progress type badge
-    const ptInfo = this.progressTypeLabels[progressType] || this.progressTypeLabels[4];
-    const progressBadge = `<span class="px-2 py-1 rounded-full bg-${ptInfo.color}-100 text-${ptInfo.color}-700 text-xs font-bold ml-2">
+        //Get progress type badge
+        const ptInfo = this.progressTypeLabels[progressType] || this.progressTypeLabels[4];
+        const progressBadge = `<span class="px-2 py-1 rounded-full bg-${ptInfo.color}-100 text-${ptInfo.color}-700 text-xs font-bold ml-2">
             <i class="fas ${ptInfo.icon} mr-1"></i>${ptInfo.name}
         </span>`;
 
-    content.innerHTML = `
+        content.innerHTML = `
             <div class="space-y-4">
                 <!-- Header Info -->
                 <div class="flex justify-between items-start border-b border-gray-100 pb-4">
@@ -2915,36 +2915,36 @@ showSurveyDetail(item) {
             </div>
         `;
 
-    modal.classList.remove('hidden');
-    setTimeout(() => {
-        modal.querySelector('div[class*="scale-100"]').classList.remove('scale-95', 'opacity-0');
-    }, 10);
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.querySelector('div[class*="scale-100"]').classList.remove('scale-95', 'opacity-0');
+        }, 10);
 
-    //Load history
-    app.loadStatusHistory(item.id, 'survey');
-},
+        //Load history
+        app.loadStatusHistory(item.id, 'survey');
+    },
 
 
-showRegistrationDetail(item) {
-    const modal = document.getElementById('detail-modal');
-    const content = document.getElementById('detail-modal-content');
+    showRegistrationDetail(item) {
+        const modal = document.getElementById('detail-modal');
+        const content = document.getElementById('detail-modal-content');
 
-    if (!modal || !content) return;
+        if (!modal || !content) return;
 
-    const isCompleted = (item.completion_date && item.completion_date !== '0000-00-00') &&
-        (item.status_cause === 'completed' || item.status_cause === 'เสร็จสิ้น' || !item.status_cause || item.status_cause === '');
-    const progressType = item.progress_type || 4;
+        const isCompleted = (item.completion_date && item.completion_date !== '0000-00-00') &&
+            (item.status_cause === 'completed' || item.status_cause === 'เสร็จสิ้น' || !item.status_cause || item.status_cause === '');
+        const progressType = item.progress_type || 4;
 
-    const statusLabel = isCompleted
-        ? '<span class="px-3 py-1 rounded-full bg-green-100 text-green-800 text-sm font-bold">เสร็จสิ้นแล้ว</span>'
-        : '<span class="px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-sm font-bold">รอดำเนินการ</span>';
+        const statusLabel = isCompleted
+            ? '<span class="px-3 py-1 rounded-full bg-green-100 text-green-800 text-sm font-bold">เสร็จสิ้นแล้ว</span>'
+            : '<span class="px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-sm font-bold">รอดำเนินการ</span>';
 
-    const ptInfo = this.progressTypeLabels[progressType] || this.progressTypeLabels[4];
-    const progressBadge = `<span class="px-2 py-1 rounded-full bg-${ptInfo.color}-100 text-${ptInfo.color}-700 text-xs font-bold ml-2">
+        const ptInfo = this.progressTypeLabels[progressType] || this.progressTypeLabels[4];
+        const progressBadge = `<span class="px-2 py-1 rounded-full bg-${ptInfo.color}-100 text-${ptInfo.color}-700 text-xs font-bold ml-2">
             <i class="fas ${ptInfo.icon} mr-1"></i>${ptInfo.name}
         </span>`;
 
-    content.innerHTML = `
+        content.innerHTML = `
             <div class="space-y-4">
                 <!-- Header Info -->
                 <div class="flex justify-between items-start border-b border-gray-100 pb-4">
@@ -3016,36 +3016,36 @@ showRegistrationDetail(item) {
             </div>
         `;
 
-    modal.classList.remove('hidden');
-    setTimeout(() => {
-        modal.querySelector('div[class*="scale-100"]').classList.remove('scale-95', 'opacity-0');
-    }, 10);
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.querySelector('div[class*="scale-100"]').classList.remove('scale-95', 'opacity-0');
+        }, 10);
 
-    //Load history
-    app.loadStatusHistory(item.id, 'registration');
-},
+        //Load history
+        app.loadStatusHistory(item.id, 'registration');
+    },
 
 
-showAdminDetail(item) {
-    const modal = document.getElementById('detail-modal');
-    const content = document.getElementById('detail-modal-content');
+    showAdminDetail(item) {
+        const modal = document.getElementById('detail-modal');
+        const content = document.getElementById('detail-modal-content');
 
-    if (!modal || !content) return;
+        if (!modal || !content) return;
 
-    const isCompleted = (item.completion_date && item.completion_date !== '0000-00-00') &&
-        (item.status_cause === 'completed' || item.status_cause === 'เสร็จสิ้น' || !item.status_cause || item.status_cause === '');
-    const progressType = item.progress_type || 4;
+        const isCompleted = (item.completion_date && item.completion_date !== '0000-00-00') &&
+            (item.status_cause === 'completed' || item.status_cause === 'เสร็จสิ้น' || !item.status_cause || item.status_cause === '');
+        const progressType = item.progress_type || 4;
 
-    const statusLabel = isCompleted
-        ? '<span class="px-3 py-1 rounded-full bg-green-100 text-green-800 text-sm font-bold">เสร็จสิ้นแล้ว</span>'
-        : '<span class="px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-sm font-bold">รอดำเนินการ</span>';
+        const statusLabel = isCompleted
+            ? '<span class="px-3 py-1 rounded-full bg-green-100 text-green-800 text-sm font-bold">เสร็จสิ้นแล้ว</span>'
+            : '<span class="px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-sm font-bold">รอดำเนินการ</span>';
 
-    const ptInfo = this.progressTypeLabels[progressType] || this.progressTypeLabels[4];
-    const progressBadge = `<span class="px-2 py-1 rounded-full bg-${ptInfo.color}-100 text-${ptInfo.color}-700 text-xs font-bold ml-2">
+        const ptInfo = this.progressTypeLabels[progressType] || this.progressTypeLabels[4];
+        const progressBadge = `<span class="px-2 py-1 rounded-full bg-${ptInfo.color}-100 text-${ptInfo.color}-700 text-xs font-bold ml-2">
             <i class="fas ${ptInfo.icon} mr-1"></i>${ptInfo.name}
         </span>`;
 
-    content.innerHTML = `
+        content.innerHTML = `
             <div class="space-y-4">
                 <!-- Header Info -->
                 <div class="flex justify-between items-start border-b border-gray-100 pb-4">
@@ -3117,19 +3117,19 @@ showAdminDetail(item) {
             </div>
         `;
 
-    modal.classList.remove('hidden');
-    setTimeout(() => {
-        modal.querySelector('div[class*="scale-100"]').classList.remove('scale-95', 'opacity-0');
-    }, 10);
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.querySelector('div[class*="scale-100"]').classList.remove('scale-95', 'opacity-0');
+        }, 10);
 
-    //Load history
-    app.loadStatusHistory(item.id, 'admin');
-},
+        //Load history
+        app.loadStatusHistory(item.id, 'admin');
+    },
 
 
-renderAddForm(type) {
-    if (type === 'survey') {
-        return `
+    renderAddForm(type) {
+        if (type === 'survey') {
+            return `
                 <div>
                     <!-- Auto-generated received_seq -->
                     <label class="block text-sm font-medium text-gray-700">ลำดับรับ (Received Seq)</label>
@@ -3160,9 +3160,9 @@ renderAddForm(type) {
                     <input type="text" name="men" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm border p-2">
                 </div>
 `;
-    } else if (type === 'registration' || type === 'admin') {
-        const context = type === 'registration' ? 'ทะเบียน' : 'วิชาการ';
-        return `
+        } else if (type === 'registration' || type === 'academic' || type === 'admin') {
+            const context = type === 'registration' ? 'ทะเบียน' : (type === 'academic' ? 'วิชาการ' : 'อำนวยการ');
+            return `
                 <div>
                     <!-- Auto-generated seq_no -->
                     <label class="block text-sm font-medium text-gray-700">ลำดับที่ (Seq No)</label>
@@ -3201,15 +3201,15 @@ renderAddForm(type) {
                     <input type="text" name="responsible_person" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm border p-2">
                 </div>
 `;
-    }
-    return '';
-},
+        }
+        return '';
+    },
 
 
-//Form สำหรับบันทึกงานเสร็จทันที (ไม่มีช่องสถานะ เพราะเสร็จแล้ว)
-renderCompletedAddForm(type) {
-    //สร้าง Select dropdown สำหรับเลือกฝ่าย
-    const deptSelector = `
+    //Form สำหรับบันทึกงานเสร็จทันที (ไม่มีช่องสถานะ เพราะเสร็จแล้ว)
+    renderCompletedAddForm(type) {
+        //สร้าง Select dropdown สำหรับเลือกฝ่าย
+        const deptSelector = `
             <div class="md:col-span-2 mb-4">
                 <div class="flex flex-col md:flex-row gap-4">
                     <div class="flex-1">
@@ -3236,18 +3236,18 @@ renderCompletedAddForm(type) {
             </div>
         `;
 
-    //ถ้ายังไม่ได้เลือก type จะแสดง selector เฉย ๆ
-    if (!type) {
-        return deptSelector + `<div id="completed-form-fields" class="md:col-span-2 text-center py-8 text-gray-400">
+        //ถ้ายังไม่ได้เลือก type จะแสดง selector เฉย ๆ
+        if (!type) {
+            return deptSelector + `<div id="completed-form-fields" class="md:col-span-2 text-center py-8 text-gray-400">
                 <i class="fas fa-hand-pointer text-3xl mb-2"></i>
                 <p>กรุณาเลือกฝ่าย/กลุ่มงานที่ต้องการบันทึก</p>
             </div>`;
-    }
+        }
 
-    let formFields = '';
+        let formFields = '';
 
-    if (type === 'survey') {
-        formFields = `
+        if (type === 'survey') {
+            formFields = `
                 <div>
                     <label class="block text-sm font-medium text-gray-700">ลำดับรับ (Received Seq)</label>
                     <input type="text" name="received_seq" disabled placeholder="สร้างอัตโนมัติ (Auto)" class="mt-1 block w-full rounded-md border-gray-300 bg-gray-100 shadow-sm sm:text-sm border p-2 cursor-not-allowed">
@@ -3301,9 +3301,9 @@ renderCompletedAddForm(type) {
                     <input type="date" name="survey_date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm border p-2">
                 </div>
             `;
-    } else if (type === 'registration' || type === 'academic') {
-        const context = type === 'registration' ? 'ทะเบียน' : 'วิชาการ';
-        formFields = `
+        } else if (type === 'registration' || type === 'academic') {
+            const context = type === 'registration' ? 'ทะเบียน' : 'วิชาการ';
+            formFields = `
                 <div>
                     <label class="block text-sm font-medium text-gray-700">ลำดับที่ (Seq No)</label>
                     <input type="text" name="seq_no" disabled placeholder="สร้างอัตโนมัติ (Auto)" class="mt-1 block w-full rounded-md border-gray-300 bg-gray-100 shadow-sm sm:text-sm border p-2 cursor-not-allowed">
@@ -3329,21 +3329,21 @@ renderCompletedAddForm(type) {
                     <input type="text" name="responsible_person" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm border p-2">
                 </div>
             `;
-    }
+        }
 
-    return deptSelector + `<div id="completed-form-fields" class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-5">${formFields}</div>`;
-},
+        return deptSelector + `<div id="completed-form-fields" class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-5">${formFields}</div>`;
+    },
 
     /**
      * สำหรับฉีด HTML รายงานแบบทางการเพื่อใช้สั่งพิมพ์ (Official PDF)
      */renderOfficialPrintTemplate(abmReport) {
-    //ใช้สำเนาของ abmReport เพื่อจัดการจัดรูปแบบ
-    const dateStr = abmReport.reportDate || new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+        //ใช้สำเนาของ abmReport เพื่อจัดการจัดรูปแบบ
+        const dateStr = abmReport.reportDate || new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
 
-    //รูปสัญลักษณ์ครุฑ (URL จาก Wikimedia - เป็นมาตรฐานที่หน่วยงานรัฐใช้บ่อยในเว็บ)
-    const garudaUrl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Garuda_Emblem_of_Thailand.svg/100px-Garuda_Emblem_of_Thailand.svg.png';
+        //รูปสัญลักษณ์ครุฑ (URL จาก Wikimedia - เป็นมาตรฐานที่หน่วยงานรัฐใช้บ่อยในเว็บ)
+        const garudaUrl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Garuda_Emblem_of_Thailand.svg/100px-Garuda_Emblem_of_Thailand.svg.png';
 
-    let html = `
+        let html = `
     <!DOCTYPE html>
         <html lang="th">
             <head>
@@ -3603,28 +3603,28 @@ renderCompletedAddForm(type) {
                     </body>
                 </html>
                 `;
-    return html;
-},
+        return html;
+    },
 
     /**
      * Render System Activity Logs
      */
     async renderLogs() {
-    try {
-        const response = await fetch('api/logs_fetch.php');
-        const logs = await response.json();
+        try {
+            const response = await fetch('api/logs_fetch.php');
+            const logs = await response.json();
 
-        const rows = logs.map((log, idx) => {
-            const actionColors = {
-                'ADD': 'emerald',
-                'UPDATE': 'blue',
-                'DELETE': 'rose',
-                'STATUS_CHANGE': 'amber',
-                'IMPORT': 'purple'
-            };
-            const color = actionColors[log.action] || 'gray';
+            const rows = logs.map((log, idx) => {
+                const actionColors = {
+                    'ADD': 'emerald',
+                    'UPDATE': 'blue',
+                    'DELETE': 'rose',
+                    'STATUS_CHANGE': 'amber',
+                    'IMPORT': 'purple'
+                };
+                const color = actionColors[log.action] || 'gray';
 
-            return `
+                return `
                     <tr class="hover:bg-gray-50/50 transition-colors border-b border-gray-100/50">
                         <td class="px-6 py-4 text-xs font-bold text-gray-400">${idx + 1}</td>
                         <td class="px-6 py-4">
@@ -3647,9 +3647,9 @@ renderCompletedAddForm(type) {
                         </td>
                     </tr>
                 `;
-        }).join('');
+            }).join('');
 
-        return `
+            return `
                 <div class="glass-premium rounded-3xl p-8 shadow-xl border border-gray-100" data-aos="fade-up">
                     <div class="overflow-x-auto">
                         <table id="logs-datatable" class="w-full text-left">
@@ -3670,11 +3670,11 @@ renderCompletedAddForm(type) {
                     </div>
                 </div>
             `;
-    } catch (error) {
-        console.error('Error rendering logs:', error);
-        return '<div class="p-8 text-center text-rose-500 font-bold glass-premium rounded-3xl">เกิดข้อผิดพลาดในการโหลดข้อมูลประวัติ</div>';
+        } catch (error) {
+            console.error('Error rendering logs:', error);
+            return '<div class="p-8 text-center text-rose-500 font-bold glass-premium rounded-3xl">เกิดข้อผิดพลาดในการโหลดข้อมูลประวัติ</div>';
+        }
     }
-}
 };
 
 console.log('UI Loaded successfully', window.UI);
