@@ -1,5 +1,6 @@
 <?php
 include_once 'db.php';
+require_once 'utils/logger.php';
 require_once 'utils/lockdown.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
@@ -43,6 +44,7 @@ switch ($method) {
             $stmt->bindParam(':completion_date', $data->completion_date);
 
             if ($stmt->execute()) {
+                logAction('ADD', $data);
                 echo json_encode(["status" => "success", "id" => $conn->lastInsertId()]);
             } else {
                 http_response_code(503);
@@ -60,7 +62,7 @@ switch ($method) {
 
             if (!empty($data->id)) {
                 // Lockdown Check
-                if (!empty($data->completion_date) && isLockdownActive($data->completion_date)) {
+                if (!empty($data->completion_date) && isLockdownActive($data->completion_date, 'academic')) {
                     http_response_code(403);
                     echo json_encode(["status" => "error", "message" => "ระบบล็อคการบันทึกงานย้อนหลังเดือนก่อนหน้าแล้ว"]);
                     exit;
@@ -119,6 +121,7 @@ switch ($method) {
                 }
 
                 if ($stmt->execute()) {
+                    logAction('UPDATE', $data);
                     echo json_encode(["status" => "success"]);
                 } else {
                     http_response_code(503);
@@ -144,6 +147,7 @@ switch ($method) {
                 $stmt->bindParam(':id', $data->id);
 
                 if ($stmt->execute()) {
+                    logAction('DELETE', $data);
                     echo json_encode(["status" => "success"]);
                 } else {
                     http_response_code(503);
@@ -160,5 +164,27 @@ switch ($method) {
         http_response_code(405);
         echo json_encode(["status" => "error", "message" => "Method not allowed"]);
         break;
+}
+
+// Helper function for logging
+function logAction($action, $data)
+{
+    $userName = $data->user_name ?? 'System';
+    $itemId = $data->id ?? $data->seq_no ?? null;
+    $details = "";
+
+    if ($action === 'ADD') {
+        $details = "เพิ่มงานวิชาการใหม่: " . ($data->subject ?? 'N/A');
+    } elseif ($action === 'UPDATE') {
+        if (isset($data->status_cause)) {
+            $details = "อัปเดตสถานะงานวิชาการ (ID: $itemId) เป็น: " . $data->status_cause;
+        } else {
+            $details = "แก้ไขข้อมูลงานวิชาการ (ID: $itemId)";
+        }
+    } elseif ($action === 'DELETE') {
+        $details = "ลบงานวิชาการ (ID: $itemId)";
+    }
+
+    Logger::log($userName, $action, 'academic', $itemId, $details);
 }
 ?>

@@ -17,7 +17,7 @@ require_once 'utils/lockdown.php';
 // Validate completion date if is_completed is set
 if ($isCompleted) {
     $completionDate = $_POST['received_date'] ?? date('Y-m-d');
-    if (isLockdownActive($completionDate)) {
+    if (isLockdownActive($completionDate, $type)) {
         http_response_code(403);
         echo json_encode(['status' => 'error', 'message' => 'ระบบล็อคการบันทึกงานย้อนหลังเดือนก่อนหน้าแล้ว (เลยกำหนดแจ้งงานประจำเดือนทุกวันที่ 5)']);
         exit;

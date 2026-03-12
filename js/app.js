@@ -204,14 +204,15 @@ window.app = {
             });
         }
 
-        // Admin Settings: Only for Admins
+        // Admin Settings and Logs: Only for Admins
         const adminSettingsLink = document.getElementById('nav-admin-settings');
-        if (adminSettingsLink) {
-            if (isAdmin) {
-                adminSettingsLink.classList.remove('hidden');
-            } else {
-                adminSettingsLink.classList.add('hidden');
-            }
+        const logsLink = document.getElementById('nav-logs');
+        if (isAdmin) {
+            if (adminSettingsLink) adminSettingsLink.classList.remove('hidden');
+            if (logsLink) logsLink.classList.remove('hidden');
+        } else {
+            if (adminSettingsLink) adminSettingsLink.classList.add('hidden');
+            if (logsLink) logsLink.classList.add('hidden');
         }
     },
 
@@ -1763,9 +1764,24 @@ window.app = {
             const oldItem = items.find(i => i.id == id);
             const oldStatus = oldItem ? (oldItem.status_cause || oldItem.status || '-') : '-';
 
+            let notes = [];
+            if (status !== oldStatus) notes.push(`สถานะ: ${oldStatus} -> ${status}`);
+            
+            // Check completion date change
+            const oldCompletion = oldItem ? (oldItem.completion_date || '') : '';
+            if (completion_date != oldCompletion) {
+                notes.push(`วันที่แล้วเสร็จ: ${oldCompletion || '-'} -> ${completion_date || '-'}`);
+            }
+
             if (type === 'survey') {
                 const rv_12 = document.getElementById('update-rv12-input')?.value;
                 const survey_date = document.getElementById('update-survey-date')?.value;
+                const oldRv12 = oldItem ? (oldItem.rv_12 || '') : '';
+                const oldSurveyDate = oldItem ? (oldItem.survey_date || '') : '';
+                
+                if (rv_12 != oldRv12) notes.push(`รว.12: ${oldRv12 || '-'} -> ${rv_12 || '-'}`);
+                if (survey_date != oldSurveyDate) notes.push(`วันรังวัด: ${oldSurveyDate || '-'} -> ${survey_date || '-'}`);
+                
                 await DataManager.updateSurveyItem({ id, status_cause: status, completion_date, rv_12, survey_date });
             } else if (type === 'registration') {
                 await DataManager.updateRegistrationItem({ id, status_cause: status, completion_date });
@@ -1773,9 +1789,10 @@ window.app = {
                 await DataManager.updateAcademicItem({ id, status_cause: status, completion_date });
             }
 
-            // Add to status history if status text has changed
-            if (status !== oldStatus) {
-                await this.addStatusHistory(id, type, 'อัปเดตสถานะ', oldStatus, status);
+            // Add to status history if anything was changed
+            if (notes.length > 0) {
+                const actionName = (status !== oldStatus) ? 'อัปเดตสถานะ' : 'อัปเดตข้อมูลทั่วไป';
+                await this.addStatusHistory(id, type, actionName, oldStatus, status, notes.join(', '));
             }
 
             Swal.fire('สำเร็จ', 'บันทึกการเปลี่ยนแปลงเรียบร้อยแล้ว', 'success');

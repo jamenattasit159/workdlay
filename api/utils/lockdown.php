@@ -5,7 +5,7 @@
  * @param string $completionDateStr วันที่เสร็จงานในรูปแบบ YYYY-MM-DD
  * @return bool true หากระบบถูกล็อค ห้ามบันทึกย้อนหลัง
  */
-function isLockdownActive($completionDateStr)
+function isLockdownActive($completionDateStr, $department = null)
 {
     if (empty($completionDateStr))
         return false;
@@ -13,9 +13,24 @@ function isLockdownActive($completionDateStr)
     try {
         global $conn;
 
-        // 1. Check Database Override
-        $stmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'lockdown_status'");
-        $setting = $stmt->fetchColumn();
+        $settingKey = 'lockdown_status';
+        if (!empty($department)) {
+            $settingKeyOverride = "lockdown_status_{$department}";
+            $stmt = $conn->prepare("SELECT setting_value FROM system_settings WHERE setting_key = :key");
+            $stmt->execute([':key' => $settingKeyOverride]);
+            $overrideSetting = $stmt->fetchColumn();
+            if ($overrideSetting !== false) {
+                // Use override if exists
+                $setting = $overrideSetting;
+            } else {
+                // Fallback
+                $stmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'lockdown_status'");
+                $setting = $stmt->fetchColumn();
+            }
+        } else {
+            $stmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'lockdown_status'");
+            $setting = $stmt->fetchColumn();
+        }
 
         if ($setting === 'unlocked')
             return false; // ปลดล็อคตลอดเวลา

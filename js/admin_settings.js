@@ -30,30 +30,21 @@ const AdminSettings = {
     },
 
     renderSettings(settings) {
-        // Lockdown
-        const status = settings.lockdown_status || 'auto';
-        const radio = document.querySelector(`input[name="lockdown-mode"][value="${status}"]`);
-        if (radio) radio.checked = true;
-        this.updateBadge(status);
+        // Lockdown per department
+        const depts = ['survey', 'registration', 'academic', 'admin'];
+        depts.forEach(dept => {
+            const status = settings[`lockdown_status_${dept}`] || settings.lockdown_status || 'auto';
+            const selectEl = document.getElementById(`lockdown-${dept}`);
+            if (selectEl) {
+                selectEl.value = status;
+            }
+        });
 
         // Progress Type Assignment
         const assignMode = settings.progress_type_assign || 'restricted';
         const assignRadio = document.querySelector(`input[name="progress-assign-mode"][value="${assignMode}"]`);
         if (assignRadio) assignRadio.checked = true;
         this.updateProgressAssignBadge(assignMode);
-    },
-
-    updateBadge(status) {
-        const badge = document.getElementById('current-status');
-        const labels = {
-            'auto': { text: 'อัตโนมัติ (AUTO)', class: 'bg-slate-100 text-slate-600' },
-            'unlocked': { text: 'ปลดล็อค (UNLOCKED)', class: 'bg-emerald-100 text-emerald-600' },
-            'locked': { text: 'ล็อค (LOCKED)', class: 'bg-rose-100 text-rose-600' }
-        };
-
-        const config = labels[status] || labels.auto;
-        badge.textContent = config.text;
-        badge.className = `px-3 py-1 rounded-full text-xs font-bold ${config.class} uppercase tracking-wider`;
     },
 
     updateProgressAssignBadge(mode) {
@@ -72,11 +63,16 @@ const AdminSettings = {
     },
 
     async saveLockdown() {
-        const selected = document.querySelector('input[name="lockdown-mode"]:checked').value;
+        const payload = [
+            { key: 'lockdown_status_survey', value: document.getElementById('lockdown-survey').value },
+            { key: 'lockdown_status_registration', value: document.getElementById('lockdown-registration').value },
+            { key: 'lockdown_status_academic', value: document.getElementById('lockdown-academic').value },
+            { key: 'lockdown_status_admin', value: document.getElementById('lockdown-admin').value }
+        ];
 
         Swal.fire({
             title: 'ยืนยันการเปลี่ยนค่า?',
-            text: `ต้องการเปลี่ยนระบบ Lockdown เป็น: ${selected.toUpperCase()}`,
+            text: `ต้องการบันทึกการตั้งค่า Lockdown แยกตามฝ่ายหรือไม่?`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#4f46e5',
@@ -84,12 +80,22 @@ const AdminSettings = {
             cancelButtonText: 'ยกเลิก'
         }).then(async (result) => {
             if (result.isConfirmed) {
-                const success = await DataManager.updateSystemSetting('lockdown_status', selected);
-                if (success) {
-                    this.updateBadge(selected);
-                    Swal.fire('สำเร็จ', 'บันทึกการตั้งค่าเรียบร้อยแล้ว', 'success');
-                } else {
-                    Swal.fire('Error', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
+                try {
+                    Swal.fire({ title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading() });
+                    // Iterate and save
+                    let allSuccess = true;
+                    for (const item of payload) {
+                        const success = await DataManager.updateSystemSetting(item.key, item.value);
+                        if (!success) allSuccess = false;
+                    }
+                    
+                    if (allSuccess) {
+                        Swal.fire('สำเร็จ', 'บันทึกการตั้งค่าเรียบร้อยแล้ว', 'success');
+                    } else {
+                        Swal.fire('Warning', 'บันทึกสำเร็จบางส่วน อาจมีข้อผิดพลาดเครือข่าย', 'warning');
+                    }
+                } catch (e) {
+                    Swal.fire('Error', 'เกิดข้อผิดพลาดในการบันทึกข้อมูล', 'error');
                 }
             }
         });

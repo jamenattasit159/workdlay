@@ -64,7 +64,7 @@ switch ($method) {
 
             if (!empty($data->id)) {
                 // Lockdown Check
-                if (!empty($data->completion_date) && isLockdownActive($data->completion_date)) {
+                if (!empty($data->completion_date) && isLockdownActive($data->completion_date, 'survey')) {
                     http_response_code(403);
                     echo json_encode(["status" => "error", "message" => "ระบบล็อคการบันทึกงานย้อนหลังเดือนก่อนหน้าแล้ว"]);
                     exit;

@@ -637,6 +637,7 @@ const DataManager = {
 
     async updateRegistrationItem(item) {
         this.clearCache('registration');
+        if (window.app?.currentUser) item.user_name = window.app.currentUser.name;
         try {
             const response = await fetch(this.registrationApiUrl, {
                 method: 'PUT',
@@ -711,6 +712,7 @@ const DataManager = {
 
     async updateAcademicItem(item) {
         this.clearCache('academic');
+        if (window.app?.currentUser) item.user_name = window.app.currentUser.name;
         try {
             const response = await fetch(this.academicApiUrl, {
                 method: 'PUT',
@@ -784,6 +786,7 @@ const DataManager = {
 
     async updateAdminItem(item) {
         this.clearCache('admin');
+        if (window.app?.currentUser) item.user_name = window.app.currentUser.name;
         try {
             const response = await fetch(this.adminApiUrl, {
                 method: 'PUT',

@@ -8,6 +8,9 @@ header('Access-Control-Allow-Origin: *');
 
 include_once 'db.php';
 
+// Enable emulated prepares so named params can be reused in the same query
+$conn->setAttribute(PDO::ATTR_EMULATE_PREPARES, true);
+
 try {
     $department = $_GET['department'] ?? null;
     $yearMonth = $_GET['year_month'] ?? null; // Format: YYYY-MM
@@ -70,11 +73,26 @@ try {
                     )
                     ORDER BY survey_date DESC";
         } else {
-            // ฝ่ายทะเบียน/วิชาการ: งานค้าง = งานที่ยังไม่เสร็จ
+            // ฝ่ายทะเบียน/วิชาการ: ค้างสะสม = รับเข้าระบบตั้งแต่ต้นปี จนถึงสิ้นเดือนนี้
+            // หักออกเฉพาะงานที่เสร็จใน 30 วัน (เดือนรับ) และ 60 วัน (เดือนถัดมา)
             $sql = "SELECT id, received_date, $applicantCol AS applicant_name, $workNameCol AS work_name, status_cause, completion_date, progress_type, $seqCol AS seq_no 
                     FROM $table 
                     WHERE received_date >= :start_date
-                    AND (completion_date IS NULL OR completion_date = '0000-00-00')
+                    AND received_date <= :end_date
+                    AND NOT (
+                        -- งานที่เสร็จแบบ 30 วัน (เดือนเดียวกับที่รับ)
+                        completion_date IS NOT NULL 
+                        AND completion_date != '0000-00-00'
+                        AND DATE_FORMAT(completion_date, '%Y-%m') = DATE_FORMAT(received_date, '%Y-%m')
+                        AND completion_date <= :end_date2
+                    )
+                    AND NOT (
+                        -- งานที่เสร็จแบบ 60 วัน (เดือนถัดมาจากที่รับ)
+                        completion_date IS NOT NULL 
+                        AND completion_date != '0000-00-00'
+                        AND DATE_FORMAT(completion_date, '%Y-%m') = DATE_FORMAT(DATE_ADD(received_date, INTERVAL 1 MONTH), '%Y-%m')
+                        AND completion_date <= :end_date2
+                    )
                     ORDER BY received_date DESC";
         }
     } else if ($type === 'comp30') {
@@ -149,7 +167,11 @@ try {
     } else {
         // Standard parameters for others
         if ($type === 'pending') {
-            $stmt->execute(['start_date' => $startDate]);
+            $stmt->execute([
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'end_date2' => $endDate
+            ]);
         } else {
             $stmt->execute($params);
         }

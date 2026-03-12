@@ -277,6 +277,15 @@ window.reportApp = {
             const monthLabel = date.toLocaleDateString('th-TH', { month: 'long' });
             const isFirstMonth = index === 0;
 
+            // Snapshot prevBal and comp60 per dept BEFORE the map() updates deptBalances
+            const prevBalSnapshot = {};
+            const comp60Snapshot = {};
+            depts.forEach(dept => {
+                prevBalSnapshot[dept.id] = deptBalances[dept.id];
+                const _d = monthItem.depts[dept.id] || {};
+                comp60Snapshot[dept.id] = _d.comp60 || 0;
+            });
+
             let rowHtml = depts.map(dept => {
                 const dData = monthItem.depts[dept.id] || { intake: 0, comp30: 0, comp60: 0, pending: 0, notes: '' };
                 const intake = dData.intake || 0;
@@ -350,7 +359,10 @@ window.reportApp = {
 
             // Calculate totals for all departments in this month
             let totalComp30 = 0, totalIntake = 0, totalComp60 = 0, totalPendingMonth = 0;
-            let totalPrevBal = 0, totalCurType2 = 0, totalCurType3 = 0, totalCurTotal = 0, totalSurveyReg = 0;
+            // totalPrevBalDisplay = sum ของ prevBalNet (สำหรับแสดงผลคอลัมน์ "ก่อนหน้า")
+            // totalPrevBalForPct = sum ของ prevBal ก่อนหัก comp60 (สำหรับคำนวณ % 60 วัน)
+            let totalPrevBalDisplay = 0, totalPrevBalForPct = 0;
+            let totalCurType2 = 0, totalCurType3 = 0, totalCurTotal = 0, totalSurveyReg = 0;
 
             depts.forEach(dept => {
                 const dData = monthItem.depts[dept.id] || {};
@@ -368,14 +380,15 @@ window.reportApp = {
                 totalCurType2 += deptBalancesType2[dept.id];
                 totalCurType3 += deptBalancesType3[dept.id];
                 totalCurTotal += deptBalances[dept.id];
-                // prevBalNet สำหรับแถวรวม = currentBal - pendingMonth (= prevBal - comp60)
-                totalPrevBal += Math.max(0, deptBalances[dept.id] - pendingMonth);
+                // คอลัมน์ "ก่อนหน้า" = sum ของ prevBalNet (หลังหัก comp60 แล้ว)
+                totalPrevBalDisplay += Math.max(0, prevBalSnapshot[dept.id] - comp60Snapshot[dept.id]);
+                // ฐาน % 60 วัน = sum ของ prevBal จริงๆ ก่อนหัก comp60
+                totalPrevBalForPct += prevBalSnapshot[dept.id];
             });
 
             const totalPct30 = totalIntake > 0 ? ((totalComp30 / totalIntake) * 100).toFixed(2) : "0.00";
-            // % งานเสร็จ 60 วัน แถวรวม: ใช้ max(totalPrevBal, totalComp60) และ cap ที่ 100%
-            const totalPct60Denom = Math.max(totalPrevBal, totalComp60);
-            const totalPct60 = totalPct60Denom > 0 ? Math.min(100, (totalComp60 / totalPct60Denom) * 100).toFixed(2) : "0.00";
+            // % งานเสร็จ 60 วัน แถวรวม: ฐาน = totalPrevBalForPct (sum ของ prevBal จริงๆ ก่อนหัก comp60), cap ที่ 100%
+            const totalPct60 = totalPrevBalForPct > 0 ? Math.min(100, (totalComp60 / totalPrevBalForPct) * 100).toFixed(2) : "0.00";
 
             const totalHtml = `
                 <tr class="bg-gray-100/80 font-black text-gray-800 border-t-2 border-gray-300">
@@ -385,7 +398,7 @@ window.reportApp = {
                     <td class="px-3 py-3 border text-center">${totalPct30} %</td>
                     <td class="px-3 py-3 border text-center text-indigo-700">${totalComp60.toLocaleString()}</td>
                     <td class="px-3 py-3 border text-center">${totalPct60} %</td>
-                    <td class="px-3 py-3 border text-center text-gray-600">${totalPrevBal.toLocaleString()}</td>
+                    <td class="px-3 py-3 border text-center text-gray-600">${totalPrevBalDisplay.toLocaleString()}</td>
                     <td class="px-3 py-3 border text-center text-blue-600">${totalPendingMonth.toLocaleString()}</td>
 
                     <td class="px-3 py-3 border text-center text-emerald-700">${totalCurTotal.toLocaleString()}</td>
@@ -518,21 +531,34 @@ window.reportApp = {
 
             const data = result.data || [];
             const rows = data.length > 0
-                ? data.map((item, idx) => `
+                ? data.map((item, idx) => {
+                    let progressBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${item.progress_type == 3 ? 'bg-orange-100 text-orange-700' :
+                        item.progress_type == 2 ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'
+                    }">
+                                ${item.progress_type == 3 ? 'งานศาล' : item.progress_type == 2 ? 'สุดขั้นตอน' : 'ปกติ'}
+                            </span>`;
+
+                    // If it has completion_date, it means it was completed but > 60 days (or > 1 month for survey)
+                    let statusLabel = '';
+                    if (item.completion_date && item.completion_date !== '0000-00-00') {
+                        statusLabel = `<div class="mt-1"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200">
+                                <i class="fas fa-exclamation-circle text-[9px]"></i> เสร็จ ${item.completion_date} (เกินกำหนด)
+                            </span></div>`;
+                    }
+
+                    return `
                     <tr class="border-b border-gray-100 hover:bg-gray-50 text-xs text-left">
                         <td class="px-2 py-2 text-center text-gray-500">${idx + 1}</td>
                         <td class="px-2 py-2 text-gray-700 whitespace-nowrap">${item.received_date || '-'}</td>
                         <td class="px-2 py-2 text-gray-900 font-medium">${item.applicant_name ? String(item.applicant_name).replace(/</g, '&lt;') : '-'}</td>
                         <td class="px-2 py-2 text-gray-600">${item.work_name ? String(item.work_name).replace(/</g, '&lt;') : '-'}</td>
                         <td class="px-2 py-2 text-center">
-                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${item.progress_type == 3 ? 'bg-orange-100 text-orange-700' :
-                        item.progress_type == 2 ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'
-                    }">
-                                ${item.progress_type == 3 ? 'งานศาล' : item.progress_type == 2 ? 'สุดขั้นตอน' : 'ปกติ'}
-                            </span>
+                            ${progressBadge}
+                            ${statusLabel}
                         </td>
                     </tr>
-                `).join('')
+                    `;
+                }).join('')
                 : `<tr><td colspan="5" class="px-4 py-8 text-center text-gray-400">ไม่พบรายการงานค้าง</td></tr>`;
 
             const date = new Date(yearMonth + '-01');
